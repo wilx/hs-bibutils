@@ -1,6 +1,6 @@
 name:               hs-bibutils
 version:            0.1
-homepage:           http://code.haskell.org/~arossato/hs-bibutils
+homepage:           http://code.haskell.org/hs-bibutils
 
 synopsis:           Haskell bindings to bibutils, the bibliography
                     conversion utilities.

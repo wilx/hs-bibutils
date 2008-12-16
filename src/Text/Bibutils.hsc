@@ -347,6 +347,7 @@ newtype BiblioIn  = BiblioIn  { unBiblioIn  :: CInt }
 
 newtype BiblioOut = BiblioOut { unBiblioOut :: CInt }
     deriving ( Eq )
+
 #{enum BiblioOut, BiblioOut
  , mods_out     = BIBL_MODSOUT
  , bibtex_out   = BIBL_BIBTEXOUT
