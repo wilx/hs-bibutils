@@ -144,7 +144,7 @@ Author
 
 Andrea Rossato
 
-`andrea.rossato at ing.unitn.it`
+`andrea.rossato at unitn.it`
 
 Links to Related Projects
 ----------------
@@ -166,6 +166,10 @@ Legal
 
 This software is released under a BSD-style license. See LICENSE for
 more details.
+
+Be aware, however, that bibutils itself is licensed under the GPL. If
+you wish to use the hs-bibutils bindings, your project will need to be
+GPL compatible.
 
 This is an early, "alpha" release. It carries no warranties of any kind.
 
