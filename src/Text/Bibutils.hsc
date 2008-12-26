@@ -25,7 +25,6 @@
 -- >   bibl_write    param bibl "-"
 -- >   bibl_free       bibl
 -- >   bibl_freeparams param
--- >   return ()
 --
 -----------------------------------------------------------------------------
 
