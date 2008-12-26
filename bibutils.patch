@@ -1,23 +1,21 @@
-diff -ur ../orig/Makefile_start ./Makefile_start
---- ../orig/Makefile_start	2008-12-15 01:11:10.000000000 +0100
-+++ ./Makefile_start	2008-12-16 18:11:19.000000000 +0100
-@@ -1,8 +1,14 @@
+diff -ur ../bibutils_4.1/Makefile_start ./Makefile_start
+--- ../bibutils_4.1/Makefile_start	2008-12-21 19:31:06.000000000 +0100
++++ ./Makefile_start	2008-12-26 11:26:01.000000000 +0100
+@@ -1,7 +1,13 @@
  POSTFIX=REPLACE_POSTFIX
--CC = REPLACE_CC
-+CC=REPLACE_CC
-+SHCC=REPLACE_SHCC
-+SHLD=REPLACE_SHLD
+ CC = REPLACE_CC
  RANLIB=REPLACE_RANLIB
 -INSTALLDIR=REPLACE_INSTALLDIR
 +PREFIX=REPLACE_PREFIX
 +LIBDIR=${PREFIX}/lib
- 
++SHCC=REPLACE_SHCC
++SHLD=REPLACE_SHLD
 +INSTALL = /usr/bin/ginstall -c
 +SHLIB = lib/libbibutils.so
 +STLIB = lib/libbibutils.a
- VERSION=4.0
- DATE=12/14/08
  
+ VERSION=4.1
+ DATE=12/21/08
 @@ -10,7 +16,7 @@
  	xml2ads xml2bib xml2end xml2isi xml2ris xml2wordbib modsclean
  
@@ -35,7 +33,7 @@ diff -ur ../orig/Makefile_start ./Makefile_start
 -#		do ( cp bin/$$p ${INSTALLDIR}/$$p ); \
 -#	done
 +	@for p in ${PROGRAMS}; \
-+		do ( cp bin/$$p ${PREFIX}/bin/$$p ); \
++		do ( cp bin/$$p ${INSTALLDIR}/$$p ); \
 +	done
 +
 +installlib:
@@ -44,9 +42,9 @@ diff -ur ../orig/Makefile_start ./Makefile_start
  
  package: all FORCE
  	csh -f maketgz.csh ${VERSION} ${POSTFIX}
-diff -ur ../orig/configure ./configure
---- ../orig/configure	2008-11-24 17:04:04.000000000 +0100
-+++ ./configure	2008-12-16 17:47:33.000000000 +0100
+diff -ur ../bibutils_4.1/configure ./configure
+--- ../bibutils_4.1/configure	2008-12-20 00:48:40.000000000 +0100
++++ ./configure	2008-12-26 11:18:16.000000000 +0100
 @@ -3,15 +3,15 @@
  set INPUT_FILE = Makefile_start
  set OUTPUT_FILE = Makefile
@@ -203,9 +201,9 @@ diff -ur ../orig/configure ./configure
    echo "To make tgz package,         type: make package"
    echo "To make deb package,         type: make deb"
    echo
-diff -ur ../orig/lib/Makefile ./lib/Makefile
---- ../orig/lib/Makefile	2008-12-11 21:31:32.000000000 +0100
-+++ ./lib/Makefile	2008-12-16 17:39:27.000000000 +0100
+diff -ur ../bibutils_4.1/lib/Makefile ./lib/Makefile
+--- ../bibutils_4.1/lib/Makefile	2008-12-21 00:17:31.000000000 +0100
++++ ./lib/Makefile	2008-12-26 11:19:48.000000000 +0100
 @@ -24,6 +24,7 @@
  all:  libbibutils.a
  
