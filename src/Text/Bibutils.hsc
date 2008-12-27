@@ -70,6 +70,7 @@ module Text.Bibutils
     , copac_in
     , isi_in
     , medline_in
+    , biblatex_in
     , endnotexml_in
 
     -- * Output Formats
@@ -342,6 +343,7 @@ newtype BiblioIn  = BiblioIn  { unBiblioIn  :: CInt }
  , isi_in        = BIBL_ISIIN
  , medline_in    = BIBL_MEDLINEIN
  , endnotexml_in = BIBL_ENDNOTEXMLIN
+ , biblatex_in   = BIBL_BIBLATEXIN
  }
 
 newtype BiblioOut = BiblioOut { unBiblioOut :: CInt }
