@@ -113,7 +113,6 @@ module Text.Bibutils
 import Control.Monad
 import Foreign.C
 import Foreign
-import System.IO
 
 -- | A type for storing the C struct with the bibliography data.
 -- Mostly opaque to the Haskell side. See 'numberOfRefs' to retrieve
