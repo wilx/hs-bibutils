@@ -10,7 +10,7 @@ formats using a common MODS-format XML intermediate.
 
 [hs-bibutils] can be used with [citeproc-hs] and [pandoc] to read and
 use various bibliographic database formats for processing and
-automatically formatting citations andreferences according to a [CSL]
+automatically formatting citations and references according to a [CSL]
 style.
 
 [citeproc-hs] adds to [pandoc], the famous [Haskell] text processing
@@ -35,77 +35,11 @@ To get the darcs source run:
 Installation
 ------------
 
-[hs-bibutils] requires [bibutils] version 4.0 or higher. Moreover, it
-requires the [bibutils] library to be installed on your system as a
-share object. This is necessary if you want to use the library with
-GHCi or [andoc].
+[hs-bibutils] does not require [bibutils] to be installed, since it
+ships with its one version of the library. To build and install
+[hs-bibutils] unpack the tar archive, in the source directory run:
 
-At the present time, though, [bibutils] default compilation and
-installation scripts only build a static library to be used for
-building the various [bibutils]' binaries, the only ones being
-installed.
-
-In other words you need to either patch or download a patched version
-of [bibutils] in order to build and install the library as a share
-object.[^1]
-
-### Obtaining a patched version of bibutils
-
-You can download a patched version of [bibutils] here:
-
-<http://code.haskell.org/hs-bibutils/bibutils-4.1-ar.tar.gz>
-
-To install it run:
-
-        tar xvfz bibutils-4.1-ar.tar.gz
-        cd bibutils-4.1-ar
-        ./configure
-        make
-
-And now install it with, as root:
-
-        make installlib
-
-### Patching bibutils
-
-You can patch [bibutils] by yourself.
-
-Download version 4.1 from here:
-
-<http://www.scripps.edu/~cdputnam/software/bibutils/bibutils_4.1_src.tgz>
-
-and apply the patch that comes with the [hs-bibutils] source code,
-`bibutils.patch`.
-
-        tar xvfz bibutils-4.1.tar.gz
-        cd bibutils-4.1
-        patch -p0 < bibutils.patch
-
-Now you can configure and build:
-
-        ./configure
-        make
-
-And now as root:
-
-        make installlib
-
-### Installing hs-bibutils
-
-Now you need install [hs-bibutils]. After unpacking the source code
-run:
-
-        runhaskell Setup.lhs configure --extra-include-dirs=/path/to/bibutils_4.1/lib
-
-Change `/path/to/bibutils_4.1/lib` to point to the `lib` sub-directory
-of the [bibutils] source code.
-
-`--extra-include-dirs=/path/to/bibutils_4.1/lib` will tell the
-compiler where to find the library header files needed to compile the
-bindings.
-
-Now you can build and install:
-
+        runhaskell Setup.lhs configure
         runhaskell Setup.lhs build
         runhaskell Setup.lhs install
 
@@ -114,9 +48,11 @@ This last step requires `root` privileges.
 If you don't have `root` privileges you can install [hs-bibutils]
 locally with these commands:
 
-        runhaskell Setup.lhs configure --extra-include-dirs=/path/to/bibutils_4.1/lib --user --prefix=$HOME
+        runhaskell Setup.lhs configure --user --prefix=$HOME
         runhaskell Setup.lhs build
         runhaskell Setup.lhs install --user
+
+[hs-bibutils] should be compatible with cabal-install.
 
 Documentation
 -------------
@@ -167,30 +103,18 @@ CSL
 Legal
 -----
 
-This software is released under a BSD-style license. See LICENSE for
-more details.
-
-Be aware, however, that bibutils itself is licensed under the GPL. If
-you wish to use the hs-bibutils bindings, your project will need to be
-GPL compatible.
+This software is released under the GNU GPL. See LICENSE for more
+details.
 
 This is an early, "alpha" release. It carries no warranties of any kind.
 
-Copyright &copy; 2008 Andrea Rossato
-
-[^1]: The library must be a shared object and must be installed in
-order to build [pandoc] because [pandoc] uses the Template Haskell
-extension to produce some source code at compilation time. This
-extension requires running the GHCi interpreter which can only deal
-with shared objects. If the library is a static object
-(`libbibutils.a`) the compilation of [pandoc] or the use of the
-library with GHCi will fail.
+Copyright &copy; 2008 - 2010 Andrea Rossato
 
 [hs-bibutils]: http://code.haskell.org/hs-bibutils
 [bibutils]: http://www.scripps.edu/~cdputnam/software/bibutils/
 [Hackage]: http://hackage.haskell.org/cgi-bin/hackage-scripts/package/hs-bibutils
 [citeproc-hs]: http://code.haskell.org/citeproc-hs
-[CSL]: http://xbiblio.sourceforge.net/csl/
+[CSL]: http://citationstyles.org/
 [pandoc]: http://johnmacfarlane.net/pandoc/
 [Zotero]: http://www.zotero.org
 [MODS]: http://www.loc.gov/mods/
