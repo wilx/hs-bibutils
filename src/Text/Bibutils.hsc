@@ -36,6 +36,10 @@ module Text.Bibutils
     , bibl_initparams
     , bibl_read
     , bibl_write
+    , bibl_readasis
+    , bibl_addtoasis
+    , bibl_readcorps
+    , bibl_addtocorps
     , bibl_free
     , bibl_freeparams
     , bibl_reporterr
@@ -50,6 +54,8 @@ module Text.Bibutils
     , setCharsetOut
     , setBOM
     , unsetBOM
+    , setNoSplitTitle
+    , unsetNoSplitTitle
     , setLatexOut
     , unsetLatexOut
     , setXmlOut
@@ -153,6 +159,7 @@ data Param
       , latexin          :: CUChar
       , utf8in           :: CUChar
       , xmlin            :: CUChar
+      , nosplittitle     :: CUChar
       , charsetout       :: CInt
       , charsetout_src   :: CUChar
       , latexout         :: CUChar
@@ -177,6 +184,7 @@ instance Storable Param where
                   `ap`   #{peek param, latexin          } p
                   `ap`   #{peek param, utf8in           } p
                   `ap`   #{peek param, xmlin            } p
+                  `ap`   #{peek param, nosplittitle     } p
                   `ap`   #{peek param, charsetout       } p
                   `ap`   #{peek param, charsetout_src   } p
                   `ap`   #{peek param, latexout         } p
@@ -188,7 +196,7 @@ instance Storable Param where
                   `ap`   #{peek param, output_raw       } p
                   `ap`   #{peek param, verbose          } p
                   `ap`   #{peek param, singlerefperfile } p
-    poke p (Param rf wf ci csi li ui xi co cso lo uo ub xo fo a raw v s) = do
+    poke p (Param rf wf ci csi li ui xi nt co cso lo uo ub xo fo a raw v s) = do
                          #{poke param, readformat       } p rf
                          #{poke param, writeformat      } p wf
                          #{poke param, charsetin        } p ci
@@ -196,6 +204,7 @@ instance Storable Param where
                          #{poke param, latexin          } p li
                          #{poke param, utf8in           } p ui
                          #{poke param, xmlin            } p xi
+                         #{poke param, nosplittitle     } p nt
                          #{poke param, charsetout       } p co
                          #{poke param, charsetout_src   } p cso
                          #{poke param, latexout         } p lo
@@ -249,6 +258,16 @@ setBOM p
 unsetBOM ::  ForeignPtr Param -> IO ()
 unsetBOM p
     = setParam p $ \param -> param { utf8bom = 0 }
+
+-- | Do not split titles.
+setNoSplitTitle ::  ForeignPtr Param -> IO ()
+setNoSplitTitle p
+    = setParam p $ \param -> param { nosplittitle = 1 }
+
+-- | Split titles.
+unsetNoSplitTitle ::  ForeignPtr Param -> IO ()
+unsetNoSplitTitle p
+    = setParam p $ \param -> param { nosplittitle = 0 }
 
 -- | Write Latex codes.
 setLatexOut ::  ForeignPtr Param -> IO ()
@@ -326,6 +345,30 @@ bibl_write param bibl path
         cint <- c_bibl_write cbibl cfile cparam
         when (path /= "-") $ fclose cfile >> return ()
         return $ Status cint
+
+bibl_readasis :: ForeignPtr Param -> FilePath -> IO ()
+bibl_readasis param path
+    = withForeignPtr param  $ \cparam ->
+      withCString    path  $ \cpath   -> do
+        c_bibl_readasis cparam cpath
+
+bibl_addtoasis :: ForeignPtr Param -> String -> IO ()
+bibl_addtoasis param entry
+    = withForeignPtr param $ \cparam ->
+      withCString    entry $ \centry -> do
+        c_bibl_addtoasis cparam centry
+
+bibl_readcorps :: ForeignPtr Param -> FilePath -> IO ()
+bibl_readcorps param path
+    = withForeignPtr param  $ \cparam ->
+      withCString    path  $ \cpath   -> do
+        c_bibl_readcorps cparam cpath
+
+bibl_addtocorps :: ForeignPtr Param -> String -> IO ()
+bibl_addtocorps param entry
+    = withForeignPtr param $ \cparam ->
+      withCString    entry $ \centry -> do
+        c_bibl_addtocorps cparam centry
 
 bibl_reporterr :: Status -> IO ()
 bibl_reporterr (Status n) = c_bibl_reporterr n
@@ -419,6 +462,18 @@ foreign import ccall unsafe "bibl_read"
 
 foreign import ccall unsafe "bibl_write"
     c_bibl_write :: Ptr Bibl -> Ptr CFile -> Ptr Param -> IO CInt
+
+foreign import ccall unsafe "bibl_readasis"
+    c_bibl_readasis :: Ptr Param -> CString -> IO ()
+
+foreign import ccall unsafe "bibl_addtoasis"
+    c_bibl_addtoasis :: Ptr Param -> CString -> IO ()
+
+foreign import ccall unsafe "bibl_readcorps"
+    c_bibl_readcorps :: Ptr Param -> CString -> IO ()
+
+foreign import ccall unsafe "bibl_addtocorps"
+    c_bibl_addtocorps :: Ptr Param -> CString -> IO ()
 
 foreign import ccall unsafe "bibl_reporterr"
     c_bibl_reporterr :: CInt -> IO ()
