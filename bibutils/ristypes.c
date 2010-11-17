@@ -1,7 +1,7 @@
 /*
  * ristypes.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Program and source code released under the GPL
  *
@@ -110,7 +110,7 @@ static lookups article[] = {
 	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
 	{ "  ", "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
 	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|periodical",       ALWAYS, LEVEL_HOST },
@@ -216,7 +216,7 @@ static lookups newsarticle[] = {
 	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|NEWSARTICLE",       ALWAYS, LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|NEWSARTICLE",       ALWAYS, LEVEL_MAIN },
 	{ "  ", "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
 	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|newspaper",        ALWAYS, LEVEL_HOST }
@@ -365,7 +365,7 @@ static lookups conference[] = {
 	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|CONFERENCE",       ALWAYS, LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|CONFERENCE",       ALWAYS, LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",                ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|conference publication", ALWAYS, LEVEL_HOST }
 };
@@ -416,7 +416,7 @@ static lookups statute[] = {
 	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|STATUTE",          ALWAYS, LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|STATUTE",          ALWAYS, LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",         ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|legislation",     ALWAYS, LEVEL_MAIN }
 };
@@ -467,7 +467,7 @@ static lookups hearing[] = {
 	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|HEARING",          ALWAYS, LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|HEARING",          ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|hearing",         ALWAYS, LEVEL_MAIN }
 };
 
@@ -517,7 +517,7 @@ static lookups cases[] = {
 	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|CASE",          ALWAYS, LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|CASE",          ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|legal case and case notes", ALWAYS, LEVEL_MAIN }
 };
 
@@ -567,7 +567,7 @@ static lookups communication[] = {
 	{ "M1", "GENRE",        SIMPLE,  LEVEL_MAIN },
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|communication",    ALWAYS, LEVEL_MAIN }
 };
 
@@ -617,7 +617,7 @@ static lookups thesis[] = {
 	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN }, /*misc */
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN }, /* put in "notes" */
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|THESIS",  ALWAYS,  LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|THESIS",  ALWAYS,  LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",ALWAYS,  LEVEL_MAIN },
 	{ "  ", "GENRE|thesis", ALWAYS,  LEVEL_MAIN },
 };
@@ -668,7 +668,7 @@ static lookups report[] = {
 	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN }, /*misc */
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN }, /* put in "notes" */
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },
-	{ "  ", "TYPE|REPORT",  ALWAYS,  LEVEL_MAIN },
+	{ "  ", "INTERNAL_TYPE|REPORT",  ALWAYS,  LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",ALWAYS,  LEVEL_MAIN },
 	{ "  ", "GENRE|report", ALWAYS,  LEVEL_MAIN }
 };

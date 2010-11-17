@@ -19,6 +19,8 @@ extern int isiin_typef( fields *isiin, char *filename, int nref, param *p, varia
 extern void isiin_convertf( fields *isiin, fields *info, int reftype, param *p, variants *all, int nall );
 extern int isiin_processf( fields *isiin, char *p, char *filename, long nref );
 
+extern void isiin_initparams( param *p, const char *progname );
+
 extern variants isi_all[];
 extern int isi_nall;
 

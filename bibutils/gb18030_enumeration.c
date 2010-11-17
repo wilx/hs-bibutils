@@ -5,6 +5,7 @@ typedef struct genums_t {
         unsigned char bytes[4];
 } genums_t;
 
+static const
 genums_t gb18030_enums[] = {
 	{0x0080,4,{0x81,0x30,0x81,0x30,}},
 	{0x0081,4,{0x81,0x30,0x81,0x31,}},

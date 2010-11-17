@@ -1,7 +1,7 @@
 /*
  * risout.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Program and source code released under the GPL
  *
@@ -16,6 +16,27 @@
 #include "fields.h"
 #include "doi.h"
 #include "risout.h"
+
+void
+risout_initparams( param *p, const char *progname )
+{
+	p->writeformat      = BIBL_RISOUT;
+	p->format_opts      = 0;
+	p->charsetout       = BIBL_CHARSET_DEFAULT;
+	p->charsetout_src   = BIBL_SRC_DEFAULT;
+	p->latexout         = 0;
+	p->utf8out          = 0;
+	p->utf8bom          = 0;
+	p->xmlout           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->singlerefperfile = 0;
+
+	p->headerf = risout_writeheader;
+	p->footerf = NULL;
+	p->writef  = risout_write;
+}
 
 enum { 
 	TYPE_UNKNOWN,
@@ -365,6 +386,21 @@ output_arxiv( FILE *fp, fields *info )
 }
 
 static void
+output_jstor( FILE *fp, fields *info )
+{
+	newstr jstor_url;
+	int i;
+	newstr_init( &jstor_url );
+	for ( i=0; i<info->nfields; ++i ) {
+		if ( strcmp( info->tag[i].data, "JSTOR" ) ) continue;
+		jstor_to_url( info, i, "URL", &jstor_url );
+		if ( jstor_url.len )
+			fprintf( fp, "UR  - %s\n", jstor_url.data );
+	}
+	newstr_free( &jstor_url );
+}
+
+static void
 output_thesishint( FILE *fp, int type )
 {
 	if ( type==TYPE_MASTERSTHESIS )
@@ -444,6 +480,7 @@ risout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 	output_doi( fp, info );
 	output_pmid( fp, info );
 	output_arxiv( fp, info );
+	output_jstor( fp, info );
 	output_easy( fp, info, refnum, "NOTES", "N1", -1 );
 	output_easy( fp, info, refnum, "REFNUM", "ID", -1 );
 	output_thesishint( fp, type );

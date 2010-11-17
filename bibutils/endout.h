@@ -1,7 +1,7 @@
 /*
  * endout.h
  *
- * Copyright (c) Chris Putnam 2005-2009
+ * Copyright (c) Chris Putnam 2005-2010
  *
  */
 #ifndef ENDOUT_H
@@ -13,5 +13,8 @@
 extern void endout_write( fields *info, FILE *fp, param *p, 
 		unsigned long refnum );
 extern void endout_writeheader( FILE *outptr, param *p );
+
+extern void endout_initparams( param *p, const char *progname );
+
 
 #endif

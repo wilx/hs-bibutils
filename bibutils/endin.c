@@ -1,7 +1,7 @@
 /*
  * endin.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Program and source code released under the GPL
  *
@@ -20,6 +20,35 @@
 #include "serialno.h"
 #include "reftypes.h"
 #include "endin.h"
+
+void
+endin_initparams( param *p, const char *progname )
+{
+	p->readformat       = BIBL_ENDNOTEIN;
+	p->charsetin        = BIBL_CHARSET_DEFAULT;
+	p->charsetin_src    = BIBL_SRC_DEFAULT;
+	p->latexin          = 0;
+	p->xmlin            = 0;
+	p->utf8in           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->output_raw       = 0;
+
+	p->readf    = endin_readf;
+	p->processf = endin_processf;
+	p->cleanf   = endin_cleanf;
+	p->typef    = endin_typef;
+	p->convertf = endin_convertf;
+	p->all      = end_all;
+	p->nall     = end_nall;
+
+	list_init( &(p->asis) );
+	list_init( &(p->corps) );
+
+	if ( !progname ) p->progname = NULL;
+	else p->progname = strdup( progname );
+}
 
 /* Endnote tag definition:
     character 1 = '%'
@@ -183,14 +212,14 @@ addtype( fields *info, char *data, int level )
 	for ( i=0; i<ntypes; ++i ) {
 		if ( !strcasecmp( types[i].oldstr, data ) ) {
 			found = 1;
-			fields_add( info, "TYPE", types[i].newstr, level );
+			fields_add( info, "INTERNAL_TYPE", types[i].newstr, level );
 		}
 	}
 	if ( !found ) {
 		fprintf( stderr, "Did not identify reference type '%s'\n",
 			data );
 		fprintf( stderr, "Defaulting to journal article type\n");
-		fields_add( info, "TYPE", types[0].newstr, level );
+		fields_add( info, "INTERNAL_TYPE", types[0].newstr, level );
 	}
 }
 

@@ -1,7 +1,7 @@
 /*
  * copacin.c
  *
- * Copyright (c) Chris Putnam 2004-2009
+ * Copyright (c) Chris Putnam 2004-2010
  *
  * Program and source code released under the GPL
  *
@@ -19,6 +19,34 @@
 #include "reftypes.h"
 #include "serialno.h"
 #include "copacin.h"
+
+void
+copacin_initparams( param *p, const char *progname )
+{
+	p->readformat       = BIBL_COPACIN;
+	p->charsetin        = BIBL_CHARSET_DEFAULT;
+	p->charsetin_src    = BIBL_SRC_DEFAULT;
+	p->latexin          = 0;
+	p->xmlin            = 0;
+	p->utf8in           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+
+	p->readf    = copacin_readf;
+	p->processf = copacin_processf;
+	p->cleanf   = NULL;
+	p->typef    = NULL;
+	p->convertf = copacin_convertf;
+	p->all      = copac_all;
+	p->nall     = copac_nall;
+
+	list_init( &(p->asis) );
+	list_init( &(p->corps) );
+
+	if ( !progname ) p->progname = NULL;
+	else p->progname = strdup( progname );
+}
 
 /* Endnote-Refer/Copac tag definition:
     character 1 = alphabetic character

@@ -27,7 +27,7 @@ maintainer:         andrea.rossato@unitn.it
 cabal-version:      >= 1.4
 build-type:         Simple
 extra-source-files:
-    bibutils/adsout.c bibutils/adsout.h bibutils/adsout_journals.c bibutils/bibl.c
+    bibutils/adsout.c bibutils/adsout.h bibutils/adsout_journals.c bibutils/bibcore.c bibutils/bibl.c
     bibutils/bibl.h bibutils/biblatexin.c bibutils/biblatexin.h bibutils/bibtexin.c
     bibutils/bibtexin.h bibutils/bibtexout.c bibutils/bibtexout.h bibutils/bibtextypes.c
     bibutils/bibutils.c bibutils/bibutils.h bibutils/bltypes.c bibutils/charsets.c
@@ -44,7 +44,7 @@ extra-source-files:
     bibutils/modsout.h bibutils/modstypes.c bibutils/modstypes.h bibutils/name.c
     bibutils/name.h bibutils/newstr.c bibutils/newstr.h bibutils/newstr_conv.c
     bibutils/newstr_conv.h bibutils/reftypes.c bibutils/reftypes.h bibutils/risin.c
-    bibutils/risin.h bibutils/risout.c bibutils/risout.h bibutils/ristypes.c
+    bibutils/risin.h bibutils/risout.c bibutils/risout.h bibutils/ristypes.c bibutils/rules.h
     bibutils/serialno.c bibutils/serialno.h bibutils/strsearch.c bibutils/strsearch.h
     bibutils/title.c bibutils/title.h bibutils/utf8.c bibutils/utf8.h bibutils/wordin.c
     bibutils/wordin.h bibutils/wordout.c bibutils/wordout.h bibutils/xml.c
@@ -61,7 +61,7 @@ library
     includes:         bibutils.h
     c-sources:
         cbits/stub.c
-        bibutils/adsout.c bibutils/bibl.c bibutils/biblatexin.c bibutils/bibtexin.c
+        bibutils/adsout.c bibutils/bibcore.c bibutils/bibl.c bibutils/biblatexin.c bibutils/bibtexin.c
         bibutils/bibtexout.c bibutils/bibtextypes.c bibutils/bibutils.c bibutils/bltypes.c
         bibutils/charsets.c bibutils/copacin.c bibutils/copactypes.c bibutils/doi.c
         bibutils/ebiin.c bibutils/endin.c bibutils/endout.c bibutils/endtypes.c

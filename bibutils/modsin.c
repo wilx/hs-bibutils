@@ -1,7 +1,7 @@
 /*
  * modsin.c
  *
- * Copyright (c) Chris Putnam 2004-2009
+ * Copyright (c) Chris Putnam 2004-2010
  *
  * Source code released under the GPL
  *
@@ -19,6 +19,41 @@
 #include "reftypes.h"
 #include "modstypes.h"
 #include "marc.h"
+#include "bibutils.h"
+#include "modsin.h"
+
+void
+modsin_initparams( param *p, const char *progname )
+{
+
+	p->readformat       = BIBL_MODSIN;
+	p->format_opts      = 0;
+	p->charsetin        = BIBL_CHARSET_UNICODE;
+	p->charsetin_src    = BIBL_SRC_DEFAULT;
+	p->latexin          = 0;
+	p->utf8in           = 1;
+	p->xmlin            = 1;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->singlerefperfile = 0;
+	p->output_raw       = BIBL_RAW_WITHMAKEREFID |
+	                      BIBL_RAW_WITHCHARCONVERT;
+
+	p->readf    = modsin_readf;
+	p->processf = modsin_processf;
+	p->cleanf   = NULL;
+	p->typef    = NULL;
+	p->convertf = NULL;
+	p->all      = NULL;
+	p->nall     = 0;
+
+	list_init( &(p->asis) );
+	list_init( &(p->corps) );
+
+	if ( !progname ) p->progname = NULL;
+	else p->progname = strdup( progname );
+}
 
 static char modsns[]="mods";
 
@@ -153,7 +188,7 @@ modsin_title( xml *node, fields *info, int level )
 		newstrs_init( &title, &subtitle, NULL );
 		modsin_titler( node->down, &title, &subtitle );
 		if ( title.len ) {
-			if ( abbr ) 
+			if ( abbr )
 				fields_add( info, "SHORTTITLE", title.data, level );
 			else
 				fields_add( info, "TITLE", title.data, level );
@@ -573,6 +608,22 @@ modsin_classification( xml *node, fields *info, int level )
 }
 
 static void
+modsin_recordinfo( xml *node, fields *info, int level )
+{
+	xml *curr;
+
+	/* extract recordIdentifier */
+	curr = node;
+	while ( curr ) {
+		if ( xml_tagexact( curr, "recordIdentifier" ) ) {
+			fields_add( info, "REFNUM", curr->value->data, level );
+		}
+		curr = curr->next;
+	}
+
+}
+
+static void
 modsin_identifier( xml *node, fields *info, int level )
 {
 	convert ids[] = {
@@ -589,7 +640,8 @@ modsin_identifier( xml *node, fields *info, int level )
 		{ "pii",           "PII"          },
 		{ "isi",           "ISIREFNUM"    },
 		{ "serial number", "SERIALNUMBER" },
-		{ "accessnum",     "ACCESSNUM"    }
+		{ "accessnum",     "ACCESSNUM"    },
+		{ "jstor",         "JSTOR"        },
 	};
 	int i , n = sizeof( ids ) / sizeof( ids[0] );
 	if ( !node->value || !node->value->data ) return;
@@ -610,6 +662,8 @@ modsin_mods( xml *node, fields *info, int level )
 		modsin_corp( node, info, level );
 	else if ( xml_tagexact( node, "name" ) )
 		modsin_asis( node, info, level );
+	else if ( xml_tagexact( node, "recordInfo" ) && node->down )
+		modsin_recordinfo( node->down, info, level );
 	else if  ( xml_tagexact( node, "part" ) )
 		modsin_part( node, info, level );
 	else if ( xml_tagexact( node, "identifier" ) )

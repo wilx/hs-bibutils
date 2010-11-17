@@ -38,6 +38,7 @@ extern int  fields_find_firstof( fields *info, char *tags[], int ntags,
 extern int  fields_maxlevel( fields *info );
 extern void fields_clearused( fields *info );
 extern void fields_setused( fields *info, int n );
+extern void fields_replace_or_add( fields *info, char *tag, char *data, int level );
 
 
 #endif

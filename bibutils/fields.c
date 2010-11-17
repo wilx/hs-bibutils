@@ -1,7 +1,7 @@
 /*
  * fields.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Source code released under the GPL
  *
@@ -184,4 +184,11 @@ fields_setused( fields *info, int n )
 		info->used[n] = 1;
 }
 
+void
+fields_replace_or_add( fields *info, char *tag, char *data, int level )
+{
+	int n = fields_find( info, tag, level );
+	if ( n==-1 ) fields_add( info, tag, data, level );
+	else newstr_strcpy( &(info->data[n]), data );
+}
 

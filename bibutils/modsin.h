@@ -16,6 +16,6 @@
 extern int modsin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, newstr *reference, int *fcharset );
 extern int modsin_processf( fields *medin, char *data, char *filename, long nref );
 extern void modsin_convertf( fields *medin, fields *info, int reftype, int verbose, variants *all, int nall );
+extern void modsin_initparams( param *p, const char *progname );
 
 #endif
-

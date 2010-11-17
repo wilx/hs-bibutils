@@ -1,7 +1,7 @@
 /*
  * copacin.h
  *
- * Copyright (c) Chris Putnam 2004-2009
+ * Copyright (c) Chris Putnam 2004-2010
  *
  * Program and source code released under the GPL
  *
@@ -19,6 +19,9 @@ extern int copacin_readf( FILE *fp, char *buf, int bufsize, int *bufpos,
 extern int copacin_processf( fields *copacin, char *p, char *filename, 
 		long nref );
 extern void copacin_convertf( fields *copacin, fields *info, int reftype, param *p, variants *all, int nall );
+
+extern void copacin_initparams( param *p, const char *progname );
+
 
 extern variants copac_all[];
 extern int copac_nall;

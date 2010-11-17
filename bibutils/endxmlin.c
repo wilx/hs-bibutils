@@ -1,7 +1,7 @@
 /*
  * endxmlin.c
  *
- * Copyright (c) Chris Putnam 2006-2009
+ * Copyright (c) Chris Putnam 2006-2010
  *
  * Program and source code released under the GPL
  */
@@ -14,11 +14,42 @@
 #include "xml.h"
 #include "xml_encoding.h"
 #include "reftypes.h"
+#include "endxmlin.h"
+#include "endin.h"
 
 typedef struct {
 	char *attrib;
 	char *internal;
 } attribs;
+
+void
+endxmlin_initparams( param *p, const char *progname )
+{
+	p->readformat       = BIBL_ENDNOTEXMLIN;
+	p->charsetin        = BIBL_CHARSET_DEFAULT;
+	p->charsetin_src    = BIBL_SRC_DEFAULT;
+	p->latexin          = 0;
+	p->xmlin            = 1;
+	p->utf8in           = 1;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->output_raw       = 0;
+
+	p->readf    = endxmlin_readf;
+	p->processf = endxmlin_processf;
+	p->cleanf   = NULL;
+	p->typef    = endin_typef;
+	p->convertf = endin_convertf;
+	p->all      = end_all;
+	p->nall     = end_nall;
+
+	list_init( &(p->asis) );
+	list_init( &(p->corps) );
+
+	if ( !progname ) p->progname = NULL;
+	else p->progname = strdup( progname );
+}
 
 static int
 xml_readmore( FILE *fp, char *buf, int bufsize, int *bufpos )

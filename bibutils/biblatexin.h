@@ -1,7 +1,7 @@
 /*
  * biblatexin.h
  *
- * Copyright (c) Chris Putnam 2008-9
+ * Copyright (c) Chris Putnam 2008-2010
  *
  * Program and source code released under the GPL
  *
@@ -23,6 +23,7 @@ extern int  biblatexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, new
 extern int  biblatexin_typef( fields *bibin, char *filename, int nrefs,
         param *p, variants *all, int nall );
 
+extern void biblatexin_initparams( param *p, const char *progname );
 
 extern variants biblatex_all[];
 extern int biblatex_nall;

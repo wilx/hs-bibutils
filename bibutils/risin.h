@@ -19,6 +19,8 @@ extern int risin_processf( fields *risin, char *p, char *filename, long nref );
 extern int risin_typef( fields *risin, char *filename, int nref, param *p, variants *all, int nall );
 extern void risin_convertf( fields *risin, fields *info, int reftype, param *p, variants *all, int nall ); 
 
+extern void risin_initparams( param *p, const char *progname );
+
 extern variants ris_all[];
 extern int ris_nall;
 

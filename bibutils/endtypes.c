@@ -1,7 +1,7 @@
 /*
  * endtypes.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Program and source code released under the GPL
  *
@@ -15,7 +15,7 @@
 
 /* if no specific type can be identified */
 static lookups generic[] = {
-	{ "%0", "TYPE",      TYPE,   LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE", TYPE,   LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON, LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -67,7 +67,7 @@ static lookups generic[] = {
 };
 
 static lookups journalarticle[] = {
-	{ "%0", "TYPE",         TYPE,     LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",         TYPE,     LEVEL_MAIN },
 	{ "%A", "AUTHOR",       PERSON,   LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",   PERSON,   LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE",SIMPLE, LEVEL_MAIN },
@@ -116,7 +116,7 @@ static lookups journalarticle[] = {
 };
 
 static lookups magazinearticle[] = {
-	{ "%0", "TYPE",      TYPE,    LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,    LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON,  LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -164,7 +164,7 @@ static lookups magazinearticle[] = {
 };
 
 static lookups newspaperarticle[] = {
-	{ "%0", "TYPE",      TYPE,    LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,    LEVEL_MAIN },
 	{ "%A", "REPORTER",  PERSON,  LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -211,7 +211,7 @@ static lookups newspaperarticle[] = {
 };
 
 static lookups book[] = {
-	{ "%0", "TYPE",      TYPE,      LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,      LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON,    LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -260,7 +260,7 @@ static lookups book[] = {
 };
 
 static lookups booksection[] = {
-	{ "%0", "TYPE",      TYPE,      LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,      LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON,    LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -310,7 +310,7 @@ static lookups booksection[] = {
 };
 
 static lookups editedbook[] = {
-	{ "%0", "TYPE",      TYPE,      LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,      LEVEL_MAIN },
 	{ "%A", "EDITOR",    PERSON,    LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -358,7 +358,7 @@ static lookups editedbook[] = {
 };
 
 static lookups manuscript[] = {
-	{ "%0", "TYPE",      TYPE,    LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,    LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON,  LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -398,7 +398,7 @@ static lookups manuscript[] = {
 };
 
 static lookups communication[] = {
-	{ "%0", "TYPE",      TYPE,    LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,    LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON,  LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -437,7 +437,7 @@ static lookups communication[] = {
 };
 
 static lookups proceedings[] = {
-	{ "%0", "TYPE",      TYPE,    LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,    LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON,  LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -483,7 +483,7 @@ static lookups proceedings[] = {
 };
 
 static lookups conferencepaper[] = {
-	{ "%0", "TYPE",         TYPE,     LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",         TYPE,     LEVEL_MAIN },
 	{ "%A", "AUTHOR",       PERSON,   LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",   PERSON,   LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE",SIMPLE, LEVEL_MAIN },
@@ -530,7 +530,7 @@ static lookups conferencepaper[] = {
 };
 
 static lookups thesis[] = {
-	{ "%0", "TYPE",         TYPE,   LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",         TYPE,   LEVEL_MAIN },
 	{ "%A", "AUTHOR",       PERSON, LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",   PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -541,7 +541,6 @@ static lookups thesis[] = {
 	{ "%I", "PUBLISHER",    SIMPLE, LEVEL_MAIN }, 
 	{ "%V", "VOLUME",       SIMPLE, LEVEL_MAIN },
 	{ "%P", "NUMPAGES",     PAGES,  LEVEL_MAIN },
-/*	{ "%9", "THESIS_TYPE",  SIMPLE, LEVEL_MAIN },*/
 	{ "%9", "GENRE",        SIMPLE, LEVEL_MAIN }, /* thesis type */
 	{ "%8", "MONTH",        DATE,   LEVEL_MAIN },
 	{ "%!", "SHORTTITLE",   TITLE,  LEVEL_MAIN },
@@ -572,7 +571,7 @@ static lookups thesis[] = {
 };
 
 static lookups program[] = {
-	{ "%0", "TYPE",      TYPE,  LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,  LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON   , LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -609,7 +608,7 @@ static lookups program[] = {
 };
 
 static lookups audiovisual[] = {
-	{ "%0", "TYPE",      TYPE     , LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE     , LEVEL_MAIN },
 	{ "%A", "WRITER",    PERSON   , LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -650,7 +649,7 @@ static lookups audiovisual[] = {
 };
 
 static lookups broadcast[] = {
-	{ "%0", "TYPE",         TYPE,     LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",         TYPE,     LEVEL_MAIN },
 	{ "%A", "AUTHOR",       PERSON,   LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",   PERSON,   LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -692,7 +691,7 @@ static lookups broadcast[] = {
 };
 
 static lookups electronic[] = {
-	{ "%0", "TYPE",      TYPE      , LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE      , LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON    , LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -733,7 +732,7 @@ static lookups electronic[] = {
 };
 
 static lookups webpage[] = {
-	{ "%0", "TYPE",      TYPE      , LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE      , LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON    , LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -774,7 +773,7 @@ static lookups webpage[] = {
 };
 
 static lookups artwork[] = {
-	{ "%0", "TYPE",      TYPE     , LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE     , LEVEL_MAIN },
 	{ "%A", "ARTIST",    PERSON   , LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -811,7 +810,7 @@ static lookups artwork[] = {
 };
 
 static lookups report[] = {
-	{ "%0", "TYPE",      TYPE     , LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE     , LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON   , LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -852,7 +851,7 @@ static lookups report[] = {
 };
 
 static lookups map[] = {
-	{ "%0", "TYPE",      TYPE     , LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE     , LEVEL_MAIN },
 	{ "%A", "CARTOGRAPHER",    PERSON   , LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -890,7 +889,7 @@ static lookups map[] = {
 };
 
 static lookups patent[] = {
-	{ "%0", "TYPE",      TYPE, LEVEL_MAIN    },
+	{ "%0", "INTERNAL_TYPE",      TYPE, LEVEL_MAIN    },
 	{ "%A", "AUTHOR",    PERSON, LEVEL_MAIN  },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -930,7 +929,7 @@ static lookups patent[] = {
 };
 
 static lookups hearing[] = {
-	{ "%0", "TYPE",         TYPE, LEVEL_MAIN    },
+	{ "%0", "INTERNAL_TYPE",         TYPE, LEVEL_MAIN    },
 	{ "%D", "YEAR",         SIMPLE, LEVEL_MAIN  },
 	{ "%H", "TRANSLATOR",   PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -972,7 +971,7 @@ static lookups hearing[] = {
 };
 
 static lookups bill[] = {
-	{ "%0", "TYPE",      TYPE, LEVEL_MAIN    },
+	{ "%0", "INTERNAL_TYPE",      TYPE, LEVEL_MAIN    },
 	{ "%D", "YEAR",      SIMPLE, LEVEL_MAIN  },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -1014,7 +1013,7 @@ static lookups bill[] = {
 };
 
 static lookups statute[] = {
-	{ "%0", "TYPE",      TYPE, LEVEL_MAIN    },
+	{ "%0", "INTERNAL_TYPE",      TYPE, LEVEL_MAIN    },
 	{ "%D", "YEAR",      SIMPLE, LEVEL_MAIN  },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -1054,7 +1053,7 @@ static lookups statute[] = {
 };
 
 static lookups lawcase[] = {
-	{ "%0", "TYPE",      TYPE, LEVEL_MAIN    },
+	{ "%0", "INTERNAL_TYPE",      TYPE, LEVEL_MAIN    },
 	{ "%D", "YEAR",      SIMPLE, LEVEL_MAIN  },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -1095,7 +1094,7 @@ static lookups lawcase[] = {
 };
 
 static lookups chart[] = {
-	{ "%0", "TYPE",      TYPE,   LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,   LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON, LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -1148,7 +1147,7 @@ static lookups chart[] = {
 };
 
 static lookups unpublished[] = {
-	{ "%0", "TYPE",      TYPE,   LEVEL_MAIN },
+	{ "%0", "INTERNAL_TYPE",      TYPE,   LEVEL_MAIN },
 	{ "%A", "AUTHOR",    PERSON, LEVEL_MAIN },
 	{ "%H", "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
@@ -1197,7 +1196,7 @@ static lookups unpublished[] = {
 	{ "%[", "ACCESSDATE",   SIMPLE, LEVEL_MAIN },
 	{ "%=", "LASTMODDATE",  SIMPLE, LEVEL_MAIN },
 	{ "%~", "DATABASE",     SIMPLE, LEVEL_MAIN },
-        { " ",         "TYPE|BOOK",       ALWAYS, LEVEL_MAIN },
+        { " ",         "INTERNAL_TYPE|BOOK",       ALWAYS, LEVEL_MAIN },
         { " ",         "RESOURCE|text",   ALWAYS, LEVEL_MAIN },
         { " ",         "GENRE|unpublished",      ALWAYS, LEVEL_MAIN },
 };

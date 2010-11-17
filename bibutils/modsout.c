@@ -1,7 +1,7 @@
 /*
  * modsout.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Source code released under the GPL
  *
@@ -17,6 +17,27 @@
 #include "modsout.h"
 #include "modstypes.h"
 #include "marc.h"
+
+void
+modsout_initparams( param *p, const char *progname )
+{
+	p->writeformat      = BIBL_MODSOUT;
+	p->format_opts      = 0;
+	p->charsetout       = BIBL_CHARSET_UNICODE;
+	p->charsetout_src   = BIBL_SRC_DEFAULT;
+	p->latexout         = 0;
+	p->utf8out          = 1;
+	p->utf8bom          = 1;
+	p->xmlout           = 1;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->singlerefperfile = 0;
+
+	p->headerf = modsout_writeheader;
+	p->footerf = modsout_writefooter;
+	p->writef  = modsout_write;
+}
 
 static int
 increment_level( int level, int amt )
@@ -196,6 +217,7 @@ output_names( fields *info, FILE *outptr, int level )
 	  { "redactor",      "REDACTOR",           NO_AUTHORITY   },
 	  { "reporter",      "REPORTER",           NO_AUTHORITY   },
 	  { "translator",    "TRANSLATOR",         MARC_AUTHORITY },
+	  { "event",         "EVENT",              NO_AUTHORITY   },
 	  { "author",        "2ND_AUTHOR",         MARC_AUTHORITY },
 	  { "author",        "3RD_AUTHOR",         MARC_AUTHORITY },
 	  { "author",        "SUB_AUTHOR",         MARC_AUTHORITY },
@@ -205,16 +227,17 @@ output_names( fields *info, FILE *outptr, int level )
 	};
 	int       i, n, ntypes = sizeof( names ) / sizeof( convert );
 	newstr role;
-	int f_asis, f_corp;
+	int f_asis, f_corp, f_conf;
 
 	newstr_init( &role );
 	for ( n=0; n<ntypes; ++n ) {
 		for ( i=0; i<info->nfields; ++i ) {
 			if ( info->level[i]!=level ) continue;
-			f_asis = f_corp = 0;
+			f_asis = f_corp = f_conf = 0;
 			newstr_strcpy( &role, info->tag[i].data );
 			if ( newstr_findreplace( &role, ":ASIS", "" )) f_asis=1;
 			if ( newstr_findreplace( &role, ":CORP", "" )) f_corp=1;
+			if ( newstr_findreplace( &role, ":CONF", "" )) f_conf=1;
 			if ( strcasecmp( role.data, names[n].internal ) )
 				continue;
 			if ( f_asis ) {
@@ -224,6 +247,10 @@ output_names( fields *info, FILE *outptr, int level )
 			} else if ( f_corp ) {
 				output_tab0( outptr, level );
 				fprintf( outptr, "<name type=\"corporate\">\n" );
+				output_fill2( outptr, increment_level(level,1), "namePart", info, i, 1 );
+			} else if ( f_conf ) {
+				output_tab0( outptr, level );
+				fprintf( outptr, "<name type=\"conference\">\n" );
 				output_fill2( outptr, increment_level(level,1), "namePart", info, i, 1 );
 			} else {
 				output_name(outptr, info->data[i].data, level);
@@ -307,10 +334,11 @@ static void
 output_origin( fields *info, FILE *outptr, int level )
 {
 	convert origin[] = {
-		{ "issuance",	"ISSUANCE",	0 },
-		{ "publisher",	"PUBLISHER",	0 },
-		{ "place",	"ADDRESS",	1 },
-		{ "edition",	"EDITION",	0 }
+		{ "issuance",	  "ISSUANCE",	0 },
+		{ "publisher",	  "PUBLISHER",	0 },
+		{ "place",	  "ADDRESS",	1 },
+		{ "edition",	  "EDITION",	0 },
+		{ "dateCaptured", "URLDATE",    0 }
 	};
 	int n, ntypes = sizeof( origin ) / sizeof ( convert );
 	int found, datefound, pos[5], date[4];
@@ -358,7 +386,11 @@ static void
 output_description( fields *info, FILE *outptr, int level )
 {
 	int n = fields_find( info, "DESCRIPTION", level );
-	output_fill2( outptr, level, "physicalDescription", info, n, 1 );
+	if (n != -1) {
+		output_tab1( outptr, level, "<physicalDescription>\n" );
+		output_fill2( outptr, increment_level(level,1), "note", info, n, 1 );
+		output_tab1( outptr, level, "</physicalDescription>\n" );
+	}
 }
 
 static void
@@ -504,17 +536,26 @@ output_partelement( fields *info, FILE *outptr, int level, int wrote_header )
 		{ "number",          "NUMBER",          -1 },
 		{ "publiclawnumber", "PUBLICLAWNUMBER", -1 },
 		{ "session",         "SESSION",         -1 },
-		{ "articlenumber",   "ARTICLENUMBER",   -1 }
+		{ "articlenumber",   "ARTICLENUMBER",   -1 },
+		{ "part",            "PART",            -1 },
+		{ "chapter",         "CHAPTER",         -1 }
 	};
-	int i, nparts = sizeof( parts ) / sizeof( convert );
+	int i, nparts = sizeof( parts ) / sizeof( convert ), n;
 
-	if ( !find_alltags( info, parts, nparts, level ) ) return 0;
+	n = fields_find( info, "NUMVOLUMES", level );
+	if ( !find_alltags( info, parts, nparts, level ) && n==-1 ) return 0;
 	try_output_partheader( outptr, wrote_header, level );
 
 	for ( i=0; i<nparts; ++i ) {
 		if ( parts[i].code==-1 ) continue;
 		mods_output_detail( info, outptr, parts[i].code, parts[i].mods,
 				level );
+	}
+
+	if ( n!=-1 ) {
+		output_tab1( outptr, level, "<extent unit=\"volumes\">\n" );
+		output_fill2( outptr, increment_level(level,1), "total", info, n, 1 );
+		output_tab1( outptr, level, "</extent>\n" );
 	}
 
 	return 1;
@@ -568,7 +609,7 @@ output_typeresource( fields *info, FILE *outptr, int level )
 static void
 output_type( fields *info, FILE *outptr, int level )
 {
-	int n = fields_find( info, "TYPE", 0 );
+	int n = fields_find( info, "INTERNAL_TYPE", 0 );
 	if ( n!=-1 ) fields_setused( info, n );
 	output_typeresource( info, outptr, level );
 	output_genre( info, outptr, level );
@@ -636,12 +677,16 @@ output_sn( fields *info, FILE *outptr, int level )
 		{ "issn",      "ISSN",      0 },
 		{ "citekey",   "REFNUM",    0 },
 		{ "doi",       "DOI",       0 },
+		{ "eid",       "EID",       0 },
+		{ "eprint",    "EPRINT",    0 },
+		{ "eprinttype","EPRINTTYPE",0 },
 		{ "pubmed",    "PMID",      0 },
 		{ "medline",   "MEDLINE",   0 },
 		{ "pii",       "PII",       0 },
 		{ "arXiv",     "ARXIV",     0 },
 		{ "isi",       "ISIREFNUM", 0 },
 		{ "accessnum", "ACCESSNUM", 0 },
+		{ "jstor",     "JSTOR",     0 },
 	};
 	int n, ntypes = sizeof( sn_types ) / sizeof( sn_types[0] );
 	int       found, i;
@@ -831,3 +876,4 @@ modsout_writefooter( FILE *outptr )
 	fprintf(outptr,"</modsCollection>\n");
 	fflush( outptr );
 }
+

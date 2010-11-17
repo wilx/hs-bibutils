@@ -1,7 +1,7 @@
 /*
  * bibtexout.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Program and source code released under the GPL
  *
@@ -16,8 +16,32 @@
 #include "xml.h"
 #include "fields.h"
 #include "bibl.h"
-#include "bibtexout.h"
 #include "doi.h"
+#include "bibtexout.h"
+
+void
+bibtexout_initparams( param *p, const char *progname )
+{
+	p->writeformat      = BIBL_BIBTEXOUT;
+	p->format_opts      = 0;
+	p->charsetout       = BIBL_CHARSET_DEFAULT;
+	p->charsetout_src   = BIBL_SRC_DEFAULT;
+	p->latexout         = 1;
+	p->utf8out          = 0;
+	p->utf8bom          = 0;
+	p->xmlout           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->singlerefperfile = 0;
+
+	p->headerf = bibtexout_writeheader;
+	p->footerf = NULL;
+	p->writef  = bibtexout_write;
+
+	if ( !p->progname && progname )
+		p->progname = strdup( progname );
+}
 
 enum {
 	TYPE_UNKNOWN = 0,
@@ -325,8 +349,16 @@ static void
 output_title( FILE *fp, fields *info, unsigned long refnum, char *bibtag, int level, int format_opts )
 {
 	newstr title;
-	int n1 = fields_find( info, "TITLE", level );
-	int n2 = fields_find( info, "SUBTITLE", level );
+	int n1 = -1, n2 = -1;
+	/* Option is for short titles of journals */
+	if ( ( format_opts & BIBOUT_SHORTTITLE ) && level==1 ) {
+		n1 = fields_find( info, "SHORTTITLE", level );
+		n2 = fields_find( info, "SHORTSUBTITLE", level );
+	}
+	if ( n1==-1 ) {
+		n1 = fields_find( info, "TITLE", level );
+		n2 = fields_find( info, "SUBTITLE", level );
+	}
 	if ( n1!=-1 ) {
 		newstr_init( &title );
 		newstr_newstrcpy( &title, &(info->data[n1]) );
@@ -419,6 +451,20 @@ output_pmid( FILE *fp, fields *info, int format_opts )
 }
 
 static void
+output_jstor( FILE *fp, fields *info, int format_opts )
+{
+	int js = fields_find( info, "JSTOR", -1 );
+	if ( js!=-1 ) {
+		newstr jstor;
+		newstr_init( &jstor );
+		jstor_to_url( info, js, "URL", &jstor );
+		if ( jstor.len )
+			output_element( fp, "url", jstor.data, format_opts );
+		newstr_free( &jstor );
+	}
+}
+
+static void
 output_pages( FILE *fp, fields *info, unsigned long refnum, int format_opts )
 {
 	newstr pages;
@@ -497,7 +543,8 @@ bibtexout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 	fields_clearused( info );
 	type = bibtexout_type( info, "", refnum, p );
 	output_type( fp, type, p->format_opts );
-	output_citekey( fp, info, refnum, p->format_opts );
+	if ( !( p->format_opts & BIBOUT_DROPKEY ) )
+		output_citekey( fp, info, refnum, p->format_opts );
 	output_people( fp, info, refnum, "AUTHOR", "AUTHOR:CORP", "AUTHOR:ASIS", "author", 0,
 		p->format_opts );
 	output_people( fp, info, refnum, "EDITOR", "EDITOR:CORP", "EDITOR:ASIS", "editor", -1,
@@ -552,6 +599,7 @@ bibtexout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 	output_fileattach( fp, info, p->format_opts );
 	output_arxiv( fp, info, p->format_opts );
 	output_pmid( fp, info, p->format_opts );
+	output_jstor( fp, info, p->format_opts );
 	output_simple( fp, info, "LANGUAGE", "language", p->format_opts );
 	if ( p->format_opts & BIBOUT_FINALCOMMA ) fprintf( fp, "," );
 	fprintf( fp, "\n}\n\n" );
@@ -563,3 +611,4 @@ bibtexout_writeheader( FILE *outptr, param *p )
 {
 	if ( p->utf8bom ) utf8_writebom( outptr );
 }
+

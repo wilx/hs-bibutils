@@ -1,7 +1,7 @@
 /*
  * list.c
  *
- * Copyright (c) Chris Putnam 2004-2009
+ * Copyright (c) Chris Putnam 2004-2010
  *
  * Source code released under the GPL
  *

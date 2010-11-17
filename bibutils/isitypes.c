@@ -1,7 +1,7 @@
 /*
  * isitypes.c
  *
- * Copyright (c) Chris Putnam 2004-2009
+ * Copyright (c) Chris Putnam 2004-2010
  *
  * Program and source code released under the GPL
  *
@@ -48,7 +48,7 @@ static lookups article[] = {
 	{ "UT",     "ISIREFNUM", SIMPLE, LEVEL_MAIN }, /* ISI unique article identifer */
 	{ "DI",     "DOI",       SIMPLE, LEVEL_MAIN },
 
-	{ " ",      "TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
+	{ " ",      "INTERNAL_TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
 	{ " ",      "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
 	{ " ",      "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
 	{ " ",      "GENRE|periodical",       ALWAYS, LEVEL_HOST },
@@ -90,7 +90,7 @@ static lookups book[] = {
 	
 	{ "PT",     " ",         TYPE,   LEVEL_HOST },
 	{ "DI",     "DOI",       SIMPLE, LEVEL_MAIN },
-	{ " ",         "TYPE|BOOK",       ALWAYS, LEVEL_MAIN },
+	{ " ",         "INTERNAL_TYPE|BOOK",       ALWAYS, LEVEL_MAIN },
 	{ " ",         "ISSUANCE|monographic",    ALWAYS, LEVEL_MAIN },
 	{ " ",         "RESOURCE|text",   ALWAYS, LEVEL_MAIN },
 	{ " ",         "GENRE|book",      ALWAYS, LEVEL_MAIN }
@@ -129,10 +129,10 @@ static lookups inbook[] = {
 	{ "GA",     "ISIDELIVERNUM", SIMPLE, LEVEL_MAIN}, /*ISI document delivery number */
 	{ "UT",     "ISIREFNUM", SIMPLE, LEVEL_MAIN }, /* ISI unique article identifer */
 	{ "DI",     "DOI",       SIMPLE, LEVEL_MAIN },
-	{ " ",         "TYPE|INBOOK",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text", ALWAYS, LEVEL_MAIN },
-	{ " ",         "ISSUANCE|monographic",    ALWAYS, LEVEL_HOST },
-	{ " ",         "GENRE|book",    ALWAYS, LEVEL_HOST }
+	{ " ",      "INTERNAL_TYPE|INBOOK",   ALWAYS, LEVEL_MAIN },
+	{ " ",      "RESOURCE|text", ALWAYS, LEVEL_MAIN },
+	{ " ",      "ISSUANCE|monographic",    ALWAYS, LEVEL_HOST },
+	{ " ",      "GENRE|book",    ALWAYS, LEVEL_HOST }
 };
 
 static lookups bookinseries[] = {
@@ -171,7 +171,7 @@ static lookups bookinseries[] = {
 	{ "UT",     "ISIREFNUM", SIMPLE, LEVEL_MAIN }, /* ISI unique article identifer */
 	{ "DI",     "DOI",       SIMPLE, LEVEL_MAIN },
 
-	{ " ",      "TYPE|INCOLLECTION",      ALWAYS, LEVEL_MAIN },
+	{ " ",      "INTERNAL_TYPE|INCOLLECTION",      ALWAYS, LEVEL_MAIN },
 	{ " ",      "ISSUANCE|monographic",   ALWAYS, LEVEL_HOST },
 	{ " ",      "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
 	{ " ",      "GENRE|collection",       ALWAYS, LEVEL_MAIN }

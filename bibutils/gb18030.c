@@ -48,7 +48,7 @@ gb18030_unicode_table_lookup( unsigned int unicode, unsigned char out[4] )
 }
 
 static int
-gb18030_match( unsigned char *s, unsigned char *bytes, unsigned char len )
+gb18030_match( unsigned char *s, const unsigned char *bytes, unsigned char len )
 {
 	int i;
 	for ( i=0; i<len; ++i )

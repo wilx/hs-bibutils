@@ -1,7 +1,7 @@
 /*
  * risin.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Program and source code released under the GPL
  *
@@ -19,6 +19,35 @@
 #include "reftypes.h"
 #include "doi.h"
 #include "risin.h"
+
+void
+risin_initparams( param *p, const char *progname )
+{
+	p->readformat       = BIBL_RISIN;
+	p->charsetin        = BIBL_CHARSET_DEFAULT;
+	p->charsetin_src    = BIBL_SRC_DEFAULT;
+	p->latexin          = 0;
+	p->xmlin            = 0;
+	p->utf8in           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->output_raw       = 0;
+
+	p->readf    = risin_readf;
+	p->processf = risin_processf;
+	p->cleanf   = NULL;
+	p->typef    = risin_typef;
+	p->convertf = risin_convertf;
+	p->all      = ris_all;
+	p->nall     = ris_nall;
+
+	list_init( &(p->asis) );
+	list_init( &(p->corps) );
+
+	if ( !progname ) p->progname = NULL;
+	else p->progname = strdup( progname );
+}
 
 /* RIS definition of a tag is strict:
     character 1 = uppercase alphabetic character

@@ -1,7 +1,7 @@
 /*
  * wordin.c
  *
- * Copyright (c) Chris Putnam 2009
+ * Copyright (c) Chris Putnam 2010
  *
  * Program and source code released under the GPL
  *
@@ -14,7 +14,38 @@
 #include "fields.h"
 #include "xml.h"
 #include "xml_encoding.h"
-#include "medin.h"
+#include "wordin.h"
+
+void
+wordin_initparams( param *p, const char *progname )
+{
+	p->readformat       = BIBL_WORDIN;
+	p->charsetin        = BIBL_CHARSET_DEFAULT;
+	p->charsetin_src    = BIBL_SRC_DEFAULT;
+	p->latexin          = 0;
+	p->xmlin            = 1;
+	p->utf8in           = 1;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->output_raw       = BIBL_RAW_WITHMAKEREFID |
+	                      BIBL_RAW_WITHCHARCONVERT;
+
+	p->readf    = wordin_readf;
+	p->processf = wordin_processf;
+	p->cleanf   = NULL;
+	p->typef    = NULL;
+/*	p->convertf = wordin_convertf;*/
+	p->convertf = NULL;
+	p->all      = NULL;
+	p->nall     = 0;
+
+	list_init( &(p->asis) );
+	list_init( &(p->corps) );
+
+	if ( !progname ) p->progname = NULL;
+	else p->progname = strdup( progname );
+}
 
 static char *
 wordin_findstartwrapper( char *buf, int *ntype )

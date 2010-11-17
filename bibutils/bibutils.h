@@ -1,7 +1,7 @@
 /*
  * bibutils.h
  *
- * Copyright (c) Chris Putnam 2005-2009
+ * Copyright (c) Chris Putnam 2005-2010
  *
  */
 #ifndef BIBUTILS_H
@@ -89,6 +89,19 @@ typedef struct param {
 	list corps; /* Names that shouldn't be mangled-MODS corporation type */
 
 	char *progname;
+
+
+        int  (*readf)(FILE*,char*,int,int*,newstr*,newstr*,int*);
+        int  (*processf)(fields*,char*,char*,long);
+        void (*cleanf)(bibl*,struct param*);
+        int  (*typef) (fields*,char*,int,struct param*,variants*,int);
+        void (*convertf)(fields*,fields*,int,struct param*,variants*,int);
+        void (*headerf)(FILE*,struct param*);
+        void (*footerf)(FILE*);
+        void (*writef)(fields*,FILE*,struct param*,unsigned long);
+        variants *all;
+        int  nall;
+
 
 } param;
 

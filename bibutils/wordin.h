@@ -12,13 +12,13 @@
 #include "newstr.h"
 #include "fields.h"
 #include "reftypes.h"
+#include "bibutils.h"
 
 extern int wordin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, newstr *reference, int *fcharset );
 extern int wordin_processf( fields *wordin, char *data, char *filename, long nref );
 extern void wordin_convertf( fields *wordin, fields *info, int reftype, int verbose, variants *all, int nall );
-/*
-extern variants med_all[];
-extern int med_nall;
-*/
+
+extern void wordin_initparams( param *p, const char *progname );
+
 #endif
 

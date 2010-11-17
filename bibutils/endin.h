@@ -1,7 +1,7 @@
 /*
  * endin.h
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Program and source code released under the GPL
  *
@@ -20,6 +20,7 @@ extern int endin_typef( fields *endin, char *filename, int nrefs, param *p, vari
 extern void endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *all, int nall );
 extern void endin_cleanf( bibl *bin, param *p );
 
+extern void endin_initparams( param *p, const char *progname );
 
 extern variants end_all[];
 extern int end_nall;

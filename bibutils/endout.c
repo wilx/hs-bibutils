@@ -1,7 +1,7 @@
 /*
  * endout.c
  *
- * Copyright (c) Chris Putnam 2004-2009
+ * Copyright (c) Chris Putnam 2004-2010
  *
  * Program and source code released under the GPL
  *
@@ -16,6 +16,27 @@
 #include "fields.h"
 #include "doi.h"
 #include "endout.h"
+
+void
+endout_initparams( param *p, const char *progname )
+{
+	p->writeformat      = BIBL_ENDNOTEOUT;
+	p->format_opts      = 0;
+	p->charsetout       = BIBL_CHARSET_DEFAULT;
+	p->charsetout_src   = BIBL_SRC_DEFAULT;
+	p->latexout         = 0;
+	p->utf8out          = 0;
+	p->utf8bom          = 0;
+	p->xmlout           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->singlerefperfile = 0;
+
+	p->headerf = endout_writeheader;
+	p->footerf = NULL;
+	p->writef  = endout_write;
+}
 
 enum {
 	TYPE_UNKNOWN = 0,
@@ -406,6 +427,21 @@ output_arxiv( FILE *fp, fields *info )
 }
 
 static void
+output_jstor( FILE *fp, fields *info )
+{
+	newstr jstor_url;
+	int i;
+	newstr_init( &jstor_url );
+	for ( i=0; i<info->nfields; ++i ) {
+		if ( strcmp( info->tag[i].data, "JSTOR" ) ) continue;
+		jstor_to_url( info, i, "URL", &jstor_url );
+		if ( jstor_url.len )
+			fprintf( fp, "%%U %s\n", jstor_url.data );
+	}
+	newstr_free( &jstor_url );
+}
+
+static void
 output_year( FILE *fp, fields *info, int level )
 {
 	int year = fields_find( info, "YEAR", level );
@@ -530,6 +566,7 @@ endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 	output_doi( fp, info );
 	output_pmid( fp, info );
 	output_arxiv( fp, info );
+	output_jstor( fp, info );
 	output_pages( fp, info );
 	fprintf( fp, "\n" );
 	fflush( fp );

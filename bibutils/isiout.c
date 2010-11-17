@@ -1,7 +1,7 @@
 /*
  * isiout.c
  *
- * Copyright (c) Chris Putnam 2008-2009
+ * Copyright (c) Chris Putnam 2008-2010
  *
  * Source code released under the GPL
  */
@@ -15,6 +15,27 @@
 #include "fields.h"
 #include "bibutils.h"
 #include "isiout.h"
+
+void
+isiout_initparams( param *p, const char *progname )
+{
+	p->writeformat      = BIBL_ISIOUT;
+	p->format_opts      = 0;
+	p->charsetout       = BIBL_CHARSET_DEFAULT;
+	p->charsetout_src   = BIBL_SRC_DEFAULT;
+	p->latexout         = 0;
+	p->utf8out          = 0;
+	p->utf8bom          = 0;
+	p->xmlout           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->singlerefperfile = 0;
+
+	p->headerf = isiout_writeheader;
+	p->footerf = NULL;
+	p->writef  = isiout_write;
+}
 
 enum {
         TYPE_UNKNOWN = 0,

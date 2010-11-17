@@ -1,8 +1,8 @@
 /*
  * adsout.c
  *
- * Copyright (c) Richard Mathar 2007-2009
- * Copyright (c) Chris Putnam 2007-2009
+ * Copyright (c) Richard Mathar 2007-2010
+ * Copyright (c) Chris Putnam 2007-2010
  *
  * Program and source code released under the GPL
  *
@@ -16,6 +16,27 @@
 #include "strsearch.h"
 #include "fields.h"
 #include "adsout.h"
+
+void
+adsout_initparams( param *p, const char *progname )
+{
+	p->writeformat      = BIBL_ADSABSOUT;
+	p->format_opts      = 0;
+	p->charsetout       = BIBL_CHARSET_DEFAULT;
+	p->charsetout_src   = BIBL_SRC_DEFAULT;
+	p->latexout         = 0;
+	p->utf8out          = 0;
+	p->utf8bom          = 0;
+	p->xmlout           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->singlerefperfile = 0;
+
+	p->headerf = adsout_writeheader;
+	p->footerf = NULL;
+	p->writef  = adsout_write;
+}
 
 enum {
 	TYPE_UNKNOWN = 0,
@@ -264,11 +285,11 @@ output_date( FILE *fp, fields *info, char *entag, int level )
 #include "adsout_journals.c"
 
 static void
-output_4digit_value( char *pos, int n )
+output_4digit_value( char *pos, long long n )
 {
 	char buf[6];
 	n = n % 10000; /* truncate to 0->9999, will fit in buf[6] */
-	sprintf( buf, "%d", n );
+	sprintf( buf, "%lld", n );
 	if ( n < 10 )        strncpy( pos+3, buf, 1 );
 	else if ( n < 100 )  strncpy( pos+2, buf, 2 );
 	else if ( n < 1000 ) strncpy( pos+1, buf, 3 );
@@ -316,6 +337,7 @@ output_Rtag( FILE *fp, fields *info, char * entag, int type )
 {
 	char out[20], ch;
 	int n;
+	long long page;
 
 	strcpy( out, "..................." );
 
@@ -336,10 +358,10 @@ output_Rtag( FILE *fp, fields *info, char * entag, int type )
 	n = fields_find( info, "PAGESTART", -1 );
 	if ( n==-1 ) n = fields_find( info, "ARTICLENUMBER", -1 );
 	if ( n!=-1 ) {
-		n = atoi( info->data[n].data );
-		output_4digit_value( out+14, n );
-		if ( n>=10000 ) {
-			ch = 'a' + (n/10000);
+		page = atoll( info->data[n].data );
+		output_4digit_value( out+14, page );
+		if ( page>=10000 ) {
+			ch = 'a' + (page/10000);
 			out[13] = ch;
 		}
 	}

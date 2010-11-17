@@ -20,6 +20,8 @@ extern void wordout_writeheader( FILE *outptr, param *p );
 extern void wordout_writefooter( FILE *outptr );
 extern void wordout_write( fields *info, FILE *outptr, param *p,
 	unsigned long numrefs );
+extern void wordout_initparams( param *p, const char *progname );
+
 
 #endif
 

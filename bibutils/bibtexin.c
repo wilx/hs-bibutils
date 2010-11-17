@@ -1,7 +1,7 @@
 /*
  * bibtexin.c
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2010
  *
  * Program and source code released under the GPL
  *
@@ -23,6 +23,35 @@
 
 list find    = { 0, 0, 0, NULL };
 list replace = { 0, 0, 0, NULL };
+
+void
+bibtexin_initparams( param *p, const char *progname )
+{
+	p->readformat       = BIBL_BIBTEXIN;
+	p->charsetin        = BIBL_CHARSET_DEFAULT;
+	p->charsetin_src    = BIBL_SRC_DEFAULT;
+	p->latexin          = 1;
+	p->xmlin            = 0;
+	p->utf8in           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->output_raw       = 0;
+
+	p->readf    = bibtexin_readf;
+	p->processf = bibtexin_processf;
+	p->cleanf   = bibtexin_cleanf;
+	p->typef    = bibtexin_typef;
+	p->convertf = bibtexin_convertf;
+	p->all      = bibtex_all;
+	p->nall     = bibtex_nall;
+
+	list_init( &(p->asis) );
+	list_init( &(p->corps) );
+
+	if ( !progname ) p->progname = NULL;
+	else p->progname = strdup( progname );
+}
 
 /*
  * readf can "read too far", so we store this information in line, thus
@@ -88,7 +117,7 @@ bibtex_item( char *p, newstr *s )
 			if ( *p==',' || *p=='=' || *p=='}' || *p==')' )
 				goto out;
 		}
-		if ( *p=='\"' && *(p-1)!='\\') {
+		if ( *p=='\"' && *(p-1)!='\\' && nbrackets==0 ) {
 			nquotes = ( nquotes==0 );
 			newstr_addchar( s, *p );
 		} else if ( *p=='{' ) {
@@ -317,7 +346,7 @@ process_cite( fields *bibin, char *p, char *filename, long nref )
 	newstr tag, data;
 	newstrs_init( &tag, &data, NULL );
 	p = process_bibtextype( p, &data );
-	if ( data.len ) fields_add( bibin, "TYPE", data.data, 0 );
+	if ( data.len ) fields_add( bibin, "INTERNAL_TYPE", data.data, 0 );
 	if ( *p ) p = process_bibtexid ( p, &data );
 	if ( data.len ) fields_add( bibin, "REFNUM", data.data, 0 );
 	newstr_empty( &data );
@@ -439,13 +468,13 @@ bibtexin_crossref( bibl *bin, param *p )
 			bibtexin_nocrossref( bin, i, n, p );
 			continue;
 		}
-		ntype = fields_find( bin->ref[i], "TYPE", -1 );
+		ntype = fields_find( bin->ref[i], "INTERNAL_TYPE", -1 );
 		type = bin->ref[i]->data[ntype].data;
 		fields_setused( bin->ref[i], n );
 /*		bin->ref[i]->used[n] = 1; */
 		for ( j=0; j<bin->ref[ncross]->nfields; ++j ) {
 			nt = bin->ref[ncross]->tag[j].data;
-			if ( !strcasecmp( nt, "TYPE" ) ) continue;
+			if ( !strcasecmp( nt, "INTERNAL_TYPE" ) ) continue;
 			if ( !strcasecmp( nt, "REFNUM" ) ) continue;
 			if ( !strcasecmp( nt, "TITLE" ) ) {
 				if ( !strcasecmp( type, "Inproceedings" ) ||
@@ -533,7 +562,7 @@ process_pages( fields *info, newstr *s, int level )
 }
 
 static void
-process_url( fields *info, char *p, int level )
+process_urlcore( fields *info, char *p, int level, char *default_tag )
 {
 	if ( !strncasecmp( p, "\\urllink", 8 ) )
 		fields_add( info, "URL", p+8, level );
@@ -543,7 +572,27 @@ process_url( fields *info, char *p, int level )
 		fields_add( info, "ARXIV", p+6, level ); 
 	else if ( !strncasecmp( p, "http://arxiv.org/abs/", 21 ) )
 		fields_add( info, "ARXIV", p+21, level );
-	else fields_add( info, "URL", p, level );
+	else if ( !strncasecmp( p, "http:", 5 ) )
+		fields_add( info, "URL", p, level );
+	else fields_add( info, default_tag, p, level );
+}
+
+static void
+process_url( fields *info, char *p, int level )
+{
+	process_urlcore( info, p, level, "URL" );
+}
+
+static void
+process_howpublished( fields *info, char *p, int level )
+{
+	/* Some users put Diploma thesis in howpublished */
+	if ( !strncasecmp( p, "Diplom", 6 ) )
+		fields_replace_or_add( info, "GENRE", "Diploma thesis", level );
+	else if ( !strncasecmp( p, "Habilitation", 13 ) )
+		fields_replace_or_add( info, "GENRE", "Habilitation thesis", level );
+	else 
+		process_urlcore( info, p, level, "DESCRIPTION" );
 }
 
 /*
@@ -580,7 +629,7 @@ bibtexin_typef( fields *bibin, char *filename, int nrefs, param *p,
 {
 	char *refnum = "";
 	int reftype, n, nrefnum;
-	n = fields_find( bibin, "TYPE", 0 );
+	n = fields_find( bibin, "INTERNAL_TYPE", 0 );
 	nrefnum = fields_find( bibin, "REFNUM", 0 );
 	if ( nrefnum!=-1 ) refnum = (bibin->data[nrefnum]).data;
 	if ( n!=-1 )
@@ -605,7 +654,7 @@ report( fields *info )
 static void
 bibtexin_notag( param *p, char *tag )
 {
-	if ( p->verbose && strcmp( tag, "TYPE" ) ) {
+	if ( p->verbose && strcmp( tag, "INTERNAL_TYPE" ) ) {
 		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
 		fprintf( stderr, "Cannot find tag '%s'\n", tag );
 	}
@@ -619,20 +668,28 @@ bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 	int process, level, i, n;
 	char *newtag;
 	for ( i=0; i<bibin->nfields; ++i ) {
-		d = &( bibin->data[i] );
-		if ( d->len == 0 ) continue; /* skip ones with no data */
+
 		/* skip ones already "used" such as successful crossref */
 		if ( bibin->used[i] ) continue;
+
+		/* skip ones with no data */
+		d = &( bibin->data[i] );
+		if ( d->len == 0 ) continue;
+
 		t = &( bibin->tag[i] );
 		n = process_findoldtag( t->data, reftype, all, nall );
 		if ( n==-1 ) {
 			bibtexin_notag( p, t->data );
 			continue;
 		}
+
+		/* skip ones of type ALWAYS (previously added) */
 		process = ((all[reftype]).tags[n]).processingtype;
-		if ( process == ALWAYS ) continue; /* add these later */
+		if ( process == ALWAYS ) continue;
+
 		level   = ((all[reftype]).tags[n]).level;
 		newtag  = ((all[reftype]).tags[n]).newstr;
+
 		if ( process==SIMPLE )
 			fields_add( info, newtag, d->data, level );
 		else if ( process==TITLE )
@@ -645,6 +702,8 @@ bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 			process_pages( info, d, level);
 		else if ( process==BIBTEX_URL )
 			process_url( info, d->data, level );
+		else if ( process==HOWPUBLISHED )
+			process_howpublished( info, d->data, level );
 		else if ( process==BIBTEX_SENTE )
 			process_sente( info, d->data, level );
 		else if ( process==BIBTEX_FILE )

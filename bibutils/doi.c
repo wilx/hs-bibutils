@@ -9,7 +9,7 @@
  * is_doi()
  * Check for DOI buried in another field.
  *
- * Copyright (c) Chris Putnam 2008-2009
+ * Copyright (c) Chris Putnam 2008-2010
  *
  * Source code released under the GPL
  */
@@ -54,6 +54,16 @@ doi_to_url( fields *info, int n, char *urltag, newstr *doi_url )
 	construct_url( "http://dx.doi.org", &(info->data[n]), doi_url );
 	if ( url_exists( info, urltag, doi_url ) )
 		newstr_empty( doi_url );
+}
+
+void
+jstor_to_url( fields *info, int n, char *urltag, newstr *jstor_url )
+{
+	newstr_empty( jstor_url );
+	construct_url( "http://www.jstor.org/stable", &(info->data[n]),
+		jstor_url );
+	if ( url_exists( info, urltag, jstor_url ) )
+		newstr_empty( jstor_url );
 }
 
 void

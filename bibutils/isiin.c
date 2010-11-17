@@ -1,7 +1,7 @@
 /*
  * isiin.c
  *
- * Copyright (c) Chris Putnam 2004-2009
+ * Copyright (c) Chris Putnam 2004-2010
  *
  * Program and source code released under the GPL
  *
@@ -18,6 +18,35 @@
 #include "serialno.h"
 #include "reftypes.h"
 #include "isiin.h"
+
+void
+isiin_initparams( param *p, const char *progname )
+{
+	p->readformat       = BIBL_ISIIN;
+	p->charsetin        = BIBL_CHARSET_DEFAULT;
+	p->charsetin_src    = BIBL_SRC_DEFAULT;
+	p->latexin          = 0;
+	p->xmlin            = 0;
+	p->utf8in           = 0;
+	p->nosplittitle     = 0;
+	p->verbose          = 0;
+	p->addcount         = 0;
+	p->output_raw       = 0;
+
+	p->readf    = isiin_readf;
+	p->processf = isiin_processf;
+	p->cleanf   = NULL;
+	p->typef    = isiin_typef;
+	p->convertf = isiin_convertf;
+	p->all      = isi_all;
+	p->nall     = isi_nall;
+
+	list_init( &(p->asis) );
+	list_init( &(p->corps) );
+
+	if ( !progname ) p->progname = NULL;
+	else p->progname = strdup( progname );
+}
 
 /* ISI definition of a tag is strict:
  *   char 1 = uppercase alphabetic character

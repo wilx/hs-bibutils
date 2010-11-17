@@ -14,4 +14,6 @@ extern void isiout_write( fields *info, FILE *fp, param *p,
 		unsigned long refnum );
 extern void isiout_writeheader( FILE *outptr, param *p );
 
+extern void isiout_initparams( param *p, const char *progname );
+
 #endif
