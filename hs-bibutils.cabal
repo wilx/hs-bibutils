@@ -18,6 +18,9 @@ description:        Haskell bindings to Chris Putnam's bibutils, a
                     .
                     The original API documentation is available here:
                     <http://www.scripps.edu/~cdputnam/software/bibutils/library_specs.html>.
+                    .
+                    The package release number refers to the release number of
+                    the included bibutils library.
 
 category:           Text
 license:            GPL
