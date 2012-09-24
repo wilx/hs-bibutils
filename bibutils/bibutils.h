@@ -1,7 +1,7 @@
 /*
  * bibutils.h
  *
- * Copyright (c) Chris Putnam 2005-2010
+ * Copyright (c) Chris Putnam 2005-2012
  *
  */
 #ifndef BIBUTILS_H
@@ -14,6 +14,7 @@ extern "C" {
 #include <stdio.h>
 #include "bibl.h"
 #include "list.h"
+#include "charsets.h"
 
 #define BIBL_OK           (0)
 #define BIBL_ERR_BADINPUT (-1)
@@ -49,9 +50,9 @@ extern "C" {
 #define BIBL_RAW_WITHCHARCONVERT (4)
 #define BIBL_RAW_WITHMAKEREFID   (8)
 
-#define BIBL_CHARSET_UNKNOWN (-1)
-#define BIBL_CHARSET_UNICODE (-2)
-#define BIBL_CHARSET_GB18030 (-3)
+#define BIBL_CHARSET_UNKNOWN CHARSET_UNKNOWN
+#define BIBL_CHARSET_UNICODE CHARSET_UNICODE
+#define BIBL_CHARSET_GB18030 CHARSET_GB18030
 #define BIBL_CHARSET_DEFAULT (66)  /* Latin-1/ISO8859-1 */
 
 #define BIBL_SRC_DEFAULT (0)  /* value from program default */

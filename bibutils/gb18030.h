@@ -1,7 +1,7 @@
 /*
  * gb18030.h
  *
- * Copyright (c) Chris Putnam 2008-2009
+ * Copyright (c) Chris Putnam 2008-2012
  *
  * Program and source code released under the GPL
  *

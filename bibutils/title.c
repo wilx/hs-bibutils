@@ -3,7 +3,7 @@
  *
  * process titles into title/subtitle pairs for MODS
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Source code released under the GPL
  *

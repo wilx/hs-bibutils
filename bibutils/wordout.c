@@ -3,7 +3,7 @@
  * 
  * (Word 2007 format)
  *
- * Copyright (c) Chris Putnam 2007-2010
+ * Copyright (c) Chris Putnam 2007-2012
  *
  * Source code released under the GPL
  *
@@ -43,11 +43,6 @@ typedef struct convert {
 	char newtag[25];
 	int  code;
 } convert;
-
-typedef struct outtype {
-	int value;
-	char *out;
-} outtype;
 
 /*
 At the moment 17 unique types of sources are defined:
@@ -125,28 +120,32 @@ output_item( fields *info, FILE *outptr, char *tag, int item, int level )
 	fields_setused( info, item );
 }
 
+static void
+output_itemv( FILE *outptr, char *tag, char *item, int level )
+{
+	int i;
+	for ( i=0; i<level; ++i ) fprintf( outptr, " " );
+	fprintf( outptr, "<%s>%s</%s>\n", tag, item, tag );
+}
+
 /* range output
  *
  * <TAG>start-end</TAG>
  *
  */
 static void
-output_range( fields *info, FILE *outptr, char *tag, int start, int end,
-		int level )
+output_range( FILE *outptr, char *tag, char *start, char *end, int level )
 {
 	int i;
-	if ( start==-1 && end==-1 ) return;
-	if ( start==-1 )
-		output_item( info, outptr, tag, end, 0 );
-	else if ( end==-1 )
-		output_item( info, outptr, tag, start, 0 );
+	if ( start==NULL && end==NULL ) return;
+	if ( start==NULL )
+		output_itemv( outptr, tag, end, 0 );
+	else if ( end==NULL )
+		output_itemv( outptr, tag, start, 0 );
 	else {
 		for ( i=0; i<level; ++i )
 			fprintf( outptr, " " );
-		fprintf( outptr, "<%s>%s-%s</%s>\n", tag, 
-			info->data[start].data, info->data[end].data, tag );
-		fields_setused( info, start );
-		fields_setused( info, end );
+		fprintf( outptr, "<%s>%s-%s</%s>\n", tag, start, end, tag );
 	}
 }
 
@@ -160,6 +159,11 @@ output_list( fields *info, FILE *outptr, convert *c, int nc )
         }
 
 }
+
+typedef struct outtype {
+	int value;
+	char *out;
+} outtype;
 
 static
 outtype genres[] = {
@@ -190,7 +194,7 @@ get_type_from_genre( fields *info )
 {
 	int type = TYPE_UNKNOWN, i, j, level;
 	char *genre;
-	for ( i=0; i<info->nfields; ++i ) {
+	for ( i=0; i<info->n; ++i ) {
 		if ( strcasecmp( info->tag[i].data, "GENRE" ) &&
 			strcasecmp( info->tag[i].data, "NGENRE" ) ) continue;
 		genre = info->data[i].data;
@@ -235,7 +239,7 @@ get_type_from_resource( fields *info )
 {
 	int type = TYPE_UNKNOWN, i;
 	char *resource;
-	for ( i=0; i<info->nfields; ++i ) {
+	for ( i=0; i<info->n; ++i ) {
 		if ( strcasecmp( info->tag[i].data, "GENRE" )!=0 &&
 			strcasecmp( info->tag[i].data, "NGENRE" )!=0 ) continue;
 		resource = info->data[i].data;
@@ -258,25 +262,19 @@ get_type( fields *info )
 static void
 output_titleinfo( fields *info, FILE *outptr, char *tag, int level )
 {
-	char *p;
-	int ttl, subttl;
-	ttl = fields_find( info, "TITLE", level );
-	subttl = fields_find( info, "SUBTITLE", level );
-	if ( ttl!=-1 || subttl!=-1 ) {
+	newstr *mainttl = fields_findv( info, level, FIELDS_STRP, "TITLE" );
+	newstr *subttl  = fields_findv( info, level, FIELDS_STRP, "SUBTITLE" );
+	if ( mainttl || subttl ) {
 		fprintf( outptr, "<%s>", tag );
-		if ( ttl!=-1 ) {
-			fprintf( outptr, "%s", info->data[ttl].data );
-			fields_setused( info, ttl );
-		}
-		if ( subttl!=-1 ) {
-			if ( ttl!=-1 ) {
-				p = info->data[ttl].data;
-				if ( p[info->data[ttl].len-1]!='?' )
-					fprintf( outptr, ":" );
-				fprintf( outptr, " " );
+		if ( mainttl ) fprintf( outptr, "%s", mainttl->data );
+		if ( subttl ) {
+			if ( mainttl ) {
+				if ( mainttl->len > 0 &&
+				     mainttl->data[mainttl->len-1]!='?' )
+					fprintf( outptr, ": " );
+				else fprintf( outptr, " " );
 			}
-			fprintf( outptr, "%s", info->data[subttl].data );
-			fields_setused( info, subttl );
+			fprintf( outptr, "%s", subttl->data );
 		}
 		fprintf( outptr, "</%s>\n", tag );
 	}
@@ -285,21 +283,19 @@ output_titleinfo( fields *info, FILE *outptr, char *tag, int level )
 static void
 output_title( fields *info, FILE *outptr, int level )
 {
-	int ttl = fields_find( info, "TITLE", level );
-	int subttl = fields_find( info, "SUBTITLE", level );
-	int shrttl = fields_find( info, "SHORTTITLE", level );
+	char *ttl    = fields_findv( info, level, FIELDS_CHRP, "TITLE" );
+	char *subttl = fields_findv( info, level, FIELDS_CHRP, "SUBTITLE" );
+	char *shrttl = fields_findv( info, level, FIELDS_CHRP, "SHORTTITLE" );
 
-	output_titleinfo( info, outptr, "b:Title", 0 );
+	output_titleinfo( info, outptr, "b:Title", level );
 
 	/* output shorttitle if it's different from normal title */
-	if ( shrttl!=-1 ) {
-		if ( ttl==-1 || subttl!=-1 ||
-			strcmp(info->data[ttl].data,info->data[shrttl].data) ) {
+	if ( shrttl ) {
+		if ( !ttl || ( strcmp( shrttl, ttl ) || subttl ) ) {
 			fprintf( outptr,  " <b:ShortTitle>" );
-			fprintf( outptr, "%s", info->data[shrttl].data );
+			fprintf( outptr, "%s", shrttl );
 			fprintf( outptr, "</b:ShortTitle>\n" );
 		}
-		fields_setused( info, shrttl );
 	}
 }
 
@@ -370,10 +366,11 @@ output_name_type( fields *info, FILE *outptr, int level,
 			char *map[], int nmap, char *tag )
 {
 	newstr ntag;
-	int i, j, n=0, code;
+	int i, j, n=0, code, nfields;
 	newstr_init( &ntag );
+	nfields = fields_num( info );
 	for ( j=0; j<nmap; ++j ) {
-		for ( i=0; i<info->nfields; ++i ) {
+		for ( i=0; i<nfields; ++i ) {
 			code = extract_name_and_info( &ntag, &(info->tag[i]) );
 			if ( strcasecmp( ntag.data, map[j] ) ) continue;
 			if ( n==0 )
@@ -418,39 +415,27 @@ output_names( fields *info, FILE *outptr, int level, int type )
 static void
 output_date( fields *info, FILE *outptr, int level )
 {
-	convert parts[3] = {
-		{ "PARTYEAR",  "b:Year",  -1 },
-		{ "PARTMONTH", "b:Month", -1 },
-		{ "PARTDAY",   "b:Day",   -1 }
-	};
-
-	convert fulls[3] = {
-		{ "YEAR",  "", -1 },
-		{ "MONTH", "", -1 },
-		{ "DAY",   "", -1 }
-	};
-
-	int i, np, nf;
-	for ( i=0; i<3; ++i ) {
-		np = fields_find( info, parts[i].oldtag, level );
-		nf = fields_find( info, fulls[i].oldtag, level );
-		if ( np!=-1 )
-			output_item( info, outptr, parts[i].newtag, np, 0 );
-		else if ( nf!=-1 )
-			output_item( info, outptr, parts[i].newtag, nf, 0 );
-	}
+	char *year  = fields_findv_firstof( info, level, FIELDS_CHRP,
+			"PARTYEAR", "YEAR", NULL );
+	char *month = fields_findv_firstof( info, level, FIELDS_CHRP,
+			"PARTMONTH", "MONTH", NULL );
+	char *day   = fields_findv_firstof( info, level, FIELDS_CHRP,
+			"PARTDAY", "DAY", NULL );
+	if ( year )  output_itemv( outptr, "b:Year", year, 0 );
+	if ( month ) output_itemv( outptr, "b:Month", month, 0 );
+	if ( day )   output_itemv( outptr, "b:Day", day, 0 );
 }
 
 static void
 output_pages( fields *info, FILE *outptr, int level )
 {
-	int start = fields_find( info, "PAGESTART", -1 );
-	int end = fields_find( info, "PAGEEND", -1 );
-	int ar = fields_find( info, "ARTICLENUMBER", -1 );
-	if ( start!=-1 || end!=-1 )
-		output_range( info, outptr, "b:Pages", start, end, level );
-	else if ( ar!=-1 )
-		output_range( info, outptr, "b:Pages", ar, -1, level );
+	char *sn = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGESTART" );
+	char *en = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGEEND" );
+	char *ar = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "ARTICLENUMBER" );
+	if ( sn || en )
+		output_range( outptr, "b:Pages", sn, en, level );
+	else if ( ar )
+		output_range( outptr, "b:Pages", ar, NULL, level );
 }
 
 static void
@@ -459,7 +444,7 @@ output_includedin( fields *info, FILE *outptr, int type )
 	if ( type==TYPE_JOURNALARTICLE ) {
 		output_titleinfo( info, outptr, "b:JournalName", 1 );
 	} else if ( type==TYPE_ARTICLEINAPERIODICAL ) {
-		output_titleinfo( info, outptr, "b:PeriodicalName", 1 );
+		output_titleinfo( info, outptr, "b:PeriodicalTitle", 1 );
 	} else if ( type==TYPE_BOOKSECTION ) {
 		output_titleinfo( info, outptr, "b:ConferenceName", 1 ); /*??*/
 	} else if ( type==TYPE_PROCEEDINGS ) {
@@ -470,26 +455,31 @@ output_includedin( fields *info, FILE *outptr, int type )
 static int
 type_is_thesis( int type )
 {
-	if ( type==TYPE_THESIS || type==TYPE_PHDTHESIS || 
-			type==TYPE_MASTERSTHESIS )
+	if ( type==TYPE_THESIS ||
+	     type==TYPE_PHDTHESIS ||
+	     type==TYPE_MASTERSTHESIS )
 		return 1;
-	else return 0;
+	else
+		return 0;
 }
 
 static void
 output_thesisdetails( fields *info, FILE *outptr, int type )
 {
-	int i;
+	char *tag;
+	int i, n;
 
 	if ( type==TYPE_PHDTHESIS )
 		output_fixed( outptr, "b:ThesisType", "Ph.D. Thesis", 0 );
 	else if ( type==TYPE_MASTERSTHESIS ) 
 		output_fixed( outptr, "b:ThesisType", "Masters Thesis", 0 );
 
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( strcasecmp( info->tag[i].data, "DEGREEGRANTOR" ) &&
-			strcasecmp( info->tag[i].data, "DEGREEGRANTOR:ASIS") &&
-			strcasecmp( info->tag[i].data, "DEGREEGRANTOR:CORP"))
+	n = fields_num( info );
+	for ( i=0; i<n; ++i ) {
+		tag = fields_tag( info, i, FIELDS_CHRP );
+		if ( strcasecmp( tag, "DEGREEGRANTOR" ) &&
+			strcasecmp( tag, "DEGREEGRANTOR:ASIS") &
+			strcasecmp( tag, "DEGREEGRANTOR:CORP"))
 				continue;
 		output_item( info, outptr, "b:Institution", i, 0 );
 	}
@@ -542,50 +532,49 @@ output_type( fields *info, FILE *outptr, int type )
 static void
 output_comments( fields *info, FILE *outptr, int level )
 {
-	int i, written=0;
-	int nabs = fields_find( info, "ABSTRACT", level );
-	if ( nabs!=-1 ) {
-		fprintf( outptr, "<b:Comments>" );
-		fprintf( outptr, "%s", info->data[nabs].data );
-		written = 1;
-	}
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( info->level[i]!=level ) continue;
-		if ( strcasecmp( info->tag[i].data, "NOTES" ) ) continue;
-		if ( !written ) {
-			fprintf( outptr, "<b:Comments>" );
-			written = 1;
-		}
-		fprintf( outptr, "%s", info->data[i].data );
-	}
-	if ( written ) fprintf( outptr, "</b:Comments>\n" );
+	vplist notes;
+	char *abs;
+	int i;
+
+	vplist_init( &notes );
+
+	abs = fields_findv( info, level, FIELDS_CHRP, "ABSTRACT" );
+	fields_findv_each( info, level, FIELDS_CHRP, &notes, "NOTES" );
+
+	if ( abs || notes.n ) fprintf( outptr, "<b:Comments>" );
+	if ( abs ) fprintf( outptr, "%s", abs );
+	for ( i=0; i<notes.n; ++i )
+		fprintf( outptr, "%s", (char*)vplist_get( &notes, i ) );
+	if ( abs || notes.n ) fprintf( outptr, "</b:Comments>\n" );
+
+	vplist_free( &notes );
 }
 
 static void
 output_bibkey( fields *info, FILE *outptr )
 {
-	int  n = fields_find( info, "REFNUM", -1 );
-	if ( n==-1 ) n = fields_find( info, "BIBKEY", -1 );
-	output_item( info, outptr, "b:Tag", n, 0 );
+	char *bibkey = fields_findv_firstof( info, LEVEL_ANY, FIELDS_CHRP,
+			"REFNUM", "BIBKEY", NULL );
+	if ( bibkey ) output_itemv( outptr, "b:Tag", bibkey, 0 );
 }
 
 static void
 output_citeparts( fields *info, FILE *outptr, int level, int max, int type )
 {
 	convert origin[] = {
-		{ "ADDRESS",	"b:City",	-1 },
-		{ "PUBLISHER",	"b:Publisher",	-1 },
-		{ "EDITION",	"b:Edition",	-1 }
+		{ "ADDRESS",	"b:City",	LEVEL_ANY },
+		{ "PUBLISHER",	"b:Publisher",	LEVEL_ANY },
+		{ "EDITION",	"b:Edition",	LEVEL_ANY }
 	};
 	int norigin = sizeof( origin ) / sizeof ( convert );
 	
 	convert parts[] = {
-		{ "VOLUME",          "b:Volume",  -1 },
-		{ "SECTION",         "b:Section", -1 },
-		{ "ISSUE",           "b:Issue",   -1 },
-		{ "NUMBER",          "b:Issue",   -1 },
-		{ "PUBLICLAWNUMBER", "b:Volume",  -1 },
-		{ "SESSION",         "b:Issue",   -1 },
+		{ "VOLUME",          "b:Volume",  LEVEL_ANY },
+		{ "SECTION",         "b:Section", LEVEL_ANY },
+		{ "ISSUE",           "b:Issue",   LEVEL_ANY },
+		{ "NUMBER",          "b:Issue",   LEVEL_ANY },
+		{ "PUBLICLAWNUMBER", "b:Volume",  LEVEL_ANY },
+		{ "SESSION",         "b:Issue",   LEVEL_ANY },
 	};
 	int nparts=sizeof(parts)/sizeof(convert);
 	
@@ -597,7 +586,7 @@ output_citeparts( fields *info, FILE *outptr, int level, int max, int type )
 	output_list( info, outptr, parts, nparts );
 	output_pages( info, outptr, level );
 	output_names( info, outptr, level, type );
-	output_title( info, outptr, level );
+	output_title( info, outptr, 0 );
 	output_comments( info, outptr, level );
 }
 

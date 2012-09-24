@@ -1,7 +1,7 @@
 /*
  * serialno.h
  *
- * Copyright (c) Chris Putnam 2005-2009
+ * Copyright (c) Chris Putnam 2005-2012
  *
  * Source code released under the GPL
  *

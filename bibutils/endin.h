@@ -1,7 +1,7 @@
 /*
  * endin.h
  *
- * Copyright (c) Chris Putnam 2003-2010
+ * Copyright (c) Chris Putnam 2003-2012
  *
  * Program and source code released under the GPL
  *

@@ -1,7 +1,7 @@
 /*
  * marc.h
  *
- * Copyright (c) Chris Putnam 2008-9
+ * Copyright (c) Chris Putnam 2008-2012
  *
  * Program and source code released under the GPL
  *

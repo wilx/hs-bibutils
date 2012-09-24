@@ -1,8 +1,8 @@
 /*
  * adsout.h
  *
- * Copyright (c) Richard Mathar 2007-10
- * Copyright (c) Chris Putnam 2007-10
+ * Copyright (c) Richard Mathar 2007-2012
+ * Copyright (c) Chris Putnam 2007-2012
  *
  * Program and source code released under the GPL
  *

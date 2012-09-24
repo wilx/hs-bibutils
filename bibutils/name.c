@@ -3,7 +3,7 @@
  *
  * mangle names w/ and w/o commas
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Source code released under the GPL
  *

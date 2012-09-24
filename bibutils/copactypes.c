@@ -1,7 +1,7 @@
 /*
  * copactypes.c
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Program and source code released under the GPL
  *

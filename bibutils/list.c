@@ -1,7 +1,9 @@
 /*
  * list.c
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * version: 2012-03-06
+ *
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Source code released under the GPL
  *
@@ -10,17 +12,89 @@
  */
 #include "list.h"
 
+void
+list_init( list *a  )
+{
+	a->str = NULL;
+	a->max = 0;
+	a->n = 0;
+	a->sorted = 0;
+}
+
+void
+list_empty( list *a )
+{
+	int i;
+	for ( i=0; i<a->max; ++i )
+		newstr_empty( &(a->str[i]) );
+	a->n = 0;
+	a->sorted = 1;
+}
+
+void
+list_free( list *a )
+{
+	int i;
+	for ( i=0; i<a->max; ++i )
+		newstr_free( &(a->str[i]) );
+	free( a->str );
+	list_init( a );
+}
+
+list *
+list_new( void )
+{
+	list *a = ( list * ) malloc( sizeof ( list ) );
+	if ( a ) list_init( a );
+	return a;
+}
+
+void
+list_delete( list *a )
+{
+	list_free( a );
+	free( a );
+}
+
+/*
+ * returns 1 if n is valid string in list
+ */
+static inline int
+list_valid_num( list *a, int n )
+{
+	if ( n < 0 || n > a->n ) return 0;
+	return 1;
+}
+
+/*
+ * return pointer to newstr 'n', list_getstr() is deprecated
+ */
+newstr *
+list_get( list *a, int n )
+{
+	if ( !list_valid_num( a, n ) ) return NULL;
+	else return &(a->str[n]);
+}
 newstr *
 list_getstr( list *a, int n )
 {
-	if ( n<0 || n>a->n ) return NULL;
+	if ( !list_valid_num( a, n ) ) return NULL;
 	else return &(a->str[n]);
 }
 
+/*
+ * return pointer to C string 'n', list_getstr_char() is deprecated
+ */
+char *
+list_getc( list *a, int n )
+{
+	if ( !list_valid_num( a, n ) ) return NULL;
+	else return a->str[n].data;
+}
 char *
 list_getstr_char( list *a, int n )
 {
-	if ( n<0 || n>a->n ) return NULL;
+	if ( !list_valid_num( a, n ) ) return NULL;
 	else return a->str[n].data;
 }
 
@@ -51,59 +125,80 @@ list_realloc( list *a )
 	return 1;
 }
 
-int
-list_add( list *a, char *value )
+static int
+list_ensure_space( list *a )
 {
 	int ok = 1;
-
-	/* ensure sufficient space */
 	if ( a->max==0 ) ok = list_alloc( a );
 	else if ( a->n >= a->max ) ok = list_realloc( a );
-
-	if ( ok ) {
-		newstr_strcpy( &(a->str[a->n]), value );
-		a->sorted = 0;
-		a->n++;
-	}
-
 	return ok;
 }
 
-void
-list_empty( list *a )
+int
+list_add( list *a, char *s )
 {
-	int i;
-	for ( i=0; i<a->max; ++i )
-		newstr_empty( &(a->str[i]) );
-	a->n = 0;
-	a->sorted = 1;
+	int ok = list_ensure_space( a );
+	if ( ok ) {
+		newstr_strcpy( &(a->str[a->n]), s );
+		a->sorted = 0;
+		a->n++;
+	}
+	return ok;
+}
+
+int
+list_add_unique( list *a, char *s )
+{
+	if ( list_find( a, s )==-1 ) return list_add( a, s );
+	else return 1;
+}
+
+int
+list_add_newstr( list *a, newstr *s )
+{
+	int ok = list_ensure_space( a );
+	if ( ok ) {
+		newstr_newstrcpy( &(a->str[a->n]), s );
+		a->sorted = 0;
+		a->n++;
+	}
+	return ok;
+}
+
+int
+list_add_newstr_unique( list *a, newstr *s )
+{
+	if ( list_find( a, s->data )==-1 ) return list_add_newstr( a, s );
+	else return 1;
 }
 
 void
-list_free( list *a )
+list_append( list *a, list *toadd )
 {
 	int i;
-	for ( i=0; i<a->max; ++i )
-		newstr_free( &(a->str[i]) );
-	free( a->str );
-	list_init( a );
+	for ( i=0; i<toadd->n; ++i ) {
+		list_add_newstr( a, &(toadd->str[i]) );
+	}
 }
 
 void
-list_init( list *a  )
+list_append_unique( list *a, list *toadd )
 {
-	a->str = NULL;
-	a->max = 0;
-	a->n = 0;
-	a->sorted = 0;
+	int i;
+	for ( i=0; i<toadd->n; ++i ) {
+		list_add_newstr_unique( a, &(toadd->str[i]) );
+	}
 }
 
 static int
 list_comp( const void *v1, const void *v2 )
 {
-	newstr *s1 = ( newstr* ) v1;
+	newstr *s1 = ( newstr *) v1;
 	newstr *s2 = ( newstr *) v2;
-	return strcmp( s1->data, s2->data );
+	if ( !s1->len && !s2->len ) return 0;
+	else if ( !s1->len ) return -1;
+	else if ( !s2->len ) return 1;
+	else return strcmp( s1->data, s2->data );
 }
 
 void
@@ -117,17 +212,21 @@ static int
 list_find_sorted( list *a, char *searchstr )
 {
 	int min, max, mid, comp;
+	newstr s, *cs;
 	if ( a->n==0 ) return -1;
+	newstr_init( &s );
+	newstr_strcpy( &s, searchstr );
 	min = 0;
 	max = a->n - 1;
 	while ( min <= max ) {
 		mid = ( min + max ) / 2;
-		comp = list_comp( (void*)list_getstr_char( a, mid ),
-			(void*) searchstr );
+		cs = list_get( a, mid );
+		comp = list_comp( (void*)cs, (void*) (&s) );
 		if ( comp==0 ) return mid;
 		else if ( comp > 0 ) max = mid - 1;
 		else if ( comp < 0 ) min = mid + 1;
 	}
+	newstr_free( &s );
 	return -1;
 }
 
@@ -175,27 +274,29 @@ list_find_or_add( list *a, char *searchstr )
 	return n;
 }
 
-int
-list_fill( list *a, char *filename )
+void
+list_fillfp( list *a, FILE *fp )
 {
 	newstr line;
-	FILE *fp;
-	char *p;
-	char buf[512]="";
+	char *p, buf[512]="";
 	int  bufpos = 0;
 
-	fp = fopen( filename, "r" );
-	if ( !fp ) return 0;
-
 	list_init( a );
-
 	newstr_init( &line );
 	while ( newstr_fget( fp, buf, sizeof(buf), &bufpos, &line ) ) {
 		p = &(line.data[0]);
 		if ( *p=='\0' ) continue;
-		if ( !list_add( a, line.data ) ) return 0;
+		if ( !list_add( a, line.data ) ) return;
 	}
 	newstr_free( &line );
+}
+
+int
+list_fill( list *a, char *filename )
+{
+	FILE *fp = fopen( filename, "r" );
+	if ( !fp ) return 0;
+	list_fillfp( a, fp );
 	fclose( fp );
 	return 1;
 }
@@ -233,5 +334,108 @@ err1:
 	free( anew );
 err0:
 	return NULL;
+}
+
+int
+list_match_entry( list *a, int n, char *s )
+{
+	if ( n < 0 || n >= a->n ) return 0;
+	if ( strcmp( a->str[n].data, s ) ) return 0;
+	return 1;
+}
+
+void
+list_trimend( list *a, int n )
+{
+	int i;
+	if ( a->n - n < 1 ) {
+		list_empty( a );
+	} else {
+		for ( i=a->n -n; i<a->n; ++i ) {
+			newstr_empty( &(a->str[i]) );
+		}
+		a->n -= n;
+	}
+}
+
+void
+list_tokenize( list *tokens, newstr *in, char delim )
+{
+	newstr s;
+	char *p;
+	list_empty( tokens );
+	p = in->data;
+	newstr_init( &s );
+	while ( p && *p ) {
+		while ( *p && *p!=delim ) newstr_addchar( &s, *p++ );
+		if ( s.len ) list_add( tokens, s.data );
+		newstr_empty( &s );
+		if ( *p==delim ) p++;
+	}
+	newstr_free( &s );
+}
+
+void
+list_newstrtok( list *t, newstr *s, char *sep )
+{
+	newstr tmp;
+	char *p;
+	list_empty( t );
+	if ( !s->len ) return;
+	newstr_init( &tmp );
+	p = s->data;
+	while ( *p ) {
+		if ( strchr( sep, *p ) ) {
+			if ( tmp.len ) {
+				list_add( t, tmp.data );
+				newstr_empty( &tmp );
+			}
+		} else newstr_addchar( &tmp, *p );
+		p++;
+	}
+	if ( tmp.len ) list_add( t, tmp.data );
+	newstr_free( &tmp );
+}
+
+void
+lists_init( list *a, ... )
+{
+	list *a2;
+	va_list ap;
+	list_init( a );
+	va_start( ap, a );
+	do {
+		a2 = va_arg( ap, list * );
+		if ( a2 ) list_init( a2 );
+	} while ( a2 );
+	va_end( ap );
+}
+
+void
+lists_free( list *a, ... )
+{
+	list *a2;
+	va_list ap;
+	list_free( a );
+	va_start( ap, a );
+	do {
+		a2 = va_arg( ap, list * );
+		if ( a2 ) list_free( a2 );
+	} while ( a2 );
+	va_end( ap );
+}
+
+void
+lists_empty( list *a, ... )
+{
+	list *a2;
+	va_list ap;
+	list_empty( a );
+	va_start( ap, a );
+	do {
+		a2 = va_arg( ap, list * );
+		if ( a2 ) list_empty( a2 );
+	} while ( a2 );
+	va_end( ap );
 }
 

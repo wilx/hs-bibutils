@@ -1,7 +1,7 @@
 /*
  * newstring.h
  *
- * Copyright (c) Chris Putnam 1999-2009
+ * Copyright (c) Chris Putnam 1999-2012
  *
  * Source code released under the GPL
  *
@@ -28,8 +28,10 @@ void    newstrs_init       ( newstr *s, ... );
 void    newstrs_empty      ( newstr *s, ... );
 void    newstrs_free       ( newstr *s, ... );
 
+void newstr_mergestrs   ( newstr *s, ... );
 newstr *newstr_strdup   ( char *buf );
 void newstr_addchar     ( newstr *s, char newchar );
+char *newstr_addutf8    ( newstr *s, char *p );
 void newstr_strcat      ( newstr *s, char *addstr );
 void newstr_newstrcat   ( newstr *s, newstr *old );
 void newstr_segcat      ( newstr *s, char *startat, char *endat );
@@ -43,8 +45,19 @@ int  newstr_fget        ( FILE *fp, char *buf, int bufsize, int *pbufpos,
                           newstr *outs );
 int  newstr_findreplace ( newstr *s, char *find, char *replace );
 void newstr_toupper     ( newstr *s );
+void newstr_tolower     ( newstr *s );
+void newstr_trimstartingws( newstr *s );
 void newstr_trimendingws( newstr *s );
 void newstr_swapstrings ( newstr *s1, newstr *s2 );
+
+int  newstr_match_first ( newstr *s, char ch );
+int  newstr_match_end   ( newstr *s, char ch );
+void newstr_trimbegin   ( newstr *s, int n );
+void newstr_trimend     ( newstr *s, int n );
+
+int  newstr_is_mixedcase( newstr *s );
+int  newstr_is_lowercase( newstr *s );
+int  newstr_is_uppercase( newstr *s );
 
 /* NEWSTR_PARANOIA
  *

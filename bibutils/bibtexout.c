@@ -1,7 +1,7 @@
 /*
  * bibtexout.c
  *
- * Copyright (c) Chris Putnam 2003-2010
+ * Copyright (c) Chris Putnam 2003-2012
  *
  * Program and source code released under the GPL
  *
@@ -91,7 +91,7 @@ bibtexout_type( fields *info, char *filename, int refnum, param *p )
 	int type = TYPE_UNKNOWN, i, maxlevel, n, level;
 
 	/* determine bibliography type */
-	for ( i=0; i<info->nfields; ++i ) {
+	for ( i=0; i<info->n; ++i ) {
 		if ( strcasecmp( info->tag[i].data, "GENRE" ) &&
 		     strcasecmp( info->tag[i].data, "NGENRE" ) ) continue;
 		genre = info->data[i].data;
@@ -127,7 +127,7 @@ bibtexout_type( fields *info, char *filename, int refnum, param *p )
 			type = TYPE_ELECTRONIC;
 	}
 	if ( type==TYPE_UNKNOWN ) {
-		for ( i=0; i<info->nfields; ++i ) {
+		for ( i=0; i<info->n; ++i ) {
 			if ( strcasecmp( info->tag[i].data, "ISSUANCE" ) ) continue;
 			if ( !strcasecmp( info->data[i].data, "monographic" ) ) {
 				if ( info->level[i]==0 ) type = TYPE_BOOK;
@@ -258,9 +258,9 @@ output_simpleall( FILE *fp, fields *info, char *intag, char *outtag,
 		int format_opts )
 {
 	int i;
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( strcasecmp( info->tag[i].data, intag ) ) continue;
-		output_and_use( fp, info, i, outtag, format_opts );
+	for ( i=0; i<info->n; ++i ) {
+		if ( fields_match_tag( info, i, intag ) )
+			output_and_use( fp, info, i, outtag, format_opts );
 	}
 }
 
@@ -270,7 +270,7 @@ output_fileattach( FILE *fp, fields *info, int format_opts )
 	newstr data;
 	int i;
 	newstr_init( &data );
-	for ( i=0; i<info->nfields; ++i ) {
+	for ( i=0; i<info->n; ++i ) {
 		if ( strcasecmp( info->tag[i].data, "FILEATTACH" ) ) continue;
 		newstr_strcpy( &data, ":" );
 		newstr_newstrcat( &data, &(info->data[i]) );
@@ -314,7 +314,7 @@ output_people( FILE *fp, fields *info, unsigned long refnum, char *tag,
 
 	/* primary citation authors */
 	npeople = 0;
-	for ( i=0; i<info->nfields; ++i ) {
+	for ( i=0; i<info->n; ++i ) {
 		if ( level!=-1 && info->level[i]!=level ) continue;
 		person = ( strcasecmp( info->tag[i].data, tag ) == 0 );
 		corp   = ( strcasecmp( info->tag[i].data, ctag ) == 0 );
@@ -348,7 +348,7 @@ output_people( FILE *fp, fields *info, unsigned long refnum, char *tag,
 static void
 output_title( FILE *fp, fields *info, unsigned long refnum, char *bibtag, int level, int format_opts )
 {
-	newstr title;
+	newstr title, *mainttl, *subttl;
 	int n1 = -1, n2 = -1;
 	/* Option is for short titles of journals */
 	if ( ( format_opts & BIBOUT_SHORTTITLE ) && level==1 ) {
@@ -361,13 +361,16 @@ output_title( FILE *fp, fields *info, unsigned long refnum, char *bibtag, int le
 	}
 	if ( n1!=-1 ) {
 		newstr_init( &title );
-		newstr_newstrcpy( &title, &(info->data[n1]) );
+		mainttl = fields_value( info, n1, FIELDS_STRP );
+		newstr_newstrcpy( &title, mainttl );
 		fields_setused( info, n1 );
 		if ( n2!=-1 ) {
-			if ( info->data[n1].data[info->data[n1].len]!='?' )
+			subttl = fields_value( info, n2, FIELDS_STRP );
+			if ( mainttl->len > 0 &&
+			     mainttl->data[mainttl->len-1]!='?' )
 				newstr_strcat( &title, ": " );
 			else newstr_addchar( &title, ' ' );
-			newstr_strcat( &title, info->data[n2].data );
+			newstr_newstrcat( &title, subttl );
 			fields_setused( info, n2 );
 		}
 		output_element( fp, bibtag, title.data, format_opts );

@@ -1,7 +1,7 @@
 /*
  * endin.c
  *
- * Copyright (c) Chris Putnam 2003-2010
+ * Copyright (c) Chris Putnam 2003-2012
  *
  * Program and source code released under the GPL
  *
@@ -161,7 +161,7 @@ endin_processf( fields *endin, char *p, char *filename, long nref )
 		} else {
 			p = process_endline2( &tag, &data, p );
 			/* endnote puts %K only on 1st line of keywords */
-			n = endin->nfields;
+			n = fields_num( endin );
 			if ( n>0 && data.len ) {
 			if ( !strncmp( endin->tag[n-1].data, "%K", 2 ) ) {
 				fields_add( endin, "%K", data.data, 0 );
@@ -388,8 +388,9 @@ cleanup_wiley_author( fields *endin, int n )
 static void
 endin_cleanref( fields *endin )
 {
-	int i;
-	for ( i=0; i<endin->nfields; ++i ) {
+	int i, n;
+	n = fields_num( endin );
+	for ( i=0; i<n; ++i ) {
 		if ( is_wiley_author( endin, i ) )
 			cleanup_wiley_author( endin, i );
 	}
@@ -426,53 +427,75 @@ addnotes( fields *info, char *tag, char *data, int level )
 void
 endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *all, int nall )
 {
-	newstr *d;
-	int  i, level, n, process;
+	int  i, level, n, process, nfields;
 	char *newtag, *t;
-	for ( i=0; i<endin->nfields; ++i ) {
+	newstr *d;
+
+	nfields = fields_num( endin );
+	for ( i=0; i<nfields; ++i ) {
 		/* Ensure that data exists */
-		d = &( endin->data[i] );
-		if ( !(d->data) || d->len==0 ) continue;
+		d = fields_value( endin, i, FIELDS_STRP );
+		if ( d->len==0 || !(d->data) ) continue;
 		/*
 		 * All refer format tags start with '%'.  If we have one
 		 * that doesn't, assume that it comes from endx2xml
 		 * and just copy and paste to output
 		 */
-		t = endin->tag[i].data;
+		t = fields_tag( endin, i, FIELDS_CHRP );
 		if ( t[0]!='%' ) {
 			fields_add( info, t, d->data, endin->level[i] );
 			continue;
 		}
+
 		n = process_findoldtag( t, reftype, all, nall );
 		if ( n==-1 ) {
 			endin_notag( p, t, d->data );
 			continue;
 		}
+
 		process = ((all[reftype]).tags[n]).processingtype;
 		if ( process == ALWAYS ) continue; /* add these later */
 		level = ((all[reftype]).tags[n]).level;
 		newtag = ((all[reftype]).tags[n]).newstr;
-		if ( process==SIMPLE )
+
+		switch ( process ) {
+
+		case SIMPLE:
 			fields_add( info, newtag, d->data, level );
-		else if ( process==TYPE )
+			break;
+
+		case TYPE:
 			addtype( info, d->data, level );
-		else if ( process==TITLE )
-			title_process( info, newtag, d->data, level, 
-					p->nosplittitle );
-		else if ( process==PERSON )
-			name_add( info, newtag, d->data, level, 
-					&(p->asis), &(p->corps) );
-		else if ( process==DATE )
+			break;
+
+		case TITLE:
+			title_process( info, newtag, d->data, level, p->nosplittitle );
+			break;
+
+		case PERSON:
+			name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
+			break;
+
+		case DATE:
 			adddate( info, t, newtag,d->data,level);
-		else if ( process==PAGES )
+			break;
+
+		case PAGES:
 			addpage( info, d->data, level );
-		else if ( process==SERIALNO )
+			break;
+
+		case SERIALNO:
 			addsn( info, d->data, level );
-		else if ( process==NOTES )
+			break;
+
+		case NOTES:
 			addnotes( info, newtag, d->data, level );
-		else {
-/*				fprintf(stderr,"%s: internal error -- illegal process %d\n", r->progname, process );
-*/
+			break;
+
+		default:
+			fprintf(stderr,"%s: internal error -- illegal process number %d\n", p->progname, process );
+			break;
 		}
+
 	}
 }

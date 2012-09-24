@@ -1,7 +1,7 @@
 /*
  * modsin.c
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Source code released under the GPL
  *
@@ -84,10 +84,6 @@ modsin_detail( xml *node, fields *info, int level )
 			fields_add( info, "PAGESTART", value.data, level );
 		} else fields_add( info, type.data, value.data, level );
 		newstrs_free( &type, &value, NULL );
-/*
-		newstr_free( &type );
-		newstr_free( &value );
-*/
 	}
 }
 
@@ -554,8 +550,10 @@ modsin_location( xml *node, fields *info, int level )
 static void
 modsin_descriptionr( xml *node, newstr *s )
 {
-	if ( xml_tagexact( node, "extent" ) ) 
+	if ( xml_tagexact( node, "extent" ) ||
+	     xml_tagexact( node, "note" ) ) {
 		newstr_newstrcpy( s, node->value );
+	}
 	if ( node->down ) modsin_descriptionr( node->down, s );
 	if ( node->next ) modsin_descriptionr( node->next, s );
 }
@@ -717,10 +715,15 @@ void
 modsin_convertf( fields *modsin, fields *info, int reftype, int verbose, 
 	variants *all, int nall )
 {
-	int i;
-	for ( i=0; i<modsin->nfields; ++i )
-		fields_add( info, modsin->tag[i].data, modsin->data[i].data,
-				modsin->level[i] );
+	char *tag, *value;
+	int i, n, level;
+	n = fields_num( modsin );
+	for ( i=0; i<n; ++i ) {
+		tag = fields_tag( modsin, i, FIELDS_CHRP );
+		value = fields_value( modsin, i, FIELDS_CHRP );
+		level = fields_level( modsin, i );
+		fields_add( info, tag, value, level );
+	}
 }
 
 int

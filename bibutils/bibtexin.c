@@ -1,7 +1,7 @@
 /*
  * bibtexin.c
  *
- * Copyright (c) Chris Putnam 2003-2010
+ * Copyright (c) Chris Putnam 2003-2012
  *
  * Program and source code released under the GPL
  *
@@ -182,6 +182,7 @@ bibtex_cleantoken( newstr *s, param *p )
 	newstr_findreplace( s, "\\textsuperscript", "" );
 	newstr_findreplace( s, "\\emph", "" );
 	newstr_findreplace( s, "\\url", "" );
+	newstr_findreplace( s, "\\mbox", "" );
 
 	/* Other text annotations */
 	newstr_findreplace( s, "\\it ", "" );
@@ -294,7 +295,8 @@ process_bibtextype( char *p, newstr *data )
 	newstr_empty( data );
 
 	if ( *p=='@' ) p++; /* skip '@' character */
-	while ( *p && *p!='{' && *p!='(' ) newstr_addchar( &tmp, *p++ );
+	while ( *p && *p!='{' && *p!='(' && !is_ws( *p ) ) newstr_addchar( &tmp, *p++ );
+	p = skip_ws( p );
 	if ( *p=='{' || *p=='(' ) p++;
 	p = skip_ws( p );
 
@@ -471,8 +473,7 @@ bibtexin_crossref( bibl *bin, param *p )
 		ntype = fields_find( bin->ref[i], "INTERNAL_TYPE", -1 );
 		type = bin->ref[i]->data[ntype].data;
 		fields_setused( bin->ref[i], n );
-/*		bin->ref[i]->used[n] = 1; */
-		for ( j=0; j<bin->ref[ncross]->nfields; ++j ) {
+		for ( j=0; j<bin->ref[ncross]->n; ++j ) {
 			nt = bin->ref[ncross]->tag[j].data;
 			if ( !strcasecmp( nt, "INTERNAL_TYPE" ) ) continue;
 			if ( !strcasecmp( nt, "REFNUM" ) ) continue;
@@ -493,10 +494,11 @@ static void
 bibtexin_cleanref( fields *bibin, param *p )
 {
 	newstr *t, *d;
-	int i;
-	for ( i=0; i<bibin->nfields; ++i ) {
-		t = &( bibin->tag[i] );
-		d = &( bibin->data[i] );
+	int i, n;
+	n = fields_num( bibin );
+	for ( i=0; i<n; ++i ) {
+		t = fields_tag( bibin, i, FIELDS_STRP_NOUSE );
+		d = fields_value( bibin, i, FIELDS_STRP_NOUSE );
 		bibtex_cleandata( d, bibin, p );
 		if ( !strsearch( t->data, "AUTHORS" ) ) {
 			newstr_findreplace( d, "\n", " " );
@@ -562,8 +564,9 @@ process_pages( fields *info, newstr *s, int level )
 }
 
 static void
-process_urlcore( fields *info, char *p, int level, char *default_tag )
+process_urlcore( fields *info, newstr *d, int level, char *default_tag )
 {
+	char *p = d->data;
 	if ( !strncasecmp( p, "\\urllink", 8 ) )
 		fields_add( info, "URL", p+8, level );
 	else if ( !strncasecmp( p, "\\url", 4 ) )
@@ -578,49 +581,124 @@ process_urlcore( fields *info, char *p, int level, char *default_tag )
 }
 
 static void
-process_url( fields *info, char *p, int level )
+process_url( fields *info, newstr *d, int level )
 {
-	process_urlcore( info, p, level, "URL" );
+	process_urlcore( info, d, level, "URL" );
+}
+
+/* Split keywords="" with semicolons.
+ * Commas are also frequently used, but will break
+ * entries like:
+ *       keywords="Microscopy, Confocal"
+ */
+static void
+process_keywords( fields *info, newstr *d, int level )
+{
+	newstr keyword;
+	char *p;
+
+	if ( !d || d->len==0 ) return;
+
+	p = d->data;
+	newstr_init( &keyword );
+
+	while ( *p ) {
+		p = skip_ws( p );
+		while ( *p && *p!=';' ) newstr_addchar( &keyword, *p++ );
+		newstr_trimendingws( &keyword );
+		if ( keyword.len ) {
+			fields_add( info, "KEYWORD", keyword.data, level );
+			newstr_empty( &keyword );
+		}
+		if ( *p==';' ) p++;
+	}
+	newstr_free( &keyword );
 }
 
 static void
-process_howpublished( fields *info, char *p, int level )
+process_howpublished( fields *info, newstr *d, int level )
 {
+	char *p = d->data;
 	/* Some users put Diploma thesis in howpublished */
 	if ( !strncasecmp( p, "Diplom", 6 ) )
 		fields_replace_or_add( info, "GENRE", "Diploma thesis", level );
 	else if ( !strncasecmp( p, "Habilitation", 13 ) )
 		fields_replace_or_add( info, "GENRE", "Habilitation thesis", level );
 	else 
-		process_urlcore( info, p, level, "DESCRIPTION" );
+		process_urlcore( info, d, level, "DESCRIPTION" );
 }
 
 /*
  * sentelink = {file://localhost/full/path/to/file.pdf,Sente,PDF}
  */
 static void
-process_sente( fields *info, char *p, int level )
+process_sente( fields *info, newstr *d, int level )
 {
 	newstr link;
+	char *p = d->data;
 	newstr_init( &link );
 	while ( *p && *p!=',' ) newstr_addchar( &link, *p++ );
+	newstr_trimstartingws( &link );
+	newstr_trimendingws( &link );
 	if ( link.len ) fields_add( info, "FILEATTACH", link.data, level );
 	newstr_free( &link );
+}
+
+static int
+count_colons( char *p )
+{
+	int n = 0;
+	while ( *p ) {
+		if ( *p==':' ) n++;
+		p++;
+	}
+	return n;
+}
+
+static int
+first_colon( char *p )
+{
+	int n = 0;
+	while ( p[n] && p[n]!=':' ) n++;
+	return n;
+}
+
+static int
+last_colon( char *p )
+{
+	int n = strlen( p ) - 1;
+	while ( n>0 && p[n]!=':' ) n--;
+	return n;
 }
 
 /*
  * file={Description:/full/path/to/file.pdf:PDF}
  */
 static void
-process_file( fields *info, char *p, int level )
+process_file( fields *info, newstr *d, int level )
 {
+	char *p = d->data;
 	newstr link;
-	newstr_init( &link );
-	while ( *p && *p!=':' ) p++;
-	if ( *p==':' ) p++;
-	while ( *p && *p!=':' ) newstr_addchar( &link, *p++ );
-	if ( link.len ) fields_add( info, "FILEATTACH", link.data, level );
-	newstr_free( &link );
+	int i, n, n1, n2;
+
+	n = count_colons( p );
+	if ( n > 1 ) {
+		/* A DOS file can contain a colon ":C:/....pdf:PDF" */
+		/* Extract after 1st and up to last colons */
+		n1 = first_colon( p ) + 1;
+		n2 = last_colon( p );
+		newstr_init( &link );
+		for ( i=n1; i<n2; ++i ) {
+			newstr_addchar( &link, p[i] );
+		}
+		newstr_trimstartingws( &link );
+		newstr_trimendingws( &link );
+		if ( link.len ) fields_add( info, "FILEATTACH", link.data, level );
+		newstr_free( &link );
+	} else {
+		/* This field isn't formatted properly, so just copy directly */
+		fields_add( info, "FILEATTACH", p, level );
+	}
 }
 
 int
@@ -643,12 +721,15 @@ bibtexin_typef( fields *bibin, char *filename, int nrefs, param *p,
 }
 
 static void
-report( fields *info )
+report( fields *f )
 {
-	int i;
-	for ( i=0; i<info->nfields; ++i )
-		fprintf(stderr, "'%s' %d = '%s'\n",info->tag[i].data,info->level[i],
-			info->data[i].data);
+	int i, n;
+	n = fields_num( f );
+	for ( i=0; i<n; ++i )
+		fprintf(stderr, "'%s' %d = '%s'\n",
+			(char*)fields_tag( f, i, FIELDS_CHRP ),
+			fields_level( f, i ),
+			(char*)fields_value( f, i, FIELDS_CHRP ) );
 }
 
 static void
@@ -660,54 +741,136 @@ bibtexin_notag( param *p, char *tag )
 	}
 }
 
+/* bibtexin_titleinbook_isbooktitle()
+ *
+ * Normally, the title field of inbook refers to the book.  The
+ * section in a @inbook reference is untitled.  If it's titled,
+ * the @incollection should be used.  For example, in:
+ *
+ * @inbook{
+ *    title="xxx"
+ * }
+ *
+ * the booktitle is "xxx".
+ *
+ * However, @inbook is frequently abused (and treated like
+ * @incollection) so that title and booktitle are present
+ * and title is now 'supposed' to refer to the section.  For example:
+ *
+ * @inbook{
+ *     title="yyy",
+ *     booktitle="xxx"
+ * }
+ *
+ * Therefore report whether or not booktitle is present as well
+ * as title in @inbook references.  If not, then make 'title'
+ * correspond to the title of the book, not the section.
+ *
+ */
+static int
+bibtexin_titleinbook_isbooktitle( char *intag, fields *bibin )
+{
+	int n;
+
+	/* ...look only at 'title="xxx"' elements */
+	if ( strcasecmp( intag, "TITLE" ) ) return 0;
+
+	/* ...look only at '@inbook' references */
+	n = fields_find( bibin, "INTERNAL_TYPE", -1 );
+	if ( n==-1 ) return 0;
+	if ( strcasecmp( fields_value( bibin, n, FIELDS_CHRP ), "INBOOK" ) ) return 0;
+
+	/* ...look to see if 'booktitle="yyy"' exists */
+	n = fields_find( bibin, "BOOKTITLE", -1 );
+	if ( n==-1 ) return 0;
+	else return 1;
+}
+static void
+bibtexin_title_process( fields *info, char *outtag, fields *bibin, newstr *t, newstr *d, int level, int nosplittitle )
+{
+	char *intag = t->data;
+	char *indata = d->data;
+	if ( bibtexin_titleinbook_isbooktitle( intag, bibin ) ) level=LEVEL_MAIN;
+	title_process( info, outtag, indata, level, nosplittitle );
+}
+static void
+bibtex_simple( fields *info, char *outtag, newstr *d, int level )
+{
+	fields_add( info, outtag, d->data, level );
+}
+
 void
 bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 		variants *all, int nall )
 {
+	int process, level, i, n, nfields;
 	newstr *t, *d;
-	int process, level, i, n;
-	char *newtag;
-	for ( i=0; i<bibin->nfields; ++i ) {
+	char *outtag;
 
-		/* skip ones already "used" such as successful crossref */
-		if ( bibin->used[i] ) continue;
+	nfields = fields_num( bibin );
+	for ( i=0; i<nfields; ++i ) {
 
-		/* skip ones with no data */
-		d = &( bibin->data[i] );
-		if ( d->len == 0 ) continue;
+		if ( fields_used( bibin, i ) ) continue; /* e.g. successful crossref */
+		if ( fields_nodata( bibin, i ) ) continue;
 
-		t = &( bibin->tag[i] );
+		t = fields_tag( bibin, i, FIELDS_STRP );
 		n = process_findoldtag( t->data, reftype, all, nall );
 		if ( n==-1 ) {
 			bibtexin_notag( p, t->data );
 			continue;
 		}
 
-		/* skip ones of type ALWAYS (previously added) */
+		d = fields_value( bibin, i, FIELDS_STRP );
+
 		process = ((all[reftype]).tags[n]).processingtype;
-		if ( process == ALWAYS ) continue;
-
 		level   = ((all[reftype]).tags[n]).level;
-		newtag  = ((all[reftype]).tags[n]).newstr;
+		outtag  = ((all[reftype]).tags[n]).newstr;
 
-		if ( process==SIMPLE )
-			fields_add( info, newtag, d->data, level );
-		else if ( process==TITLE )
-			title_process( info, "TITLE", d->data, level, 
-					p->nosplittitle );
-		else if ( process==PERSON )
-			process_names( info, newtag, d, level, &(p->asis), 
-					&(p->corps) );
-		else if ( process==PAGES )
-			process_pages( info, d, level);
-		else if ( process==BIBTEX_URL )
-			process_url( info, d->data, level );
-		else if ( process==HOWPUBLISHED )
-			process_howpublished( info, d->data, level );
-		else if ( process==BIBTEX_SENTE )
-			process_sente( info, d->data, level );
-		else if ( process==BIBTEX_FILE )
-			process_file( info, d->data, level );
+		switch( process ) {
+
+		case SIMPLE:
+			bibtex_simple( info, outtag, d, level );
+			break;
+
+		case TITLE:
+			bibtexin_title_process( info, "TITLE", bibin, t, d, level, p->nosplittitle );
+			break;
+
+		case PERSON:
+			process_names( info, outtag, d, level, &(p->asis), &(p->corps) );
+			break;
+
+		case PAGES:
+			process_pages( info, d, level );
+			break;
+
+		case KEYWORD:
+			process_keywords( info, d, level );
+			break;
+
+		case HOWPUBLISHED:
+			process_howpublished( info, d, level );
+			break;
+
+		case BIBTEX_URL:
+			process_url( info, d, level );
+			break;
+
+		case LINKEDFILE:
+			process_file( info, d, level );
+			break;
+
+		case BIBTEX_SENTE:
+			process_sente( info, d, level );
+			break;
+
+		case ALWAYS:
+			/* added by core bibutils code */
+			break;
+
+		default:
+			break;
+		}
 	}
 	if ( p->verbose ) report( info );
 }

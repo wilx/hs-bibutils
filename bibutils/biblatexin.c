@@ -1,8 +1,8 @@
 /*
  * biblatexin.c
  *
- * Copyright (c) Chris Putnam 2008-2010
- * Copyright (c) Johannes Wilm 2010
+ * Copyright (c) Chris Putnam 2008-2012
+ * Copyright (c) Johannes Wilm 2010-2012
  *
  * Program and source code released under the GPL
  *
@@ -409,7 +409,7 @@ biblatexin_crossref( bibl *bin, param *p )
 		type = bin->ref[i]->data[ntype].data;
 		fields_setused( bin->ref[i], n );
 /*		bin->ref[i]->used[n] = 1; */
-		for ( j=0; j<bin->ref[ncross]->nfields; ++j ) {
+		for ( j=0; j<bin->ref[ncross]->n; ++j ) {
 			nt = bin->ref[ncross]->tag[j].data;
 			if ( !strcasecmp( nt, "INTERNAL_TYPE" ) ) continue;
 			if ( !strcasecmp( nt, "REFNUM" ) ) continue;
@@ -430,10 +430,11 @@ static void
 biblatexin_cleanref( fields *bibin, param *p )
 {
 	newstr *t, *d;
-	int i;
-	for ( i=0; i<bibin->nfields; ++i ) {
-		t = &( bibin->tag[i] );
-		d = &( bibin->data[i] );
+	int i, n;
+	n = fields_num( bibin );
+	for ( i=0; i<n; ++i ) {
+		t = fields_tag( bibin, i, FIELDS_STRP_NOUSE );
+		d = fields_value( bibin, i, FIELDS_STRP_NOUSE );
 		biblatex_cleandata( d, bibin, p );
 		if ( !strsearch( t->data, "AUTHORS" ) ) {
 			newstr_findreplace( d, "\n", " " );
@@ -600,12 +601,15 @@ biblatexin_typef( fields *bibin, char *filename, int nrefs, param *p,
 }
 
 static void
-report( fields *info )
+report( fields *f )
 {
-	int i;
-	for ( i=0; i<info->nfields; ++i )
-		fprintf(stderr, "'%s' %d = '%s'\n",info->tag[i].data,info->level[i],
-			info->data[i].data);
+	int i, n;
+	n = fields_num( f );
+	for ( i=0; i<n; ++i )
+		fprintf(stderr, "'%s' %d = '%s'\n",
+			(char*)fields_tag( f, i, FIELDS_CHRP_NOUSE ),
+			fields_level( f, i ),
+			(char*)fields_value( f, i, FIELDS_CHRP_NOUSE ) );
 }
 
 static void
@@ -622,9 +626,11 @@ biblatexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 		variants *all, int nall )
 {
 	newstr *t, *d;
-	int process, level, i, n;
+	int process, level, i, n, nfields;
 	char *newtag;
-	for ( i=0; i<bibin->nfields; ++i ) {
+
+	nfields = fields_num( bibin );
+	for ( i=0; i<nfields; ++i ) {
 
                /* skip ones already "used" such as successful crossref */
                 if ( bibin->used[i] ) continue;

@@ -1,7 +1,7 @@
 /*
  * medin.c
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Program and source code released under the GPL
  *
@@ -510,7 +510,7 @@ medin_assembleref( xml *node, fields *info )
 
 	if ( node->next ) medin_assembleref( node->next, info );
 	/* assume everything is a journal article */
-	if ( info->nfields ) {
+	if ( fields_num( info ) ) {
 		fields_add( info, "RESOURCE", "text", 0 );
 		fields_add( info, "ISSUANCE", "continuing", 1 );
 		fields_add( info, "GENRE", "periodical", 1 );
@@ -533,8 +533,13 @@ void
 medin_convertf( fields *medin, fields *info, int reftype, int verbose, 
 	variants *all, int nall )
 {
-	int i;
-	for ( i=0; i<medin->nfields; ++i )
-		fields_add( info, medin->tag[i].data, medin->data[i].data,
-				medin->level[i] );
+	char *tag, *value;
+	int i, n, level;
+	n = fields_num( medin );
+	for ( i=0; i<n; ++i ) {
+		tag = fields_tag( medin, i, FIELDS_CHRP );
+		value = fields_value( medin, i, FIELDS_CHRP );
+		level = fields_level( medin, i );
+		fields_add( info, tag, value, level );
+	}
 }

@@ -1,7 +1,7 @@
 /*
  * endout.c
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Program and source code released under the GPL
  *
@@ -32,6 +32,10 @@ endout_initparams( param *p, const char *progname )
 	p->verbose          = 0;
 	p->addcount         = 0;
 	p->singlerefperfile = 0;
+
+	if ( p->charsetout == BIBL_CHARSET_UNICODE ) {
+		p->utf8out = p->utf8bom = 1;
+	}
 
 	p->headerf = endout_writeheader;
 	p->footerf = NULL;
@@ -199,7 +203,7 @@ get_type( fields *info )
 	char *tag, *data;
 	int i, j, type = TYPE_UNKNOWN;
 
-	for ( i=0; i<info->nfields; ++i ) {
+	for ( i=0; i<info->n; ++i ) {
 		tag = info->tag[i].data;
 		if ( strcasecmp( tag, "GENRE" )!=0 &&
 		     strcasecmp( tag, "NGENRE" )!=0 ) continue;
@@ -231,7 +235,7 @@ get_type( fields *info )
 		if ( ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE || type==TYPE_NEWSARTICLE ) && info->level[i]<1 ) type=TYPE_UNKNOWN;
 	}
 	if ( type==TYPE_UNKNOWN ) {
-		for ( i=0; i<info->nfields; ++i ) {
+		for ( i=0; i<info->n; ++i ) {
 			if ( strcasecmp( info->tag[i].data, "RESOURCE" ) )
 				continue;
 			data = info->data[i].data;
@@ -316,20 +320,19 @@ static void
 output_title( FILE *fp, fields *info, char *full, char *sub, char *endtag, 
 		int level )
 {
-	int n1 = fields_find( info, full, level );
-	int n2 = fields_find( info, sub, level );
-	if ( n1!=-1 ) {
-		fprintf( fp, "%s %s", endtag, info->data[n1].data );
-		fields_setused( info, n1 );
-		if ( n2!=-1 ) {
-			if ( info->data[n1].data[info->data[n1].len]!='?' )
-				fprintf( fp, ": " );
-			else fprintf( fp, " " );
-			fprintf( fp, "%s", info->data[n2].data );
-			fields_setused( info, n2 );
-		}
-		fprintf( fp, "\n" );
+	newstr *mainttl = fields_findv( info, level, FIELDS_STRP, full );
+	newstr *subttl  = fields_findv( info, level, FIELDS_STRP, sub );
+
+	if ( !mainttl ) return;
+
+	fprintf( fp, "%s %s", endtag, mainttl->data );
+	if ( subttl ) {
+		if ( mainttl->len > 0 &&
+		     mainttl->data[ mainttl->len-1 ]!='?' )
+				fprintf( fp, ":" );
+		fprintf( fp, " %s", subttl->data );
 	}
+	fprintf( fp, "\n" );
 }
 
 static void
@@ -353,12 +356,17 @@ output_person( FILE *fp, char *p )
 static void
 output_people( FILE *fp, fields *info, char *tag, char *entag, int level )
 {
-	int i;
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( level!=-1 && info->level[i]!=level ) continue;
-		if ( !strcasecmp( info->tag[i].data, tag ) ) {
+	int i, n, flvl;
+	char *ftag, *fval;
+	n = fields_num( info );
+	for ( i=0; i<n; ++i ) {
+		flvl = fields_level( info, i );
+		if ( level!=LEVEL_ANY && flvl!=level ) continue;
+		ftag = fields_tag( info, i, FIELDS_CHRP );
+		if ( !strcasecmp( ftag, tag ) ) {
+			fval = fields_value( info, i, FIELDS_CHRP );
 			fprintf( fp, "%s ", entag );
-			output_person( fp, info->data[i].data );
+			output_person( fp, fval );
 			fprintf( fp, "\n" );
 		}
 	}
@@ -367,87 +375,104 @@ output_people( FILE *fp, fields *info, char *tag, char *entag, int level )
 static void
 output_pages( FILE *fp, fields *info )
 {
-	int sn = fields_find( info, "PAGESTART", -1 );
-	int en = fields_find( info, "PAGEEND", -1 );
-	int ar = fields_find( info, "ARTICLENUMBER", -1 );
-	if ( sn!=-1 || en!=-1 ) {
+	char *sn = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGESTART" );
+	char *en = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGEEND" );
+	char *ar;
+	if ( sn || en ) {
 		fprintf( fp, "%%P ");
-		if ( sn!=-1 ) fprintf( fp, "%s", info->data[sn].data );
-		if ( sn!=-1 && en!=-1 ) fprintf( fp, "-" );
-		if ( en!=-1 ) fprintf( fp, "%s", info->data[en].data );
-		fprintf( fp, "\n");
-	} else if ( ar!=-1 ) {
-		fprintf( fp, "%%P %s\n", info->data[ar].data );
+		if ( sn ) fprintf( fp, "%s", sn );
+		if ( sn && en ) fprintf( fp, "-" );
+		if ( en ) fprintf( fp, "%s", en );
+		fprintf( fp, "\n" );
+	} else {
+		ar = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "ARTICLENUMBER" );
+		if ( ar ) fprintf( fp, "%%P %s\n", ar );
 	}
 }
 
 static void
-output_doi( FILE *fp, fields *info )
+output_doi( FILE *fp, fields *f )
 {
 	newstr doi_url;
-	int i;
+	int i, n;
+
 	newstr_init( &doi_url );
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( strcmp( info->tag[i].data, "DOI" ) ) continue;
-		doi_to_url( info, i, "URL", &doi_url );
+
+	n = fields_num( f );
+	for ( i=0; i<n; ++i ) {
+		if ( !fields_match_tag( f, i, "DOI" ) ) continue;
+		doi_to_url( f, i, "URL", &doi_url );
 		if ( doi_url.len )
 			fprintf( fp, "%%U %s\n", doi_url.data );
 	}
+
 	newstr_free( &doi_url );
 }
 
 static void
-output_pmid( FILE *fp, fields *info )
+output_pmid( FILE *fp, fields *f )
 {
 	newstr pmid_url;
-	int i;
+	int i, n;
+
 	newstr_init( &pmid_url );
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( strcmp( info->tag[i].data, "PMID" ) ) continue;
-		pmid_to_url( info, i, "URL", &pmid_url );
+
+	n = fields_num( f );
+	for ( i=0; i<n; ++i ) {
+		if ( !fields_match_tag( f, i, "PMID" ) ) continue;
+		pmid_to_url( f, i, "URL", &pmid_url );
 		if ( pmid_url.len )
 			fprintf( fp, "%%U %s\n", pmid_url.data );
 	}
+
 	newstr_free( &pmid_url );
 }
 
 static void
-output_arxiv( FILE *fp, fields *info )
+output_arxiv( FILE *fp, fields *f )
 {
 	newstr arxiv_url;
-	int i;
+	int i, n;
+
 	newstr_init( &arxiv_url );
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( strcmp( info->tag[i].data, "ARXIV" ) ) continue;
-		arxiv_to_url( info, i, "URL", &arxiv_url );
+
+	n = fields_num( f );
+	for ( i=0; i<n; ++i ) {
+		if ( !fields_match_tag( f, i, "ARXIV" ) ) continue;
+		arxiv_to_url( f, i, "URL", &arxiv_url );
 		if ( arxiv_url.len )
 			fprintf( fp, "%%U %s\n", arxiv_url.data );
 	}
+
 	newstr_free( &arxiv_url );
 }
 
 static void
-output_jstor( FILE *fp, fields *info )
+output_jstor( FILE *fp, fields *f )
 {
 	newstr jstor_url;
-	int i;
+	int i, n;
+
 	newstr_init( &jstor_url );
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( strcmp( info->tag[i].data, "JSTOR" ) ) continue;
-		jstor_to_url( info, i, "URL", &jstor_url );
+
+	n = fields_num( f );
+	for ( i=0; i<n; ++i ) {
+		if ( !fields_match_tag( f, i, "JSTOR" ) ) continue;
+		jstor_to_url( f, i, "URL", &jstor_url );
 		if ( jstor_url.len )
 			fprintf( fp, "%%U %s\n", jstor_url.data );
 	}
+
 	newstr_free( &jstor_url );
 }
 
 static void
 output_year( FILE *fp, fields *info, int level )
 {
-	int year = fields_find( info, "YEAR", level );
-	if ( year==-1 ) year = fields_find( info, "PARTYEAR", level );
-	if ( year!=-1 )
-		fprintf( fp, "%%D %s\n", info->data[year].data );
+	char *year = fields_findv_firstof( info, level, FIELDS_CHRP,
+			"YEAR", "PARTYEAR", NULL );
+	if ( year )
+		fprintf( fp, "%%D %s\n", year );
 }
 
 static void
@@ -457,21 +482,19 @@ output_monthday( FILE *fp, fields *info, int level )
 		"May", "June", "July", "August", "September", "October",
 		"November", "December" };
 	int m;
-	int month = fields_find( info, "MONTH", level );
-	int day   = fields_find( info, "DAY", level );
-	if ( month==-1 ) month = fields_find( info, "PARTMONTH", level );
-	if ( day==-1 ) day = fields_find( info, "PARTDAY", level );
-	if ( month!=-1 || day!=-1 ) {
+	char *month = fields_findv_firstof( info, level, FIELDS_CHRP,
+			"MONTH", "PARTMONTH", NULL );
+	char *day   = fields_findv_firstof( info, level, FIELDS_CHRP,
+			"DAY", "PARTDAY", NULL );
+	if ( month || day ) {
 		fprintf( fp, "%%8 " );
-		if ( month!=-1 ) {
-			m = atoi( info->data[month].data );
-			if ( m>0 && m<13 )
-				fprintf( fp, "%s", months[m-1] );
-			else
-				fprintf( fp, "%s", info->data[month].data );
+		if ( month ) {
+			m = atoi( month );
+			if ( m>0 && m<13 ) fprintf( fp, "%s", months[m-1] );
+			else fprintf( fp, "%s", month );
 		}
-		if ( month!=-1 && day!=-1 ) fprintf( fp, " " );
-		if ( day!=-1 ) fprintf( fp, "%s", info->data[day].data );
+		if ( month && day ) fprintf( fp, " " );
+		if ( day ) fprintf( fp, "%s", day );
 		fprintf( fp, "\n" );
 	}
 }
@@ -494,75 +517,86 @@ output_thesishint( FILE *fp, int type )
 static void
 output_easyall( FILE *fp, fields *info, char *tag, char *entag, int level )
 {
+	vplist a;
 	int i;
-	for ( i=0; i<info->nfields; ++i ) {
-		if ( level!=-1 && info->level[i]!=level ) continue;
-		if ( !strcmp( info->tag[i].data, tag ) )
-			fprintf( fp, "%s %s\n", entag, info->data[i].data );
-	}
+	vplist_init( &a );
+	fields_findv_each( info, level, FIELDS_CHRP, &a, tag );
+	for ( i=0; i<a.n; ++i )
+		fprintf( fp, "%s %s\n", entag, (char *) vplist_get( &a, i ) );
+	vplist_free( &a );
 }
 
 static void
 output_easy( FILE *fp, fields *info, char *tag, char *entag, int level )
 {
-	int n = fields_find( info, tag, level );
-	if ( n!=-1 )
-		fprintf( fp, "%s %s\n", entag, info->data[n].data );
+	char *value = fields_findv( info, level, FIELDS_CHRP, tag );
+	if ( value ) fprintf( fp, "%s %s\n", entag, value );
 }
 
 void
 endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 {
 	int type;
+
 	fields_clearused( info );
+
 	type = get_type( info );
+
 	output_type( fp, type, p );
-	output_title( fp, info, "TITLE", "SUBTITLE", "%T", 0 );
-	output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%!", 0 );
-	output_people( fp, info, "AUTHOR", "%A", 0 );
-	output_people( fp, info, "EDITOR", "%E", -1 );
-	output_people( fp, info, "TRANSLATOR", "%H", -1 );
+
+	output_title( fp, info, "TITLE",      "SUBTITLE",      "%T", LEVEL_MAIN );
+	output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%!", LEVEL_MAIN );
+
+	output_people( fp, info, "AUTHOR",     "%A", LEVEL_MAIN );
+	output_people( fp, info, "EDITOR",     "%E", LEVEL_ANY  );
+	output_people( fp, info, "TRANSLATOR", "%H", LEVEL_ANY  );
+
 	if ( type==TYPE_CASE )
-		output_easy( fp, info, "AUTHOR:CORP", "%I", 0 );
+		output_easy(    fp, info, "AUTHOR:CORP", "%I", LEVEL_MAIN );
 	else if ( type==TYPE_HEARING )
-		output_easyall( fp, info, "AUTHOR:CORP", "%S", 0 );
+		output_easyall( fp, info, "AUTHOR:CORP", "%S", LEVEL_MAIN );
 	else if ( type==TYPE_NEWSARTICLE )
-		output_people( fp, info, "REPORTER", "%A", 0 );
+		output_people(  fp, info, "REPORTER",    "%A", LEVEL_MAIN );
 	else if ( type==TYPE_COMMUNICATION )
-		output_people( fp, info, "RECIPIENT", "%E", -1 );
+		output_people(  fp, info, "RECIPIENT",   "%E", LEVEL_ANY  );
 	else {
-		output_easyall( fp, info, "AUTHOR:CORP", "%A", 0 );
-		output_easyall( fp, info, "AUTHOR:ASIS", "%A", 0 );
-		output_easyall( fp, info, "EDITOR:CORP", "%E", -1 );
-		output_easyall( fp, info, "EDITOR:ASIS", "%E", -1 );
+		output_easyall( fp, info, "AUTHOR:CORP",     "%A", LEVEL_MAIN );
+		output_easyall( fp, info, "AUTHOR:ASIS",     "%A", LEVEL_MAIN );
+		output_easyall( fp, info, "EDITOR:CORP",     "%E", LEVEL_ANY  );
+		output_easyall( fp, info, "EDITOR:ASIS",     "%E", LEVEL_ANY  );
+		output_easyall( fp, info, "TRANSLATOR:CORP", "%H", LEVEL_ANY  );
+		output_easyall( fp, info, "TRANSLATOR:ASIS", "%H", LEVEL_ANY  );
 	}
+
 	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE )
-		output_title( fp, info, "TITLE", "SUBTITLE", "%J", 1 );
-	else output_title( fp, info, "TITLE", "SUBTITLE", "%B", 1 );
-	output_year( fp, info, -1 );
-	output_monthday( fp, info, -1 );
-	output_easy( fp, info, "VOLUME", "%V", -1 );
-	output_easy( fp, info, "ISSUE", "%N", -1 );
-	output_easy( fp, info, "NUMBER", "%N", -1 );
-	output_easy( fp, info, "EDITION", "%7", -1 );
-	output_easy( fp, info, "PUBLISHER", "%I", -1 );
-	output_easy( fp, info, "ADDRESS", "%C", -1 );
-	output_easy( fp, info, "DEGREEGRANTOR", "%C", -1 );
-	output_easy( fp, info, "DEGREEGRANTOR:CORP", "%C", -1 );
-	output_easy( fp, info, "DEGREEGRANTOR:ASIS", "%C", -1 );
-	output_easy( fp, info, "SERIALNUMBER", "%@", -1 );
-	output_easy( fp, info, "ISSN", "%@", -1 );
-	output_easy( fp, info, "ISBN", "%@", -1 );
-	output_easy( fp, info, "LANGUAGE", "%G", -1 );
-	output_easy( fp, info, "REFNUM", "%F", -1 );
-	output_easyall( fp, info, "NOTES", "%O", -1 );
-	output_easy( fp, info, "ABSTRACT", "%X", -1 );
-	output_easy( fp, info, "CLASSIFICATION", "%L", -1 );
-	output_easyall( fp, info, "KEYWORD", "%K", -1 );
-	output_easyall( fp, info, "NGENRE", "%9", -1 );
+		output_title( fp, info, "TITLE", "SUBTITLE", "%J", LEVEL_HOST );
+	else output_title( fp, info, "TITLE", "SUBTITLE", "%B", LEVEL_HOST );
+
+	output_year( fp, info, LEVEL_ANY );
+	output_monthday( fp, info, LEVEL_ANY );
+
+	output_easy( fp, info, "VOLUME",             "%V", LEVEL_ANY );
+	output_easy( fp, info, "ISSUE",              "%N", LEVEL_ANY );
+	output_easy( fp, info, "NUMBER",             "%N", LEVEL_ANY );
+	output_easy( fp, info, "EDITION",            "%7", LEVEL_ANY );
+	output_easy( fp, info, "PUBLISHER",          "%I", LEVEL_ANY );
+	output_easy( fp, info, "ADDRESS",            "%C", LEVEL_ANY );
+	output_easy( fp, info, "DEGREEGRANTOR",      "%C", LEVEL_ANY );
+	output_easy( fp, info, "DEGREEGRANTOR:CORP", "%C", LEVEL_ANY );
+	output_easy( fp, info, "DEGREEGRANTOR:ASIS", "%C", LEVEL_ANY );
+	output_easy( fp, info, "SERIALNUMBER",       "%@", LEVEL_ANY );
+	output_easy( fp, info, "ISSN",               "%@", LEVEL_ANY );
+	output_easy( fp, info, "ISBN",               "%@", LEVEL_ANY );
+	output_easy( fp, info, "LANGUAGE",           "%G", LEVEL_ANY );
+	output_easy( fp, info, "REFNUM",             "%F", LEVEL_ANY );
+	output_easyall( fp, info, "NOTES",           "%O", LEVEL_ANY );
+	output_easy( fp, info, "ABSTRACT",           "%X", LEVEL_ANY );
+	output_easy( fp, info, "CLASSIFICATION",     "%L", LEVEL_ANY );
+	output_easyall( fp, info, "KEYWORD",         "%K", LEVEL_ANY );
+	output_easyall( fp, info, "NGENRE",          "%9", LEVEL_ANY );
 	output_thesishint( fp, type );
-	output_easyall( fp, info, "URL", "%U", -1 ); 
-	output_easyall( fp, info, "FILEATTACH", "%U", -1 ); 
+	output_easyall( fp, info, "URL",             "%U", LEVEL_ANY ); 
+	output_easyall( fp, info, "FILEATTACH",      "%U", LEVEL_ANY ); 
 	output_doi( fp, info );
 	output_pmid( fp, info );
 	output_arxiv( fp, info );

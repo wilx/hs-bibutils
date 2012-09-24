@@ -1,7 +1,9 @@
 /*
  * list.h
  *
- * Copyright (c) Chris Putnam 2004-2009
+ * version: 2012-03-06
+ *
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Source code released under the GPL
  *
@@ -12,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include "newstr.h"
 
@@ -21,17 +24,46 @@ typedef struct list {
 	newstr *str;
 } list;
 
+
+extern void    lists_init( list *a, ... );
+extern void    lists_free( list *a, ... );
+extern void    lists_empty( list *a, ... );
+
+
 extern void    list_init( list *a );
+extern void    list_free( list *a );
+extern void    list_empty( list *a );
+
+extern list *  list_new( void );
+extern void    list_delete( list * );
+
+extern list*   list_dup( list *a );
+extern void    list_copy( list *to, list *from );
+
 extern int     list_add( list *a, char *value );
+extern int     list_add_unique( list *a, char *value );
+extern int     list_add_newstr( list *a, newstr *value );
+extern int     list_add_newstr_unique( list *a, newstr *value );
+extern void    list_append( list *a, list *toadd );
+extern void    list_append_unique( list *a, list *toadd );
+
+extern newstr* list_get( list *a, int n );
+extern newstr* list_getstr( list *a, int n );
+extern char*   list_getc( list *a, int n );
+extern char*   list_getstr_char( list *a, int n );
+
 extern void    list_sort( list *a );
+
 extern int     list_find( list *a, char *searchstr );
 extern int     list_findnocase( list *a, char *searchstr );
 extern int     list_find_or_add( list *a, char *searchstr );
-extern void    list_free( list *a );
+extern int     list_match_entry( list *a, int n, char *s );
+extern void    list_trimend( list *a, int n );
+
 extern int     list_fill( list *a, char *filename );
-extern newstr* list_getstr( list *a, int n );
-extern char*   list_getstr_char( list *a, int n );
-extern list*   list_dup( list *a );
-extern void    list_copy( list *to, list *from );
+extern void    list_fillfp( list *a, FILE *fp );
+extern void    list_tokenize( list *tokens, newstr *in, char delim );
+extern void    list_newstrtok( list *t, newstr *s, char *sep );
+
 
 #endif

@@ -1,7 +1,7 @@
 /*
  * isiin.c
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Program and source code released under the GPL
  *
@@ -148,7 +148,7 @@ isiin_processf( fields *isiin, char *p, char *filename, long nref )
 		if ( (tag.len>1) && isiin_istag( tag.data ) ) {
 			fields_add( isiin, tag.data, data.data, 0 );
 		} else {
-			n = isiin->nfields;
+			n = fields_num( isiin );
 			if ( n>0 ) {
 				/* only one AU or AF for list of authors */
 				if ( !strcmp( isiin->tag[n-1].data,"AU") ){
@@ -204,21 +204,23 @@ isiin_typef( fields *isiin, char *filename, int nref, param *p, variants *all, i
 static void
 isiin_addauthors( fields *isiin, fields *info, int reftype, variants *all, int nall, list *asis, list *corps )
 {
-	newstr *t, *d;
 	char *newtag, *authortype, use_af[]="AF", use_au[]="AU";
-	int level, i, n, has_af=0, has_au=0;
-	for ( i=0; i<isiin->nfields && has_af==0; ++i ) {
-		t = &( isiin->tag[i] );
+	int level, i, n, has_af=0, has_au=0, nfields;
+	newstr *t, *d;
+
+	nfields = fields_num( isiin );
+	for ( i=0; i<nfields && has_af==0; ++i ) {
+		t = fields_tag( isiin, i, FIELDS_STRP );
 		if ( !strcasecmp( t->data, "AU" ) ) has_au++;
 		if ( !strcasecmp( t->data, "AF" ) ) has_af++;
 	}
 	if ( has_af ) authortype = use_af;
 	else authortype = use_au;
-	for ( i=0; i<isiin->nfields; ++i ) {
-		t = &( isiin->tag[i] );
+	for ( i=0; i<nfields; ++i ) {
+		t = fields_tag( isiin, i, FIELDS_STRP );
 		if ( !strcasecmp( t->data, "AU" ) ) has_au++;
 		if ( strcasecmp( t->data, authortype ) ) continue;
-		d = &( isiin->data[i] );
+		d = fields_value( isiin, i, FIELDS_STRP );
 		n = process_findoldtag( authortype, reftype, all, nall );
 		level = ((all[reftype]).tags[n]).level;
 		newtag = all[reftype].tags[n].newstr;
@@ -238,38 +240,58 @@ isiin_report_notag( param *p, char *tag )
 void
 isiin_convertf( fields *isiin, fields *info, int reftype, param *p, variants *all, int nall )
 {
+	int process, level, i, n, nfields;
 	newstr *t, *d;
-	int process, level, i, n;
 	char *newtag;
 
-	isiin_addauthors( isiin, info, reftype, all, nall, &(p->asis), 
-			&(p->corps) );
+	isiin_addauthors( isiin, info, reftype, all, nall, &(p->asis), &(p->corps) );
 
-	for ( i=0; i<isiin->nfields; ++i ) {
-		t = &( isiin->tag[i] );
+	nfields = fields_num( isiin );
+	for ( i=0; i<nfields; ++i ) {
+
+		t = fields_tag( isiin, i, FIELDS_STRP );
 		if ( !strcasecmp( t->data, "AU" ) || !strcasecmp( t->data, "AF" ) )
 			continue;
-		d = &( isiin->data[i] );
+
 		n = process_findoldtag( t->data, reftype, all, nall );
 		if ( n==-1 ) {
 			isiin_report_notag( p, t->data );
 			continue;
 		}
+
+		d = fields_value( isiin, i, FIELDS_STRP );
 		process = ((all[reftype]).tags[n]).processingtype;
 		level = ((all[reftype]).tags[n]).level;
 		newtag = all[reftype].tags[n].newstr;
-		if ( process == SIMPLE || process == DATE )
+
+		switch ( process ) {
+
+		case SIMPLE:
 			fields_add( info, newtag, d->data, level );
-		else if ( process == PERSON )
-			name_add( info, newtag, d->data, level, &(p->asis), 
-					&(p->corps) );
-		else if ( process == TITLE )
-			title_process( info, newtag, d->data, level, 
-					p->nosplittitle );
-		else if ( process == ISI_KEYWORD )
+			break;
+
+		case DATE:
+			fields_add( info, newtag, d->data, level );
+			break;
+
+		case PERSON:
+			name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
+			break;
+
+		case TITLE:
+			title_process( info, newtag, d->data, level, p->nosplittitle );
+			break;
+
+		case KEYWORD:
 			keyword_process( info, newtag, d->data, level );
-		else if ( process == SERIALNO )
+			break;
+
+		case SERIALNO:
 			addsn( info, d->data, level );
+			break;
+
+		}
+
 		/* do nothing if process==TYPE || process==ALWAYS */
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * entities.c
  *
- * Copyright (c) Chris Putnam 2003-2010
+ * Copyright (c) Chris Putnam 2003-2012
  *
  * Source code released under the GPL
  */
@@ -21,7 +21,7 @@ entities html_entities[] = {
 	/* Special Entities */
 	{ "&quot;",     34 },  /* quotation mark */
 	{ "&amp;",      38 },  /* ampersand */
-	{ "&apos;",     39 },  /* apostrophe */
+	{ "&apos;",     39 },  /* apostrophe (note not defined in HTML) */
 	{ "&lpar;",     40 },  /* left parenthesis */
 	{ "&rpar;",     41 },  /* right parenthesis */
 	{ "&hyphen;",   45 },  /* hyphen */
@@ -352,13 +352,16 @@ decode_hex_entity( char *s, unsigned int *pi, int *err )
  * decode numeric entity
  *
  *    extract a numeric entity from &#NNN; or &#xNNNN;
+ *
+ *    In XML, the "x" in hexadecimal entries should be lowercase,
+ *    but we'll be generous and accept "X" as well.
  */
 static unsigned int
 decode_numeric_entity( char *s, unsigned int *pi, int *err )
 {
 	unsigned int c;
 	*err = 0;
-	if ( s[*pi+2]!='x' ) c = decode_decimal_entity( s, pi, err );
+	if ( s[*pi+2]!='x' && s[*pi+2]!='X' ) c = decode_decimal_entity( s, pi, err );
 	else c = decode_hex_entity( s, pi, err );
 	if ( *err ) {
 		*pi = *pi + 1;
@@ -369,7 +372,12 @@ decode_numeric_entity( char *s, unsigned int *pi, int *err )
 
 /*
  * decode entity
- *    extract entity from  &xxxx; 
+ *    extract entity from  &mmmm;
+ *
+ * where &mmmm; is one of
+ * - &#nnnn; is code point in decimal form
+ * - &#xhhhh; is code point in hexadecimal form (note "x" is lowercase in XML)
+ * - &mmmm; corresponds to a pre-defined XML entity, e.g. &quote for quotations
  *
  */
 unsigned int

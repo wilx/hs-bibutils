@@ -1,7 +1,7 @@
 /*
  * endxmlin.c
  *
- * Copyright (c) Chris Putnam 2006-2010
+ * Copyright (c) Chris Putnam 2006-2012
  *
  * Program and source code released under the GPL
  */

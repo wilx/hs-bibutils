@@ -1,7 +1,7 @@
 /*
  * copacin.c
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Program and source code released under the GPL
  *
@@ -32,6 +32,7 @@ copacin_initparams( param *p, const char *progname )
 	p->nosplittitle     = 0;
 	p->verbose          = 0;
 	p->addcount         = 0;
+	p->output_raw       = 0;
 
 	p->readf    = copacin_readf;
 	p->processf = copacin_processf;
@@ -267,42 +268,61 @@ copacin_report_notag( param *p, char *tag )
 }
 
 void
-copacin_convertf( fields *copacin, fields *info, int reftype, param *p, variants *all, int nall )
+copacin_convertf( fields *copacin, fields *out, int reftype, param *p, variants *all, int nall )
 {
-	newstr *t, *d;
-	int  process, level, i, n;
+	int  process, level, i, n, nfields;
+	newstr *tag, *data;
 	char *newtag;
-	for ( i=0; i<copacin->nfields; ++i ) {
-		t = &( copacin->tag[i] );
-		d = &( copacin->data[i] );
-		n = process_findoldtag( t->data, reftype, all, nall );
+
+	nfields = fields_num( copacin );
+	for ( i=0; i<nfields; ++i ) {
+
+		tag = fields_tag( copacin, i, FIELDS_STRP );
+
+		n = process_findoldtag( tag->data, reftype, all, nall );
 		if ( n==-1 ) {
-			copacin_report_notag( p, t->data );
+			copacin_report_notag( p, tag->data );
 			continue;
 		}
+
 		process = ((all[reftype]).tags[n]).processingtype;
 		if ( process == ALWAYS ) continue; /*add these later*/
+
+		data = fields_value( copacin, i, FIELDS_STRP );
 		level = ((all[reftype]).tags[n]).level;
 		newtag = ((all[reftype]).tags[n]).newstr;
-		if ( process==SIMPLE )
-			fields_add( info, newtag, d->data, level );
-		else if ( process==TITLE )
-			title_process( info, newtag, d->data, level, 
-					p->nosplittitle );
-		else if ( process==PERSON )
-			copacin_addname( info, newtag, d, level, &(p->asis), 
-					&(p->corps) );
-		else if ( process==DATE )
-			copacin_adddate(info,all[reftype].
-					tags[i].oldstr,newtag,d->data,level);
-		else if ( process==PAGES )
-			copacin_addpage( info, d->data, level );
-		else if ( process==SERIALNO )
-			addsn( info, d->data, level );
-/*		else {
-			fprintf(stderr,"%s: internal error -- "
-				"illegal process %d\n", r->progname, process );
-		}*/
+
+		switch ( process ) {
+
+		case SIMPLE:
+			fields_add( out, newtag, data->data, level );
+			break;
+
+		case TITLE:
+			title_process( out, newtag, data->data, level, p->nosplittitle );
+			break;
+
+		case PERSON:
+			copacin_addname( out, newtag, data, level, &(p->asis), &(p->corps) );
+			break;
+
+		case DATE:
+			copacin_adddate(out,all[reftype].  tags[i].oldstr,newtag,data->data,level);
+			break;
+
+		case PAGES:
+			copacin_addpage( out, data->data, level );
+			break;
+
+		case SERIALNO:
+			addsn( out, data->data, level );
+			break;
+
+		default:
+			fprintf(stderr,"%s: internal error -- " "illegal process value %d\n", p->progname, process );
+			break;
+		}
+
 	}
 }
 

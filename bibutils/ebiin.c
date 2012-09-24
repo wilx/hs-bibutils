@@ -1,7 +1,7 @@
 /*
  * ebiin.c
  *
- * Copyright (c) Chris Putnam 2004-2010
+ * Copyright (c) Chris Putnam 2004-2012
  *
  * Program and source code released under the GPL
  *
@@ -509,11 +509,17 @@ ebiin_processf( fields *ebiin, char *data, char *filename, long nref )
 }
 
 void
-ebiin_convertf( fields *ebiin, fields *info, int reftype, int verbose, 
+ebiin_convertf( fields *ebiin, fields *out, int reftype, int verbose, 
 	variants *all, int nall )
 {
-	int i;
-	for ( i=0; i<ebiin->nfields; ++i )
-		fields_add( info, ebiin->tag[i].data, ebiin->data[i].data,
-				ebiin->level[i] );
+	char *tag, *value;
+	int i, n, level;
+
+	n = fields_num( ebiin );
+	for ( i=0; i<n; ++i ) {
+		tag = fields_tag( ebiin, i, FIELDS_CHRP );
+		value = fields_value( ebiin, i, FIELDS_CHRP );
+		level = fields_level( ebiin, i );
+		fields_add( out, tag, value, level );
+	}
 }

@@ -1,7 +1,7 @@
 /*
  * newstr.c
  *
- * Copyright (c) Chris Putnam 1999-2010
+ * Copyright (c) Chris Putnam 1999-2012
  *
  * Source code released under the GPL
  *
@@ -104,6 +104,20 @@ newstrs_init( newstr *s, ... )
 	va_end( ap );
 }
 
+void
+newstr_mergestrs( newstr *s, ... )
+{
+	va_list ap;
+	char *cp;
+	newstr_empty( s );
+	va_start( ap, s );
+	do {
+		cp = va_arg( ap, char * );
+		if ( cp ) newstr_strcat( s, cp );
+	} while ( cp );
+	va_end( ap );
+}
+
 static void 
 newstr_initalloc( newstr *s, unsigned long minsize )
 {
@@ -191,6 +205,29 @@ newstr_addchar( newstr *s, char newchar )
 		newstr_realloc( s, s->len+2 );
 	s->data[s->len++] = newchar;
 	s->data[s->len] = '\0';
+}
+
+/* newstr_addutf8
+ *
+ * Add potential multibyte character to s starting at pointer p.
+ * Multibyte Unicode characters have the high bit set.
+ *
+ * Since we can progress more than one byte at p, return the
+ * properly updated pointer p.
+ */
+char *
+newstr_addutf8( newstr *s, char *p )
+{
+	if ( ! ((*p) & 128 ) ) {
+		newstr_addchar( s, *p );
+		p++;
+	} else {
+		while ( ((*p) & 128) ) {
+			newstr_addchar( s, *p );
+			p++;
+		}
+	}
+	return p;
 }
 
 void 
@@ -457,6 +494,15 @@ newstr_toupper( newstr *s )
 		s->data[i] = toupper( s->data[i] );
 }
 
+void
+newstr_tolower( newstr *s )
+{
+	unsigned long i;
+	assert( s );
+	for ( i=0; i<s->len; ++i )
+		s->data[i] = tolower( s->data[i] );
+}
+
 /* newstr_swapstrings( s1, s2 )
  * be sneaky and swap internal newstring data from one
  * string to another
@@ -486,6 +532,33 @@ newstr_swapstrings( newstr *s1, newstr *s2 )
 }
 
 void
+newstr_trimstartingws( newstr *s )
+{
+	unsigned char still_ws;
+	unsigned long n, m;
+
+	assert( s );
+
+	if ( s->len==0 || !is_ws( s->data[0] ) ) return;
+
+	m = n = 0;
+	still_ws = 1;
+	while ( m <= s->len ) {
+		if ( still_ws && !is_ws( s->data[ m ] ) ) {
+			still_ws = 0;
+		}
+		if ( !still_ws ) {
+			s->data[ n ] = s->data[ m ];
+			n++;
+		}
+		m++;
+	}
+
+	s->len = n;
+}
+	
+
+void
 newstr_trimendingws( newstr *s )
 {
 	assert( s );
@@ -495,3 +568,103 @@ newstr_trimendingws( newstr *s )
 	}
 }
 
+int
+newstr_match_first( newstr *s, char ch )
+{
+	if ( !s->len ) return 0;
+	if ( s->data[0] == ch ) return 1;
+	return 0;
+}
+
+int
+newstr_match_end( newstr *s, char ch )
+{
+	if ( !s->len ) return 0;
+	if ( s->data[ s->len - 1 ] == ch ) return 1;
+	return 0;
+}
+
+void
+newstr_trimbegin( newstr *s, int n )
+{
+	int i;
+	assert( s );
+	if ( s->len - n < 1 ) newstr_empty( s );
+	for ( i=1; i<=s->len; ++i ) /* pick up '\0' with '<=' */
+		s->data[i-1] = s->data[i];
+	s->len -= n;
+}
+
+void
+newstr_trimend( newstr *s, int n )
+{
+	assert( s );
+	if ( s->len - n < 1 ) newstr_empty( s );
+	else {
+		s->len -= n;
+		s->data[ s->len ] = '\0';
+	}
+}
+
+static void
+newstr_check_case( newstr *s, int *lowercase, int *uppercase )
+{
+	int i;
+	*lowercase = 0;
+	*uppercase = 0;
+	if ( s->len < 1 ) return;
+	for ( i=0; i<s->len && !( *lowercase && *uppercase ); ++i ) {
+		if ( isalpha( s->data[i] ) ) {
+			if ( isupper( s->data[i] ) ) *uppercase += 1;
+			else if ( islower( s->data[i] ) ) *lowercase += 1;
+		}
+	}
+}
+
+int
+newstr_is_mixedcase( newstr *s )
+{
+	int lowercase, uppercase;
+	newstr_check_case( s, &lowercase, &uppercase );
+	if ( lowercase > 0 && uppercase > 0 ) return 1;
+	return 0;
+}
+
+int
+newstr_is_lowercase( newstr *s )
+{
+	int lowercase, uppercase;
+	newstr_check_case( s, &lowercase, &uppercase );
+	if ( lowercase > 0 && uppercase == 0 ) return 1;
+	return 0;
+}
+
+int
+newstr_is_uppercase( newstr *s )
+{
+	int lowercase, uppercase;
+	newstr_check_case( s, &lowercase, &uppercase );
+	if ( lowercase == 0 && uppercase > 0 ) return 1;
+	return 0;
+}
+
+void
+newstr_stripws( newstr *s )
+{
+	unsigned long len = 0;
+	char *p, *q;
+	assert( s );
+	if ( s->len ) {
+		p = q = s->data;
+		while ( *p ) {
+			if ( !is_ws( *p ) ) {
+				*q = *p;
+				q++;
+				len++;
+			}
+			p++;
+		}
+		*q = '\0';
+	}
+	s->len = len;
+}

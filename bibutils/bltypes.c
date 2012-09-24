@@ -1,8 +1,8 @@
 /*
  * bltypes.c
  *
- * Copyright (c) Chris Putnam 2008-2010
- * Copyright (c) Johannes Wilm 2010
+ * Copyright (c) Chris Putnam 2008-2012
+ * Copyright (c) Johannes Wilm 2010-2012
  *
  * Program and source code released under the GPL
  *
@@ -69,6 +69,7 @@ static lookups article[] = {
 	{ " ",            "INTERNAL_TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
 	{ " ",            "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
 	{ " ",            "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
+        { " ",            "GENRE|journal article",  ALWAYS, LEVEL_MAIN },
 	{ " ",            "GENRE|periodical",       ALWAYS, LEVEL_HOST }
 };
 
@@ -277,6 +278,7 @@ static lookups inbook[] = {
 	{ " ",               "INTERNAL_TYPE|INBOOK",    ALWAYS, LEVEL_MAIN },
 	{ " ",               "RESOURCE|text",ALWAYS, LEVEL_MAIN },
 	{ " ",               "ISSUANCE|monographic", ALWAYS, LEVEL_HOST },
+        { " ",               "GENRE|book chapter",   ALWAYS, LEVEL_MAIN },
 	{ " ",               "GENRE|book",   ALWAYS, LEVEL_HOST }
 };
 

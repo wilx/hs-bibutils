@@ -1,7 +1,7 @@
 /*
  * endtypes.c
  *
- * Copyright (c) Chris Putnam 2003-2010
+ * Copyright (c) Chris Putnam 2003-2012
  *
  * Program and source code released under the GPL
  *
@@ -111,6 +111,7 @@ static lookups journalarticle[] = {
 	{ "%~", "DATABASE",     SIMPLE,   LEVEL_MAIN },
 	{ "  ", "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
 	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
+        { "  ", "GENRE|journal article",  ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|periodical",       ALWAYS, LEVEL_HOST },
 	{ "  ", "GENRE|academic journal", ALWAYS, LEVEL_HOST }
 };
@@ -304,9 +305,10 @@ static lookups booksection[] = {
 	{ "%[", "ACCESSDATE",   SIMPLE, LEVEL_MAIN },
 	{ "%=", "LASTMODDATE",  SIMPLE, LEVEL_MAIN },
 	{ "%~", "DATABASE",     SIMPLE, LEVEL_MAIN },
-	{ "  ", "GENRE|book", ALWAYS, LEVEL_HOST },
+        { "  ", "GENRE|book chapter",   ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE|book",           ALWAYS, LEVEL_HOST },
 	{ "  ", "ISSUANCE|monographic", ALWAYS, LEVEL_HOST },
-	{ "  ", "RESOURCE|text", ALWAYS, LEVEL_MAIN }
+	{ "  ", "RESOURCE|text",        ALWAYS, LEVEL_MAIN }
 };
 
 static lookups editedbook[] = {

@@ -1,7 +1,7 @@
 /*
  * wordin.c
  *
- * Copyright (c) Chris Putnam 2010
+ * Copyright (c) Chris Putnam 2010-2012
  *
  * Program and source code released under the GPL
  *
@@ -590,8 +590,14 @@ void
 wordin_convertf( fields *wordin, fields *info, int reftype, int verbose, 
 	variants *all, int nall )
 {
-	int i;
-	for ( i=0; i<wordin->nfields; ++i )
-		fields_add( info, wordin->tag[i].data, wordin->data[i].data,
-				wordin->level[i] );
+	char *tag, *value;
+	int i, n, level;
+
+	n = fields_num( wordin );
+	for ( i=0; i<n; ++i ) {
+		tag = fields_tag( wordin, i, FIELDS_CHRP );
+		value = fields_value( wordin, i, FIELDS_CHRP );
+		level = fields_level( wordin, i );
+		fields_add( info, tag, value, level );
+	}
 }

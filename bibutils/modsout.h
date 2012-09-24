@@ -1,7 +1,7 @@
 /*
  * modsout.h
  *
- * Copyright (c) Chris Putnam 2003-2009
+ * Copyright (c) Chris Putnam 2003-2012
  *
  * Source code released under the GPL
  *
