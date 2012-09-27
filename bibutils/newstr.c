@@ -1,14 +1,14 @@
 /*
  * newstr.c
  *
+ * Version: 9/20/12
+ *
  * Copyright (c) Chris Putnam 1999-2012
  *
  * Source code released under the GPL
  *
  *
- * newstring routines for dynamically allocated strings
- *
- * C. Putnam 3/29/02  Clean up newstr_findreplace() (x4 speed increase too)
+ * routines for dynamically allocated strings
  *
  */
 #include <stdio.h>
@@ -88,6 +88,15 @@ newstr_init( newstr *s )
 	s->dim = 0;
 	s->len = 0;
 	s->data = NULL;
+}
+
+void
+newstr_initstr( newstr *s, char *initstr )
+{
+	assert( s );
+	assert( initstr );
+	newstr_init( s );
+	newstr_strcpy( s, initstr );
 }
 
 void
@@ -336,9 +345,9 @@ newstr_strcpy_internal( newstr *s, char *p, unsigned long n )
 void
 newstr_newstrcpy( newstr *s, newstr *old )
 {
-	assert( s && old );
+	assert( s );
 	if ( s==old ) return;
-	if ( !old->data || !old->dim ) newstr_empty( s );
+	else if ( !old || old->len==0 ) newstr_empty( s );
 	else newstr_strcpy_internal( s, old->data, old->len );
 }
 
@@ -358,6 +367,36 @@ newstr_strdup( char *s1 )
 	if ( s2 )
 		newstr_strcpy( s2, s1 );
 	return s2;
+}
+
+/*
+ * newstr_indxcpy( s, in, start, stop );
+ *
+ * copies in[start] to in[stop] (includes stop) into s
+ */
+void
+newstr_indxcpy( newstr *s, char *p, int start, int stop )
+{
+	int i;
+	assert( s );
+	assert( p );
+	assert( start <= stop );
+	newstr_strcpy_ensurespace( s, stop-start+1 );
+	for ( i=start; i<=stop; ++i )
+		s->data[i-start] = p[i];
+	s->data[i] = '\0';
+	s->len = stop-start+1;
+}
+
+void
+newstr_indxcat( newstr *s, char *p, int start, int stop )
+{
+	int i;
+	assert( s );
+	assert( p );
+	assert( start <= stop );
+	for ( i=start; i<=stop; ++i )
+		newstr_addchar( s, p[i] );
 }
 
 /* newstr_segcpy( s, start, end );
@@ -667,4 +706,54 @@ newstr_stripws( newstr *s )
 		*q = '\0';
 	}
 	s->len = len;
+}
+
+int
+newstr_newstrcmp( newstr *s, newstr *t )
+{
+	assert( s );
+	assert( t );
+	if ( s->len == 0 && t->len == 0 ) return 0;
+	return strcmp( s->data, t->data );
+}
+
+void
+newstr_reverse( newstr *s )
+{
+	newstr ns;
+	unsigned long i;
+
+	assert( s );
+
+	if ( s->len==0 ) return;
+	newstr_init( &ns );
+	i = s->len;
+	do {
+		i--;
+		newstr_addchar( &ns, s->data[i] );
+	} while ( i>0 );
+	newstr_swapstrings( s, &ns );
+	newstr_free( &ns );
+}
+
+int
+newstr_fgetline( newstr *s, FILE *fp )
+{
+	int ch, eol = 0;
+	assert( s );
+	newstr_empty( s );
+	if ( feof( fp ) ) return 0;
+	while ( !feof( fp ) && !eol ) {
+		ch = fgetc( fp );
+		if ( ch == EOF ) eol = 1;
+		else if ( ch == '\n' ) eol = 1;
+		else if ( ch == '\r' ) {
+			ch = fgetc( fp );
+			if ( ch != '\n' ) ungetc( ch, fp );
+			eol = 1;
+		} else {
+			newstr_addchar( s, (char) ch );
+		}
+	}
+	return 1;
 }

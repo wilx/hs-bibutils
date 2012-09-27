@@ -538,12 +538,12 @@ process_howpublished( fields *info, char *p, int level )
 static void
 process_genre( fields *info, char *p, int level )
 {
-        /* Some users put Diploma thesis in "type" */
-        if ( !strncasecmp( p, "Diplom", 6 ) )
-                fields_replace_or_add( info, "GENRE", "Diploma thesis", level );
-        else if ( !strncasecmp( p, "Habilitation", 13 ) )
-                fields_replace_or_add( info, "GENRE", "Habilitation thesis", level );
-        else 
+	/* Some users put Diploma thesis in "type" */
+	if ( !strncasecmp( p, "Diplom", 6 ) )
+		fields_replace_or_add( info, "GENRE", "Diploma thesis", level );
+	else if ( !strncasecmp( p, "Habilitation", 13 ) )
+		fields_replace_or_add( info, "GENRE", "Habilitation thesis", level );
+	else
 		fields_add( info, "GENRE", p, level );
 }
 
@@ -556,7 +556,6 @@ process_eprint( fields *bibin, fields *info, int level )
 	netype  = fields_find( bibin, "eprinttype", -1 );
 	if ( neprint!=-1 ) eprint = bibin->data[neprint].data;
 	if ( netype!=-1 ) etype = bibin->data[netype].data;
-fprintf(stderr,"process_eprint: neprint=%d netype=%d\n", neprint,netype );
 	if ( eprint && etype ) {
 		if ( !strncasecmp( etype, "arxiv", 5 ) )
 			fields_add( info, "ARXIV", eprint, level );

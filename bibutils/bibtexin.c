@@ -644,6 +644,27 @@ process_sente( fields *info, newstr *d, int level )
 	newstr_free( &link );
 }
 
+/*
+ * BibTeX uses 'organization' in lieu of publisher if that field is missing.
+ * Otherwise output as
+ * <name type="corporate">
+ *    <namePart>The organization</namePart>
+ *    <role>
+ *       <roleTerm authority="marcrelator" type="text">organizer of meeting</roleTerm>
+ *    </role>
+ * </name>
+ */
+static void
+process_organization( fields *bibin, fields *info, newstr *d, int level )
+{
+	int n;
+	n = fields_find( bibin, "publisher", LEVEL_ANY );
+	if ( n==-1 )
+		fields_add( info, "PUBLISHER", d->data, level );
+	else
+		fields_add( info, "ORGANIZER:CORP", d->data, level );
+}
+
 static int
 count_colons( char *p )
 {
@@ -852,16 +873,20 @@ bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 			process_howpublished( info, d, level );
 			break;
 
-		case BIBTEX_URL:
-			process_url( info, d, level );
-			break;
-
 		case LINKEDFILE:
 			process_file( info, d, level );
 			break;
 
 		case BIBTEX_SENTE:
 			process_sente( info, d, level );
+			break;
+
+		case BIBTEX_URL:
+			process_url( info, d, level );
+			break;
+
+		case BIBTEX_ORGANIZATION:
+			process_organization( bibin, info, d, level );
 			break;
 
 		case ALWAYS:

@@ -93,6 +93,7 @@ static lookups book[] = {
 	{ "maintitleaddon",  "?maintitleaddon?",SIMPLE, LEVEL_HOST },   /*WRONG*/
 	{ "language",        "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "origlanguage",    "LANGUAGE",     SIMPLE, LEVEL_ORIG },
 	{ "origyear",        "YEAR",         SIMPLE, LEVEL_ORIG },
 	{ "origtitle",       "TITLE",        SIMPLE, LEVEL_ORIG },
@@ -140,6 +141,7 @@ static lookups booklet[] = {
 	{ "titleaddon",      "?titleaddon?",        SIMPLE, LEVEL_MAIN },   /*WRONG*/
 	{ "howpublished",    "",       HOWPUBLISHED, LEVEL_MAIN },
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "language",        "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "type",            "GENRE",  BIBTEX_GENRE, LEVEL_MAIN },
 	{ "note",            "NOTES",        SIMPLE, LEVEL_MAIN },
@@ -174,6 +176,7 @@ static lookups collection[] = {
 	{ "commentator",     "COMMENTATOR",  PERSON, LEVEL_MAIN },
 	{ "translator",      "TRANSLATOR",   PERSON, LEVEL_MAIN },
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "introduction",    "?introduction?",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
 	{ "foreward",        "?foreward?",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
 	{ "afterward",       "?afterward?",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
@@ -231,6 +234,7 @@ static lookups inbook[] = {
 	{ "commentator",     "COMMENTATOR",  PERSON, LEVEL_HOST },
 	{ "translator",      "TRANSLATOR",   PERSON, LEVEL_HOST },
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "introduction",    "?introduction?",        SIMPLE, LEVEL_HOST }, /*WRONG*/
 	{ "foreward",        "?foreward?",        SIMPLE, LEVEL_HOST }, /*WRONG*/
 	{ "afterward",       "?afterward?",        SIMPLE, LEVEL_HOST }, /*WRONG*/
@@ -288,6 +292,7 @@ static lookups incollection[] = {
 
 	{ "author",          "AUTHOR",       PERSON, LEVEL_MAIN },
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "title",           "TITLE",        SIMPLE, LEVEL_MAIN },
 	{ "subtitle",        "SUBTITLE",     SIMPLE, LEVEL_MAIN },
 	{ "titleaddon",      "?titleaddon?", SIMPLE, LEVEL_MAIN },   /*WRONG*/
@@ -359,6 +364,7 @@ static lookups inproceedings[] = {
 	{ "translator",      "TRANSLATOR",   PERSON, LEVEL_HOST },
 	{ "eventtitle",      "EVENT:CONF",   SIMPLE, LEVEL_MAIN },
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "introduction",    "?introduction?",SIMPLE, LEVEL_HOST }, /*WRONG*/
 	{ "foreward",        "?foreward?",   SIMPLE, LEVEL_HOST }, /*WRONG*/
 	{ "afterward",       "?afterward?",  SIMPLE, LEVEL_HOST }, /*WRONG*/
@@ -414,6 +420,7 @@ static lookups manual[] = {
 	{ "commentator",     "COMMENTATOR",  PERSON, LEVEL_MAIN },
 	{ "translator",      "TRANSLATOR",   PERSON, LEVEL_MAIN },
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "introduction",    "?????",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
 	{ "foreward",        "?????",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
 	{ "afterward",       "?????",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
@@ -597,6 +604,7 @@ static lookups proceedings[] = {
 	{ "translator",      "TRANSLATOR",   PERSON, LEVEL_MAIN },
 	{ "eventtitle",      "EVENT:CONF",   SIMPLE, LEVEL_MAIN },
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "introduction",    "?????",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
 	{ "foreward",        "?????",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
 	{ "afterward",       "?????",        SIMPLE, LEVEL_MAIN }, /*WRONG*/
@@ -649,6 +657,7 @@ static lookups report[] = {
 	{ "subtitle",        "SUBTITLE",     SIMPLE, LEVEL_MAIN },
 	{ "titleaddon",      "?????",        SIMPLE, LEVEL_MAIN },   /*WRONG*/
 	{ "year",            "YEAR",         SIMPLE, LEVEL_MAIN },
+	{ "month",           "MONTH",        SIMPLE, LEVEL_MAIN },
 	{ "language",        "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "number",          "NUMBER",       SIMPLE, LEVEL_MAIN },
 	{ "note",            "NOTES",        SIMPLE, LEVEL_MAIN },

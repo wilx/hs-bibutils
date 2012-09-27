@@ -1,80 +1,174 @@
 /*
  * vplist.c
  *
+ * Version: 9/20/2012
+ *
  * Copyright (c) Chris Putnam 2011-2012
  *
  * Source code released under the GPL
  *
- * Implements a simple managed array of newstrs.
+ * Implements a simple managed array of pointers to void
  *
  */
+#include <stdlib.h>
+#include <assert.h>
 #include "vplist.h"
 
-void *
-vplist_get( vplist *a, int n )
+void
+vplist_init( vplist *vpl )
 {
-	if ( n<0 || n>a->n ) return NULL;
-	else return a->data[n];
+	assert( vpl );
+	vpl->data = NULL;
+	vpl->n = vpl->max = 0;
 }
 
-static int
-vplist_alloc( vplist *a )
+void
+vplist_empty( vplist *vpl )
 {
-	int alloc = 20;
-	a->data = malloc( sizeof( void * ) * alloc );
-	if ( !(a->data) ) return 0;
-	a->max = alloc;
-	a->n = 0;
-	return 1;
+	assert( vpl );
+	vpl->n = 0;
 }
 
-static int
-vplist_realloc( vplist *a )
+int
+vplist_find( vplist *vpl, void *v )
 {
-	void **more;
-	int alloc = a->max * 2;
-	more = ( void** ) realloc( a->data, sizeof( void * ) * alloc );
-	if ( !more ) return 0;
-	a->data = more;
-	a->max = alloc;
+	int i;
+	assert( vpl );
+	for ( i=0; i<vpl->n; ++i )
+		if ( vpl->data[i]==v ) return i;
+	return -1;
+}
+
+int
+vplist_copy( vplist *to, vplist *from )
+{
+	int i;
+	assert( to );
+	assert( from );
+	if ( to->max >= from->n ) {
+		if ( to->max ) free( to->data );
+		to->data = ( void ** ) malloc( sizeof( void * ) * from->n );
+		if ( !to->data ) return 0;
+		to->max = from->n;
+	}
+	for ( i=0; i<from->n; ++i )
+		to->data[i] = from->data[i];
+	to->n = from->n;
 	return 1;
 }
 
 int
-vplist_add( vplist *a, void *value )
+vplist_append( vplist *to, vplist *from )
+{
+	int i, ok;
+	assert( to );
+	assert( from );
+	for ( i=0; i<from->n; ++i ) {
+		ok = vplist_add( to, from->data[i] );
+		if ( !ok ) return 0;
+	}
+	return 1;
+}
+
+static int
+vplist_validindex( vplist *vpl, int n )
+{
+	if ( n < 0 || n >= vpl->n ) return 0;
+	return 1;
+}
+
+static int
+vplist_alloc( vplist *vpl )
+{
+	int alloc = 20;
+	vpl->data = ( void ** ) malloc( sizeof( void * ) * alloc );
+	if ( !vpl->data ) return 0;
+	vpl->max = alloc;
+	vpl->n = 0;
+	return 1;
+}
+
+static int
+vplist_realloc( vplist *vpl )
+{
+	void **more;
+	int alloc = vpl->max * 2;
+	more = ( void ** ) realloc( vpl->data, sizeof( void * ) * alloc );
+	if ( !more ) return 0;
+	vpl->data = more;
+	vpl->max = alloc;
+	return 1;
+}
+
+int
+vplist_add( vplist *vpl, void *v )
 {
 	int ok = 1;
 
+	assert( vpl );
+
 	/* ensure sufficient space */
-	if ( a->max==0 ) ok = vplist_alloc( a );
-	else if ( a->n >= a->max ) ok = vplist_realloc( a );
+	if ( vpl->max==0 ) ok = vplist_alloc( vpl );
+	else if ( vpl->n >= vpl->max ) ok = vplist_realloc( vpl );
 
 	if ( ok ) {
-		a->data[a->n] = value;
-		a->n++;
+		vpl->data[vpl->n] = v;
+		vpl->n++;
 	}
 
 	return ok;
 }
 
-void
-vplist_empty( vplist *a )
+void *
+vplist_get( vplist *vpl, int n )
 {
-	a->n = 0;
+	assert( vpl );
+	if ( !vplist_validindex( vpl, n ) ) return NULL;
+	return vpl->data[ n ];
 }
 
 void
-vplist_free( vplist *a )
+vplist_set( vplist *vpl, int n, void *v )
 {
-	free( a->data );
-	vplist_init( a );
+	assert( vpl );
+	if ( !vplist_validindex( vpl, n ) ) return;
+	vpl->data[ n ] = v;
 }
 
 void
-vplist_init( vplist *a  )
+vplist_remove( vplist *vpl, int n )
 {
-	a->data = NULL;
-	a->max = 0;
-	a->n = 0;
+	int i;
+	assert( vpl );
+	if ( !vplist_validindex( vpl, n ) ) return;
+	for ( i=n+1; i<vpl->n; ++i )
+		vpl->data[ i-1 ] = vpl->data[ i ];
+	vpl->n -= 1;
+}
+
+void
+vplist_removevp( vplist *vpl, void *v )
+{
+	int n;
+	assert( vpl );
+	do {
+		n = vplist_find( vpl, v );
+		if ( n!=-1 ) vplist_remove( vpl, n );
+	} while ( n!=-1 );
+}
+
+void
+vplist_free( vplist *vpl )
+{
+	free( vpl->data );
+	vplist_init( vpl );
+}
+
+void
+vplist_destroy( vplist **vpl )
+{
+	vplist_free( *vpl );
+	free( *vpl );
+	*vpl = NULL;
 }
 
