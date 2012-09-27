@@ -1,5 +1,5 @@
 name:               hs-bibutils
-version:            4.14
+version:            4.15
 homepage:           http://gorgias.mine.nu/repos/hs-bibutils/
 
 synopsis:           Haskell bindings to bibutils, the bibliography
@@ -14,7 +14,7 @@ description:        Haskell bindings to Chris Putnam's bibutils, a
                     the LICENSE file for details.
                     .
                     For more details about bibutils, please check:
-		    <http://www.scripps.edu/~cdputnam/software/bibutils/>.
+		    <http://sourceforge.net/p/bibutils/home/Bibutils/>.
                     .
                     The original API documentation is available here:
                     <http://www.scripps.edu/~cdputnam/software/bibutils/library_specs.html>.
