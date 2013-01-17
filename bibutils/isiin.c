@@ -1,9 +1,9 @@
 /*
  * isiin.c
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Program and source code released under the GPL
+ * Program and source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -168,21 +168,24 @@ isiin_processf( fields *isiin, char *p, char *filename, long nref )
 	return 1;
 }
 
-static void
+static int
 keyword_process( fields *info, char *newtag, char *p, int level )
 {
 	newstr keyword;
+	int ok;
 	newstr_init( &keyword );
 	while ( *p ) {
 		p = skip_ws( p );
 		while ( *p && *p!=';' ) newstr_addchar( &keyword, *p++ );
 		if ( keyword.len ) {
-			fields_add( info, newtag, keyword.data, level );
+			ok = fields_add( info, newtag, keyword.data, level );
+			if ( !ok ) return 0;
 			newstr_empty( &keyword );
 		}
 		if ( *p==';' ) p++;
 	}
 	newstr_free( &keyword );
+	return 1;
 }
 
 int
@@ -201,11 +204,11 @@ isiin_typef( fields *isiin, char *filename, int nref, param *p, variants *all, i
 }
 
 /* pull off authors first--use AF before AU */
-static void
+static int
 isiin_addauthors( fields *isiin, fields *info, int reftype, variants *all, int nall, list *asis, list *corps )
 {
 	char *newtag, *authortype, use_af[]="AF", use_au[]="AU";
-	int level, i, n, has_af=0, has_au=0, nfields;
+	int level, i, n, has_af=0, has_au=0, nfields, ok;
 	newstr *t, *d;
 
 	nfields = fields_num( isiin );
@@ -224,8 +227,10 @@ isiin_addauthors( fields *isiin, fields *info, int reftype, variants *all, int n
 		n = process_findoldtag( authortype, reftype, all, nall );
 		level = ((all[reftype]).tags[n]).level;
 		newtag = all[reftype].tags[n].newstr;
-		name_add( info, newtag, d->data, level, asis, corps );
+		ok = name_add( info, newtag, d->data, level, asis, corps );
+		if ( !ok ) return 0;
 	}
+	return 1;
 }
 
 static void
@@ -237,14 +242,15 @@ isiin_report_notag( param *p, char *tag )
 	}
 }
 
-void
+int
 isiin_convertf( fields *isiin, fields *info, int reftype, param *p, variants *all, int nall )
 {
-	int process, level, i, n, nfields;
+	int process, level, i, n, nfields, ok;
 	newstr *t, *d;
 	char *newtag;
 
-	isiin_addauthors( isiin, info, reftype, all, nall, &(p->asis), &(p->corps) );
+	ok = isiin_addauthors( isiin, info, reftype, all, nall, &(p->asis), &(p->corps) );
+	if ( !ok ) return BIBL_ERR_MEMERR;
 
 	nfields = fields_num( isiin );
 	for ( i=0; i<nfields; ++i ) {
@@ -253,45 +259,51 @@ isiin_convertf( fields *isiin, fields *info, int reftype, param *p, variants *al
 		if ( !strcasecmp( t->data, "AU" ) || !strcasecmp( t->data, "AF" ) )
 			continue;
 
-		n = process_findoldtag( t->data, reftype, all, nall );
+		n = translate_oldtag( t->data, reftype, all, nall, &process, &level, &newtag );
 		if ( n==-1 ) {
 			isiin_report_notag( p, t->data );
 			continue;
 		}
+		if ( process == ALWAYS ) continue; /* add in core code */
 
 		d = fields_value( isiin, i, FIELDS_STRP );
-		process = ((all[reftype]).tags[n]).processingtype;
-		level = ((all[reftype]).tags[n]).level;
-		newtag = all[reftype].tags[n].newstr;
 
 		switch ( process ) {
 
 		case SIMPLE:
-			fields_add( info, newtag, d->data, level );
+			ok = fields_add( info, newtag, d->data, level );
 			break;
 
 		case DATE:
-			fields_add( info, newtag, d->data, level );
+			ok = fields_add( info, newtag, d->data, level );
 			break;
 
 		case PERSON:
-			name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
+			ok = name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
 			break;
 
 		case TITLE:
-			title_process( info, newtag, d->data, level, p->nosplittitle );
+			ok = title_process( info, newtag, d->data, level, p->nosplittitle );
 			break;
 
 		case KEYWORD:
-			keyword_process( info, newtag, d->data, level );
+			ok = keyword_process( info, newtag, d->data, level );
 			break;
 
 		case SERIALNO:
-			addsn( info, d->data, level );
+			ok = addsn( info, d->data, level );
+			break;
+
+		default:
+			ok = 1;
 			break;
 
 		}
 
 		/* do nothing if process==TYPE || process==ALWAYS */
+
+		if ( !ok ) return BIBL_ERR_MEMERR;
 	}
+
+	return BIBL_OK;
 }

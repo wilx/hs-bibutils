@@ -1,8 +1,8 @@
 /* strsearch.c
  *
- * Copyright (c) Chris Putnam 1995-2012
+ * Copyright (c) Chris Putnam 1995-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  * strsearch() locates a case-independent substring
  *    e.g. a case-independent version of strstr()
@@ -14,8 +14,8 @@
  *
  * strsearch returns haystack when needle is empty as per strstr()
  * conventions
+ *
  */
-
 #include <stdio.h>
 #include <ctype.h>
 #include "strsearch.h"
@@ -28,7 +28,7 @@ char *strsearch (const char *haystack, const char *needle)
 	if ( !(*needle) ) returnptr = (char *) haystack;
 
 	while (*(haystack+pos) && returnptr==NULL) {
-		if ( toupper(*(haystack+pos)) == toupper(*(needle+pos)) )
+		if ( toupper((unsigned char)*(haystack+pos)) == toupper((unsigned char)*(needle+pos)) )
 			pos++;
 		else {
 			pos = 0;

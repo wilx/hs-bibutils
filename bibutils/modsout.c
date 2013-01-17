@@ -1,9 +1,9 @@
 /*
  * modsout.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -126,14 +126,14 @@ find_alltags( fields *f, convert *parts, int nparts, int level )
 static void
 output_title( fields *f, FILE *outptr, int level )
 {
-	int ttl = fields_find( f, "TITLE", level );
+	int ttl    = fields_find( f, "TITLE", level );
 	int subttl = fields_find( f, "SUBTITLE", level );
 	int shrttl = fields_find( f, "SHORTTITLE", level );
 
 	output_tab1( outptr, level, "<titleInfo>\n" );
 	output_fill2( outptr, increment_level(level,1), "title", f, ttl, 1);
 	output_fill2( outptr, increment_level(level,1), "subTitle", f, subttl, 1 );
-	if ( ttl==-1 && subttl==-1 ) 
+	if ( ttl==-1 && subttl==-1 )
 		output_tab1( outptr, increment_level(level,1), "<title/>\n" );
 	output_tab1( outptr, level, "</titleInfo>\n" );
 
@@ -161,10 +161,10 @@ output_personalstart( FILE *outptr, int level )
 static void
 output_name( FILE *outptr, char *p, int level )
 {
-	newstr family, part;
+	newstr family, part, suffix;
 	int n=0;
 
-	newstrs_init( &family, &part, NULL );
+	newstrs_init( &family, &part, &suffix, NULL );
 
 	while ( *p && *p!='|' ) newstr_addchar( &family, *p++ );
 	if ( *p=='|' ) p++;
@@ -184,6 +184,10 @@ output_name( FILE *outptr, char *p, int level )
 		}
 		if ( *p=='|' ) {
 			p++;
+			if ( *p=='|' ) {
+				p++;
+				while ( *p && *p!='|' ) newstr_addchar( &suffix, *p++ );
+			}
 			newstr_empty( &part );
 		}
 	}
@@ -194,7 +198,13 @@ output_name( FILE *outptr, char *p, int level )
 				family.data, 1 );
 	}
 
-	newstrs_free( &part, &family, NULL );
+	if ( suffix.len ) {
+		if ( n==0 ) output_personalstart( outptr, level );
+		output_tab4( outptr, increment_level(level,1), "namePart", "type", "suffix",
+				suffix.data, 1 );
+	}
+
+	newstrs_free( &part, &family, &suffix, NULL );
 }
 
 
@@ -218,29 +228,40 @@ static void
 output_names( fields *f, FILE *outptr, int level )
 {
 	convert   names[] = {
-	  { "author",        "AUTHOR",             MARC_AUTHORITY },
-	  { "writer",        "WRITER",             MARC_AUTHORITY },
-	  { "artist",        "ARTIST",             MARC_AUTHORITY },
-	  { "cartographer",  "CARTOGRAPHER",       MARC_AUTHORITY },
-	  { "commentator",   "COMMENTATOR",        NO_AUTHORITY   },
-	  { "degree grantor","DEGREEGRANTOR",      MARC_AUTHORITY },
-	  { "director",      "DIRECTOR",           MARC_AUTHORITY },
-	  { "editor",        "EDITOR",             MARC_AUTHORITY },
-	  { "inventor",      "INVENTOR",           MARC_AUTHORITY },
-	  { "organizer of meeting","ORGANIZER",    MARC_AUTHORITY },
-	  { "patent holder", "ASSIGNEE",           MARC_AUTHORITY },
-	  { "performer",     "PERFORMER",          MARC_AUTHORITY },
-	  { "recipient",     "RECIPIENT",          MARC_AUTHORITY },
-	  { "redactor",      "REDACTOR",           NO_AUTHORITY   },
-	  { "reporter",      "REPORTER",           NO_AUTHORITY   },
-	  { "translator",    "TRANSLATOR",         MARC_AUTHORITY },
-	  { "event",         "EVENT",              NO_AUTHORITY   },
-	  { "author",        "2ND_AUTHOR",         MARC_AUTHORITY },
-	  { "author",        "3RD_AUTHOR",         MARC_AUTHORITY },
-	  { "author",        "SUB_AUTHOR",         MARC_AUTHORITY },
-	  { "author",        "COMMITTEE",          MARC_AUTHORITY },
-	  { "author",        "COURT",              MARC_AUTHORITY },
-	  { "author",        "LEGISLATIVEBODY",    MARC_AUTHORITY }
+	  { "author",                              "AUTHOR",          MARC_AUTHORITY },
+	  { "writer",                              "WRITER",          MARC_AUTHORITY },
+	  { "artist",                              "ARTIST",          MARC_AUTHORITY },
+	  { "cartographer",                        "CARTOGRAPHER",    MARC_AUTHORITY },
+	  { "commentator",                         "COMMENTATOR",     NO_AUTHORITY   },
+	  { "degree grantor",                      "DEGREEGRANTOR",   MARC_AUTHORITY },
+	  { "director",                            "DIRECTOR",        MARC_AUTHORITY },
+	  { "editor",                              "EDITOR",          MARC_AUTHORITY },
+	  { "inventor",                            "INVENTOR",        MARC_AUTHORITY },
+	  { "organizer of meeting",                "ORGANIZER",       MARC_AUTHORITY },
+	  { "patent holder",                       "ASSIGNEE",        MARC_AUTHORITY },
+	  { "performer",                           "PERFORMER",       MARC_AUTHORITY },
+	  { "recipient",                           "RECIPIENT",       MARC_AUTHORITY },
+	  { "redactor",                            "REDACTOR",        NO_AUTHORITY   },
+	  { "reporter",                            "REPORTER",        NO_AUTHORITY   },
+	  { "translator",                          "TRANSLATOR",      MARC_AUTHORITY },
+	  { "event",                               "EVENT",           NO_AUTHORITY   },
+	  { "sponsor",                             "SPONSOR",         MARC_AUTHORITY },
+	  { "author",                              "2ND_AUTHOR",      MARC_AUTHORITY },
+	  { "author",                              "3RD_AUTHOR",      MARC_AUTHORITY },
+	  { "author",                              "SUB_AUTHOR",      MARC_AUTHORITY },
+	  { "author",                              "COMMITTEE",       MARC_AUTHORITY },
+	  { "author",                              "COURT",           MARC_AUTHORITY },
+	  { "author",                              "LEGISLATIVEBODY", MARC_AUTHORITY },
+	  { "annotator",                           "ANNOTATOR",       MARC_AUTHORITY },
+	  { "commentator",                         "COMMENTATOR",     MARC_AUTHORITY },
+	  { "author of introduction, etc.",        "INTROAUTHOR",     MARC_AUTHORITY },
+	  { "author of afterword, colophon, etc.", "AFTERAUTHOR",     MARC_AUTHORITY },
+	  { "compiler",                            "COMPILER",        MARC_AUTHORITY },
+	  { "collaborator",                        "COLLABORATOR",    MARC_AUTHORITY },
+	  { "redactor",                            "REDACTOR",        MARC_AUTHORITY },
+	  { "director",                            "DIRECTOR",        MARC_AUTHORITY },
+	  { "producer",                            "PRODUCER",        MARC_AUTHORITY },
+	  { "performer",                           "PERFORMER",       MARC_AUTHORITY },
 	};
 	int i, n, nfields, ntypes = sizeof( names ) / sizeof( convert );
 	int f_asis, f_corp, f_conf;
@@ -290,7 +311,7 @@ output_names( fields *f, FILE *outptr, int level )
 }
 
 static int
-output_finddateissued( fields *f, int level, int pos[3] )
+output_finddateissued( fields *f, int level, int pos[] )
 {
 	char      *src_names[] = { "YEAR", "MONTH", "DAY", "DATE" };
 	char      *alt_names[] = { "PARTYEAR", "PARTMONTH", "PARTDAY", "PARTDATE" };
@@ -557,7 +578,8 @@ output_partelement( fields *f, FILE *outptr, int level, int wrote_header )
 		{ "session",         "SESSION",         -1 },
 		{ "articlenumber",   "ARTICLENUMBER",   -1 },
 		{ "part",            "PART",            -1 },
-		{ "chapter",         "CHAPTER",         -1 }
+		{ "chapter",         "CHAPTER",         -1 },
+		{ "report number",   "REPORTNUMBER",    -1 },
 	};
 	int i, nparts = sizeof( parts ) / sizeof( convert ), n;
 

@@ -3,9 +3,9 @@
  *
  * convert between latex special chars and unicode
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -28,7 +28,9 @@ static struct latex_chars latex_chars[] = {
    { 125, "\\}", "{\\textbraceright}", "\\textbraceright" }, /* Right Curly Bracket */
    {  95, "\\_",     "", ""        },      /* Underscore alone indicates subscript */
    { 176, "{\\textdegree}", "\\textdegree", "^\\circ" }, /* Degree sign */
-   {  32, "~",       "\\ ", ""        },   /* "sticky" space */
+/* fix sticky spaces in bibtex token cleaning--allows tokens to be parsed properly */
+/*   {  32, "~",       "\\ ", ""        }, */   /* "sticky" space */
+   {  32, "\\ ",     "",   ""           },      /* escaping the space is used to avoid extra space after periods */
    { 126, "{\\textasciitilde}", "\\textasciitilde", "\\~{}" }, /* Tilde in latex */
                                  /* This is a cheat, should use "\verb" */
                                  /* Need same for ^ character */
@@ -71,14 +73,16 @@ static struct latex_chars latex_chars[] = {
    { 231, "{\\c{c}}","\\c{c}",  ""      }, /*               with cedilla*/
    { 263, "{\\'{c}}","\\'{c}",  "\\'c"  }, /*               with acute */
    { 265, "{\\^{c}}","\\^{c}",  "\\^c"  }, /*               with circumflex */
-   { 265, "{\\.{c}}","\\.{c}",  "\\.c"  }, /*               with dot above */
+   { 267, "{\\.{c}}","\\.{c}",  "\\.c"  }, /*               with dot above */
    { 269, "{\\v{c}}","\\v{c}",  "\\v c" }, /*               with caron (hacek) */
 
                                            /* Latin Capital D */
    { 270, "{\\v{D}}","\\v{D}",  "\\v D" }, /*               with caron */
+   { 272, "{\\DJ}",  "",        ""      }, /*               with stroke */
 
                                            /* Latin Small d */
-   { 270, "{\\v{d}}","\\v{d}",  "\\v d" }, /*               with caron */
+   { 271, "{\\v{d}}","\\v{d}",  "\\v d" }, /*               with caron */
+   { 273, "{\\dj}",  "",        ""      }, /*               with stroke */
 
                                            /* Latin Capital E */
    { 200, "{\\`E}",  "\\`{E}",  "\\`E"  }, /*               with grave */
@@ -120,9 +124,11 @@ static struct latex_chars latex_chars[] = {
 
                                            /* Latin Capital H */
    { 292, "{\\^{H}}","\\^{H}",  "\\^H"  }, /*               with circumflex */
+/* { 294, "",        "",        ""      },*//*              with stroke */
 
                                            /* Latin Capital h */
    { 293, "{\\^{h}}","\\^{h}",  "\\^h"  }, /*               with circumflex */
+/* { 295, "",        "",        ""      },*//*              with stroke */
  
                                            /* Latin Capital I */
    { 204, "{\\`I}",  "\\`{I}",  "\\`I"  }, /*               with grave */
@@ -133,26 +139,28 @@ static struct latex_chars latex_chars[] = {
    { 298, "{\\={I}}","\\={I}",  "\\=I"  }, /*               with macron */
    { 300, "{\\u{I}}","\\u{I}",  "\\u I" }, /*               with breve */
    { 302, "{\\k{I}}","\\k{I}",  "\\k I" }, /*               with ogonek */
-   { 302, "{\\.{I}}","\\.{I}",  "\\. I" }, /*               with dot above */
-   { 302, "{\\v{I}}","\\v{I}",  "\\v I" }, /*               with caron */
+   { 304, "{\\.{I}}","\\.{I}",  "\\. I" }, /*               with dot above */
+   { 463, "{\\v{I}}","\\v{I}",  "\\v I" }, /*               with caron */
 
                                            /* Latin Small i */
-   { 299, "{\\={\\i}}", "\\={\\i}", "\\=\\i{}"}, /*         with macron */
    { 236, "{\\`i}",  "\\`{i}",  "\\`i"  }, /*               with grave */
    { 237, "{\\'i}",  "\\'{i}",  "\\'i"  }, /*               with acute */
    { 238, "{\\^i}",  "\\^{i}",  "\\^i"  }, /*               with circumflex */
    { 239, "{\\\"i}", "\\\"{i}", "\\\"i" }, /*               with diuresis */
-   { 303, "{\\k{i}}","\\k{i}",  "\\k i" }, /*               with ogonek */
-                                           /* Latex \i has no dot on "i"*/
    { 236, "{\\`\\i}",  "\\`{\\i}",  "\\`\\i"  }, /*         with grave */
    { 237, "{\\'\\i}",  "\\'{\\i}",  "\\'\\i"  }, /*         with acute */
    { 238, "{\\^\\i}",  "\\^{\\i}",  "\\^\\i"  }, /*         with circumflex */
    { 239, "{\\\"\\i}", "\\\"{\\i}", "\\\"\\i" }, /*         with diuresis */
    { 297, "{\\~{\\i}}","\\~{\\i}",  "\\~\\i{}"}, /*         with tilde */
-   { 299, "{\\={\\i}}","\\={\\i}",  "\\=\\i{}"}, /*         with tilde */
+   { 299, "{\\={\\i}}", "\\={\\i}", "\\=\\i{}"}, /*         with macron */
    { 301, "{\\u{\\i}}","\\u{\\i}",  "\\u\\i{}"}, /*         with breve */
+   { 303, "{\\k{i}}","\\k{i}",  "\\k i" }, /*               with ogonek */
+                                           /* Latex \i has no dot on "i"*/
    { 305, "{\\i}",     "\\i{}",     ""        }, /*         without dot above */
    { 464, "{\\v \\i{}}", "\\v \\i{}", ""      }, /*         with caron */
+
+/*   { 306, "",  "",    ""      },*/ /* Latin Capital IJ */
+/*   { 307, ""  "",    ""       },*/ /* Latin Small ij */
 
                                            /* Latin Capital J */
    { 308, "{\\^{J}}","\\^{J}",  "\\^J"  }, /*                with circumflex */
@@ -173,14 +181,14 @@ static struct latex_chars latex_chars[] = {
    { 315, "{\\c{L}}","\\c{L}",  "\\c L" }, /*               with cedilla */
    { 317, "{\\v{L}}","\\v{l}",  "\\v L" }, /*               with caron */
    { 319, "{L\\hspace{-0.35em}$\\cdot$}","L\\hspace{-0.35em}$\\cdot$", "" }, /*               with middle dot */
-   { 321, "{\\L{}}", "\\L{}",   ""      }, /*               with stroke */
+   { 321, "{\\L}",   "{\\L{}}", "\\L{}" }, /*               with stroke */
 
                                            /* Latin Small l */
    { 314, "{\\'{l}}","\\'{l}",  "\\'l"  }, /*               with acute */
    { 316, "{\\c{l}}","\\c{l}",  "\\c l" }, /*               with cedilla */
    { 318, "{\\v{l}}","\\v{l}",  "\\v l" }, /*               with caron */
-   { 318, "{l$\\cdot$}","l$\\cdot$", "" }, /*               with middle dot */
-   { 322, "{\\l{}}", "\\l{}",   ""      }, /*               with stroke */
+   { 320, "{l$\\cdot$}","l$\\cdot$", "" }, /*               with middle dot */
+   { 322, "{\\l}",   "{\\l{}}", "\\l{}" }, /*               with stroke */
 
                                            /* Latin Capital N */
    { 209, "{\\~{N}}","\\~{N}",  "\\~N"  }, /*               with tilde */
@@ -249,10 +257,12 @@ static struct latex_chars latex_chars[] = {
                                            /* Latin Capital T */
    { 354, "{\\c{T}}", "\\c{T}", ""      }, /*               with cedilla */
    { 356, "{\\v{T}}", "\\v{T}", ""      }, /*               with caron */
+/* { 358, "",         "",       ""      },*//*               with stroke */
 
                                            /* Latin Small t */
    { 355, "{\\c{t}}", "\\c{t}", ""      }, /*               with cedilla */
    { 357, "{\\v{t}}", "\\v{t}", ""      }, /*               with caron */
+/* { 359, "",         "",       ""      },*//*               with stroke */
 
    { 223, "{\\ss}",  "\\ss",    ""      }, /* German sz ligature, "sharp s" */
 

@@ -1,9 +1,9 @@
 /*
  * fields.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -285,12 +285,19 @@ fields_setused( fields *f, int n )
 		f->used[n] = 1;
 }
 
-void
+/* fields_replace_or_add()
+ *
+ * return 1 on success, 0 on memory error
+ */
+int
 fields_replace_or_add( fields *f, char *tag, char *data, int level )
 {
 	int n = fields_find( f, tag, level );
-	if ( n==-1 ) fields_add( f, tag, data, level );
-	else newstr_strcpy( &(f->data[n]), data );
+	if ( n==-1 ) return fields_add( f, tag, data, level );
+	else {
+		newstr_strcpy( &(f->data[n]), data );
+		return 1;
+	}
 }
 
 char *fields_null_value = "\0";

@@ -3,311 +3,434 @@
  *
  * mangle names w/ and w/o commas
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include "utf8.h"
+#include "unicode.h"
 #include "is_ws.h"
 #include "newstr.h"
 #include "fields.h"
 #include "list.h"
+#include "intlist.h"
 #include "name.h"
 
-static void
-check_case( char *start, char *end, int *upper, int *lower )
-{
-	int u = 0, l = 0;
-	char *p = start;
-	while ( p < end ) {
-		if ( islower( *p ) ) l = 1;
-		else if ( isupper( *p ) ) u = 1;
-		p++;
-	}
-	*upper = u;
-	*lower = l;
-}
-
-static int
-should_split( char *last_start, char *last_end, char *first_start, 
-	char *first_end )
-{
-	int upperlast, lowerlast, upperfirst, lowerfirst;
-        check_case( first_start, first_end, &upperfirst, &lowerfirst );
-        check_case( last_start,  last_end,  &upperlast,  &lowerlast );
-        if ( ( upperlast && lowerlast ) && ( upperfirst && !lowerfirst ) )
-                return 1;
-        else return 0;
-}
-
-/* name_addmultibytechar
- * 
- * Add character to newstring s starting at pointer p.
+/* name_build_withcomma()
  *
- * Handles the case for multibyte Unicode chars (with high bits
- * set).  Do not progress past the lastp barrier.
- *
- * Since we can progress more than one byte in the string,
- * return the properly updated pointer p.
+ * reconstruct parsed names in format: 'family|given|given||suffix'
+ * to 'family suffix, given given
  */
-static char *
-name_addmultibytechar( newstr *s, char *p, char *lastp )
+void
+name_build_withcomma( newstr *s, char *p )
 {
-	if ( ! ((*p) & 128) ) {
-		newstr_addchar( s, *p );
-		p++;
-	} else {
-		while ( p!=lastp && ((*p) & 128) ) {
-			newstr_addchar( s, *p );
-			p++;
-		}
-	}
-	return p;
-}
+	int nseps = 0, nch;
+	char *suffix, *stopat;
 
-static void
-name_givennames_nosplit( char *start_first, char *end_first, newstr *outname )
-{
-	char *p;
-	p = start_first;
-	while ( p!=end_first ) {
-		if ( !is_ws( *p ) && *p!='.' ) {
-			p = name_addmultibytechar( outname, p, end_first );
-		} else {
-			if ( *p=='.' ) p++;
-			while ( p!=end_first && is_ws( *p ) ) p++;
-			if ( p!=end_first )
-				newstr_addchar( outname, '|' );
-		}
-	}
-}
+	newstr_empty( s );
 
-static void
-name_givennames_split( char *start_first, char *end_first, newstr *outname )
-{
-	int n = 0;
-	char *p;
-	p = start_first;
-	while ( p!=end_first ) {
-		if ( !is_ws( *p ) ) {
-			if ( *p=='.' && *(p+1)=='-' ) {
-				newstr_strcat( outname, ".-" );
-				p++; p++;
-				p = skip_ws( p );
-				p = name_addmultibytechar( outname, p, end_first );
-				newstr_addchar( outname, '.' );
-				n++;
-			} else if ( *p=='.' ) {
-				p++;
-			} else if ( *p=='-' ) {
-				newstr_strcat( outname, ".-" );
-				p++;
-				p = skip_ws( p );
-				p = name_addmultibytechar( outname, p, end_first );
-				newstr_addchar( outname, '.' );
-				n++;
-			} else {
-				if ( n ) newstr_addchar( outname, '|' );
-				p = name_addmultibytechar( outname, p, end_first );
-				n++;
+	suffix = strstr( p, "||" );
+	if ( suffix ) stopat = suffix;
+	else stopat = strchr( p, '\0' );
+
+	 while ( p != stopat ) {
+		nch = 0;
+		if ( nseps==1 ) {
+			if ( suffix ) {
+				newstr_addchar( s, ' ' );
+				newstr_strcat( s, suffix+2 );
 			}
-		} else {
-			while ( p!=end_first && is_ws( *p ) ) p++;
+			newstr_addchar( s, ',' );
 		}
-	}
-}
-
-static void
-name_givennames( char *first_start, char *first_end, char *last_start,
-	char *last_end, newstr *outname )
-{
-	int splitfirst;
-        newstr_addchar( outname, '|' );
-	splitfirst = should_split( last_start, last_end, first_start, 
-		first_end );
-	if ( !splitfirst )
-		name_givennames_nosplit( first_start, first_end, outname );
-	else 
-		name_givennames_split( first_start, first_end, outname );
-}
-
-static char *
-string_end( char *p )
-{
-	while ( *p ) p++;
-	return p;
-}
-
-
-/* name_nocomma()
- *
- * names in the format "H. F. Author"
- */
-void
-name_nocomma( char *start, newstr *outname )
-{
-        char *p, *last_start, *last_end, *first_start, *first_end;
-
-        /** Last name **/
-	p = last_end = string_end( start );
-	while ( p!=start && !is_ws( *p ) ) p--;
-	if ( !strcasecmp( p+1, "Jr." ) || !strcasecmp( p+1, "III" ) ) {
-		while ( p!=start && is_ws( *p ) ) p--;
-		while ( p!=start && !is_ws( *p ) ) p--;
-	}
-	last_start = p = skip_ws( p );
-        while ( p!=last_end )
-                newstr_addchar( outname, *p++ );
-
-        /** Given names **/
-        if ( start!=last_start ) {
-		first_start = skip_ws( start );
-		first_end = last_start;
-		while ( first_end!=first_start && !is_ws( *first_end ) )
-			first_end--;
-		name_givennames( first_start, last_start, last_start, last_end, 
-			outname );
-	}
-}
-
-/*
- * name_comma()
- *
- * names in the format "Author, H.F.", w/comma
- */
-void
-name_comma( char *p, newstr *outname )
-{
-	char *start_first, *end_first, *start_last, *end_last;
-
-	/** Last name **/
-	start_last = end_last = skip_ws( p );
-	while ( *p && ( *p!=',' ) ) {
-		newstr_addchar( outname, *p++ );
-		end_last = p;
-	}
-
-	/** Given names **/
-	if ( *p==',' ) p++;
-	start_first = skip_ws( p );
-	if ( *start_first ) {
-		end_first = string_end( start_first );
-		name_givennames( start_first, end_first, start_last, end_last, 
-				outname );
-	}
-}
-
-/* Determine if name is of type "corporate" or if it
- * should be added "as-is"; both should not be mangled.
- *
- * First check tag for prefixes ":CORP" and ":ASIS",
- * then optionally check lists, bailing if "corporate"
- * type can be identified.
- *
- * "corporate" is the same as "as-is" plus getting 
- * special MODS treatment, so "corporate" type takes
- * priority
- */
-static void
-name_determine_flags( int *ctf, int *clf, int *atf, int *alf, char *tag, char *data, list *asis, list *corps )
-{
-	int corp_tag_flag = 0, corp_list_flag = 0;
-	int asis_tag_flag = 0, asis_list_flag = 0;
-
-	if ( strstr( tag, ":CORP" ) ) corp_tag_flag = 1;
-	else if ( list_find( corps, data ) != -1 )
-		corp_list_flag = 1;
-
-	if ( strstr( tag, ":ASIS" ) ) {
-		asis_tag_flag = 1;
-		if ( list_find( corps, data ) != -1 )
-			corp_list_flag = 1;
-	} else {
-		if ( list_find( corps, data ) != -1 )
-			corp_list_flag = 1;
-		else if ( list_find( asis, data ) != -1 )
-			asis_list_flag = 1;
-	}
-
-	*ctf = corp_tag_flag;
-	*clf = corp_list_flag;
-	*atf = asis_tag_flag;
-	*alf = asis_list_flag;
-}
-
-/*
- * return 1 on a nomangle with a newtag value
- * return 0 on a name to mangle
- */
-static int
-name_nomangle( char *tag, char *data, newstr *newtag, list *asis, list *corps )
-{
-	int corp_tag_flag, corp_list_flag;
-	int asis_tag_flag, asis_list_flag;
-	name_determine_flags( &corp_tag_flag, &corp_list_flag,
-		&asis_tag_flag, &asis_list_flag, tag, data, asis, corps );
-	if ( corp_tag_flag || corp_list_flag || asis_tag_flag || asis_list_flag ) {
-		newstr_strcpy( newtag, tag );
-		if ( corp_tag_flag ) { /* do nothing else */
-		} else if ( corp_list_flag && !asis_tag_flag ) {
-			newstr_strcat( newtag, ":CORP" );
-		} else if ( corp_list_flag && asis_tag_flag ) {
-			newstr_findreplace( newtag, ":ASIS", ":CORP" );
-		} else if ( asis_tag_flag ) { /* do nothing else */
-		} else if ( asis_list_flag ) {
-			newstr_strcat( newtag, ":ASIS" );
+		if ( nseps ) newstr_addchar( s, ' ' );
+		while ( p!=stopat && *p!='|' ) {
+			newstr_addchar( s, *p++ );
+			nch++;
 		}
+		if ( p!=stopat && *p=='|' ) p++;
+		if ( nseps!=0 && nch==1 ) newstr_addchar( s, '.' );
+		nseps++;
+	}
+}
+
+/* name_findetal()
+ *
+ * Returns number of final tokens to be skipped in processing
+ * of name lists.
+ */
+int
+name_findetal( list *tokens )
+{
+	newstr *s1, *s2;
+
+	if ( tokens->n==0 ) return 0;
+
+	/* ...check last entry for full 'et al.' or variant */
+	s2 = list_get( tokens, tokens->n - 1 );
+	if ( !strcasecmp( s2->data, "et alia" ) ||
+	     !strcasecmp( s2->data, "et al." )  ||
+	     !strcasecmp( s2->data, "et al.," )  ||
+	     !strcasecmp( s2->data, "et al" )   ||
+	     !strcasecmp( s2->data, "etalia" )  ||
+	     !strcasecmp( s2->data, "etal." ) ||
+	     !strcasecmp( s2->data, "etal" ) ) {
 		return 1;
 	}
-	else return 0;
+
+	if ( tokens->n==1 ) return 0;
+
+	/* ...check last two entries for full 'et' and 'al.' */
+	s1 = list_get( tokens, tokens->n - 2 );
+	if ( !strcasecmp( s1->data, "et" ) ) {
+		if ( !strcasecmp( s2->data, "alia" ) ||
+		     !strcasecmp( s2->data, "al." )  ||
+		     !strcasecmp( s2->data, "al.," )  ||
+		     !strcasecmp( s2->data, "al" ) ) {
+			return 2;
+		}
+	}
+
+	return 0;
 }
 
-static void
-name_person( fields *info, char *tag, int level, newstr *inname )
+#define WITHCOMMA (1)
+#define JUNIOR    (2)
+#define SENIOR    (4)
+#define THIRD     (8)
+#define FOURTH    (16)
+
+typedef struct {
+	char *s;
+	unsigned short value;
+} suffix_value_t;
+
+static int
+identify_suffix( char *p )
 {
-	newstr outname;
-	newstr_init( &outname );
-	if ( strchr( inname->data, ',' ) ) 
-		name_comma( inname->data, &outname );
+	suffix_value_t suffixes[] = {
+		{ "Jr."   ,   JUNIOR              },
+		{ "Jr"    ,   JUNIOR              },
+		{ "Jr.,"  ,   JUNIOR | WITHCOMMA },
+		{ "Jr,"   ,   JUNIOR | WITHCOMMA },
+		{ "Sr."   ,   SENIOR              },
+		{ "Sr"    ,   SENIOR              },
+		{ "Sr.,"  ,   SENIOR | WITHCOMMA },
+		{ "Sr,"   ,   SENIOR | WITHCOMMA },
+		{ "III"   ,   THIRD               },
+		{ "III,"  ,   THIRD  | WITHCOMMA },
+		{ "IV"    ,   FOURTH              },
+		{ "IV,"   ,   FOURTH | WITHCOMMA },
+	};
+	int i, nsuffixes = sizeof( suffixes ) / sizeof( suffixes[0] );
+	for ( i=0; i<nsuffixes; ++i ) {
+		if ( !strcmp( p, suffixes[i].s ) )
+			return suffixes[i].value;
+	}
+	return 0;
+}
+
+static int
+has_suffix( list *tokens, int begin, int end, int *suffixpos )
+{
+	int i, ret;
+	newstr *s;
+
+	/* ...check last element, e.g. "H. F. Author, Sr." */
+	s = list_get( tokens, end - 1 );
+	ret = identify_suffix( s->data );
+	if ( ret ) {
+		*suffixpos = end - 1;
+		return ret;
+	}
+
+	/* ...try to find one after a comma, e.g. "Author, Sr., H. F." */
+	for ( i=begin; i<end-1; ++i ) {
+		s = list_get( tokens, i );
+		if ( s->len && s->data[ s->len - 1 ]==',' ) {
+			s = list_get( tokens, i+1 );
+			ret = identify_suffix( s->data );
+			if ( ret ) {
+				*suffixpos = i+1;
+				return ret;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int
+add_given_split( newstr *name, newstr *s )
+{
+	unsigned int unicode_char;
+	unsigned int pos = 0;
+	char utf8s[7];
+	while ( pos < s->len ) {
+		unicode_char = utf8_decode( s->data, &pos );
+		if ( is_ws( (char) unicode_char ) ) continue;
+		else if ( unicode_char==(unsigned int)'.' ) {
+			if ( s->data[pos]=='-' ) {
+				newstr_strcat( name, ".-" );
+				pos += 1;
+				unicode_char = utf8_decode( s->data, &pos );
+				utf8_encode_str( unicode_char, utf8s );
+				newstr_strcat( name, utf8s );
+				newstr_addchar( name, '.' );
+			}
+		} else if ( unicode_char==(unsigned int)'-' ) {
+			newstr_strcat( name, ".-" );
+			unicode_char = utf8_decode( s->data, &pos );
+			utf8_encode_str( unicode_char, utf8s );
+			newstr_strcat( name, utf8s );
+			newstr_addchar( name, '.' );
+		} else if ( unicode_char==(unsigned int)',' ) { /* nothing */
+		} else {
+			newstr_addchar( name, '|' );
+			utf8_encode_str( unicode_char, utf8s );
+			newstr_strcat( name, utf8s );
+		}
+	}
+	return 1;
+}
+
+static int
+name_multielement_nocomma( intlist *given, intlist *family, list *tokens, int begin, int end, int suffixpos )
+{
+	int i;
+
+	/* ...family name */
+	if ( end-1 != suffixpos )
+		intlist_add( family, end-1 );
 	else
-		name_nocomma( inname->data, &outname );
-	if ( outname.len!=0 )
-		fields_add( info, tag, outname.data, level );
-	newstr_free( &outname );
+		intlist_add( family, end-2 );
+
+	/* ...given names */
+	for ( i=begin; i<end-1; ++i ) {
+		if ( i==suffixpos || i==suffixpos-1 ) continue;
+		intlist_add( given, i );
+	}
+
+	return 1;
+}
+
+static int
+name_multielement_comma( intlist *given, intlist *family, list *tokens, int begin, int end, int comma, int suffixpos )
+{
+	newstr *s;
+	int i;
+
+	/* ...family names */
+	for ( i=begin; i<comma; ++i ) {
+		if ( i==suffixpos ) continue;
+		intlist_add( family, i );
+	}
+	s = list_get( tokens, comma );
+	newstr_trimend( s, 1 ); /* remove comma */
+	intlist_add( family, comma );
+
+	/* ...given names */
+	for ( i=comma+1; i<end; ++i ) {
+		if ( i==suffixpos ) continue;
+		intlist_add( given, i );
+	}
+
+	return 1;
+}
+
+static int
+name_mutlielement_build( newstr *name, intlist *given, intlist *family, list *tokens )
+{
+	unsigned short case_given = 0, case_family = 0, should_split = 0;
+	newstr *s;
+	int i, m;
+
+	/* ...copy and analyze family name */
+	for ( i=0; i<family->n; ++i ) {
+		m = intlist_get( family, i );
+		s = list_get( tokens, m );
+		if ( i ) newstr_addchar( name, ' '  );
+		newstr_newstrcat( name, s );
+		case_family |= unicode_utf8_classify_newstr( s );
+	}
+
+	/* ...check given name case */
+	for ( i=0; i<given->n; ++i ) {
+		m = intlist_get( given, i );
+		s = list_get( tokens, m );
+		case_given |= unicode_utf8_classify_newstr( s );
+	}
+
+	if ( ( ( case_family & UNICODE_MIXEDCASE ) == UNICODE_MIXEDCASE ) &&
+	     ( ( case_given  & UNICODE_MIXEDCASE ) == UNICODE_UPPER ) ) {
+		should_split = 1;
+	}
+
+	for ( i=0; i<given->n; ++i ) {
+		m = intlist_get( given, i );
+		s = list_get( tokens, m );
+		if ( !should_split ) {
+			newstr_addchar( name, '|' );
+			newstr_newstrcat( name, s );
+		} else add_given_split( name, s );
+	}
+	return 1;
+}
+
+static int
+name_construct_multi( newstr *outname, list *tokens, int begin, int end )
+{
+	int i, suffix, suffixpos=-1, comma=-1;
+	intlist given, family;
+	newstr *s;
+
+	intlist_init( &family );
+	intlist_init( &given );
+
+	newstr_empty( outname );
+
+	suffix = has_suffix( tokens, begin, end, &suffixpos );
+
+	for ( i=begin; i<end && comma==-1; i++ ) {
+		if ( i==suffixpos ) continue;
+		s = list_get( tokens, i );
+		if ( s->data[ s->len -1 ] == ',' ) {
+			if ( suffix && i==suffixpos-1 && !(suffix&WITHCOMMA) )
+				newstr_trimend( s, 1 );
+			else
+				comma = i;
+		}
+	}
+
+	if ( comma != -1 )
+		name_multielement_comma( &given, &family, tokens, begin, end, comma, suffixpos );
+	else
+		name_multielement_nocomma( &given, &family, tokens, begin, end, suffixpos );
+
+	name_mutlielement_build( outname, &given, &family, tokens );
+
+	if ( suffix ) {
+		if ( suffix & JUNIOR ) newstr_strcat( outname, "||Jr." );
+		if ( suffix & SENIOR ) newstr_strcat( outname, "||Sr." );
+		if ( suffix & THIRD  ) newstr_strcat( outname, "||III" );
+		if ( suffix & FOURTH ) newstr_strcat( outname, "||IV"  );
+	}
+
+	intlist_free( &given );
+	intlist_free( &family );
+
+	return 1;
+}
+
+int
+name_addmultielement( fields *info, char *tag, list *tokens, int begin, int end, int level )
+{
+	newstr name;
+	int ok;
+
+	newstr_init( &name );
+
+	name_construct_multi( &name, tokens, begin, end );
+	ok = fields_add( info, tag, name.data, level );
+
+	newstr_free( &name );
+
+	return ok;
+}
+
+
+/* name_addsingleelement()
+ *
+ * Treat names that are single tokens, e.g. {Random Corporation, Inc.} in bibtex
+ * as a name that should not be mangled (e.g. AUTHOR:ASIS or AUTHOR:CORP, if corp
+ * is set).
+ */
+int
+name_addsingleelement( fields *info, char *tag, char *name, int level, int corp )
+{
+	newstr outtag;
+	int ok;
+	newstr_init( &outtag );
+	newstr_strcpy( &outtag, tag );
+	if ( !corp ) newstr_strcat( &outtag, ":ASIS" );
+	else newstr_strcat( &outtag, ":CORP" );
+	ok = fields_add( info, outtag.data, name, level );
+	newstr_free( &outtag );
+	return ok;
 }
 
 /*
- * name_process
+ * Takes a single name in a string and parses it.
+ * Skipped by bibtex/biblatex that come pre-parsed.
  *
- * returns 1 if "et al." needs to be added to the list globally
+ * Returns 0 on error.
+ * Returns 1 on ok.
+ * Returns 2 on ok and name in asis list
+ * Returns 3 on ok and name in corps list
  */
-static int
-name_process( fields *info, char *tag, int level, newstr *inname, list *asis, list *corps )
+int
+name_parse( newstr *outname, newstr *inname, list *asis, list *corps )
 {
-	newstr newtag;
-	int add_etal = 0;
+	list tokens;
+	int ret = 1;
 
-	/* keep "names" like " , " from coredumping program */
-	if ( !inname->len ) return 0;
+	newstr_empty( outname );
+	if ( !inname || !inname->len ) return ret;
 
-	/* identify and process asis or corps names */
-	newstr_init( &newtag );
-	if ( name_nomangle( tag, inname->data, &newtag, asis, corps ) ) {
-		fields_add( info, newtag.data, inname->data, level );
-	} else {
-		if ( strstr( inname->data, "et al." ) ) {
-			add_etal = 1;
-			newstr_findreplace( inname, "et al.", "" );
-		}
-		if ( inname->len ) {
-			name_person( info, tag, level, inname );
-		}
+	list_init( &tokens );
+
+	if ( asis && list_find( asis, inname->data ) !=-1 ) {
+		newstr_newstrcpy( outname, inname );
+		ret = 2;
+		goto out;
+	} else if ( corps && list_find( corps, inname->data ) != -1 ) {
+		newstr_newstrcpy( outname, inname );
+		ret = 3;
+		goto out;
 	}
-	newstr_free( &newtag );
-	return add_etal;
+
+	newstr_findreplace( inname, ",", ", " );
+	list_tokenize( &tokens, inname, ' ', 1 );
+
+	if ( tokens.n==1 ) {
+		newstr_newstrcpy( outname, inname );
+		ret = 2;
+	} else {
+		name_construct_multi( outname, &tokens, 0, tokens.n );
+		ret = 1;
+	}
+
+out:
+
+	list_free( &tokens );
+
+	return ret;
+}
+
+static char *
+name_copy( newstr *name, char *p )
+{
+	char *start, *end, *q;
+
+	newstr_empty( name );
+
+	start = p = skip_ws( p );
+
+	/* strip tailing whitespace and commas */
+	while ( *p && *p!='|' ) p++;
+
+	end = p;
+	while ( is_ws( *end ) || *end==',' || *end=='|' || *end=='\0' )
+		end--;
+	if ( *p=='|' ) p++;
+
+	for ( q=start; q<=end; q++ )
+		newstr_addchar( name, *q );
+
+	return p;
 }
 
 /*
@@ -325,57 +448,39 @@ name_process( fields *info, char *tag, int level, newstr *inname, list *asis, li
  * on if the author name is in the format "H. F. Author" or
  * "Author, H. F."
  */
-void
+int
 name_add( fields *info, char *tag, char *q, int level, list *asis, list *corps )
 {
-	newstr inname, newtag;
-	char *p, *start, *end;
-	int add_etal = 0;
+	int ok, nametype, ret = 1;
+	newstr inname, outname;
+	list tokens;
 
-	if ( !q ) return;
+	if ( !q ) return 0;
 
-	newstr_init( &inname );
-	newstr_init( &newtag );
+	list_init( &tokens );
+	newstrs_init( &inname, &outname, NULL );
 
 	while ( *q ) {
 
-		start = q = skip_ws( q );
+		q = name_copy( &inname, q );
 
-		/* strip tailing whitespace and commas */
-		while ( *q && *q!='|' ) q++;
-		end = q;
-		while ( is_ws( *end ) || *end==',' || *end=='|' || *end=='\0' )
-			end--;
+		nametype = name_parse( &outname, &inname, asis, corps );
+		if ( !nametype ) return 0;
 
-		for ( p=start; p<=end; p++ )
-			newstr_addchar( &inname, *p );
+		if ( nametype==1 )
+			ok = fields_add( info, tag, outname.data, level );
+		else if ( nametype==2 )
+			ok = name_addsingleelement( info, tag, outname.data, level, 0 );
+		else
+			ok = name_addsingleelement( info, tag, outname.data, level, 1 );
 
-		add_etal += name_process( info, tag, level, &inname, asis, corps );
-#if 0
-		/* keep "names" like " , " from coredumping program */
-		if ( inname.len ) {
-			if ( name_nomangle( tag, inname.data, &newtag, asis, corps ) ) {
-				fields_add( info, newtag.data, inname.data, level );
-				newstr_empty( &newtag );
-			} else {
-				if ( strstr( inname.data, "et al." ) ) {
-					add_etal=1;
-					newstr_findreplace( &inname, "et al.", "" );
-				}
-				if ( inname.len ) name_person( info, tag, level, &inname, asis, corps );
-			}
-			newstr_empty( &inname );
-		}
-#endif
+		if ( !ok ) { ret = 0; goto out; }
 
-		newstr_empty( &inname );
-		if ( *q=='|' ) q++;
 	}
-	if ( add_etal ) {
-		newstr_strcpy( &newtag, tag );
-		newstr_strcat( &newtag, ":ASIS" );
-		fields_add( info, newtag.data, "et al.", level );
-	}
-	newstr_free( &inname );
-	newstr_free( &newtag );
+
+out:
+	newstrs_free( &inname, &outname, NULL );
+	newstr_free( &outname );
+
+	return ret;
 }

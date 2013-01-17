@@ -1,7 +1,9 @@
 /*
  * bibutils.h
  *
- * Copyright (c) Chris Putnam 2005-2012
+ * Copyright (c) Chris Putnam 2005-2013
+ *
+ * Source code released under GPL version 2
  *
  */
 #ifndef BIBUTILS_H
@@ -96,7 +98,7 @@ typedef struct param {
         int  (*processf)(fields*,char*,char*,long);
         void (*cleanf)(bibl*,struct param*);
         int  (*typef) (fields*,char*,int,struct param*,variants*,int);
-        void (*convertf)(fields*,fields*,int,struct param*,variants*,int);
+        int  (*convertf)(fields*,fields*,int,struct param*,variants*,int);
         void (*headerf)(FILE*,struct param*);
         void (*footerf)(FILE*);
         void (*writef)(fields*,FILE*,struct param*,unsigned long);

@@ -1,9 +1,10 @@
 /*
  * isiout.c
  *
- * Copyright (c) Chris Putnam 2008-2012
+ * Copyright (c) Chris Putnam 2008-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
+ *
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -137,19 +138,33 @@ output_keywords( FILE *fp, fields *f )
 static void
 output_person( FILE *fp, char *name )
 {
-	int n = 0, nchars = 0;
+	newstr family, given, suffix;
 	char *p = name;
-	while ( *p ) {
-		if ( *p=='|' )  { n++; nchars=0; }
-		else {
-			if ( n==1 && nchars<2 ) fprintf( fp, ", " );
-			if ( n==0 || (n>0 && nchars<2) ) {
-				fprintf( fp, "%c", *p );
-			}
-		}
-		nchars++;
+
+	newstrs_init( &family, &given, &suffix, NULL );
+
+	while ( *p && *p!='|' )
+		newstr_addchar( &family, *p++ );
+
+	while ( *p=='|' && *(p+1)!='|' ) {
 		p++;
+		if ( *p!='|' ) newstr_addchar( &given, *p++ );
+		while ( *p && *p!='|' ) p++;
 	}
+
+	if ( *p=='|' && *(p+1)=='|' ) {
+		p += 2;
+		while ( *p && *p!='|' ) newstr_addchar( &suffix, *p++ );
+	}
+
+	if ( family.len ) fprintf( fp, "%s", family.data );
+	if ( suffix.len ) {
+		if ( family.len ) fprintf( fp, " %s", suffix.data );
+		else fprintf( fp, "%s", suffix.data );
+	}
+	if ( given.len ) fprintf( fp, ", %s", given.data );
+
+	newstrs_free( &family, &given, &suffix, NULL );
 }
 
 static void
@@ -241,10 +256,15 @@ isiout_write( fields *f, FILE *fp, param *p, unsigned long refnum )
 
         output_title( fp, f, "TI", 0 );
         if ( type==TYPE_ARTICLE ) {
-                output_title( fp, f, "SO", 1 );
+		output_title( fp, f, "SO", 1 );
 		output_abbrtitle( fp, f, "JI", 1 );
+		output_title( fp, f, "SE", 2 );
+	} else if ( type==TYPE_INBOOK ) {
+		output_title( fp, f, "BT", 1 );
+		output_title( fp, f, "SE", 2 );
+	} else { /* type==BOOK */
+		output_title( fp, f, "SE", 1 );
 	}
-        else output_title( fp, f, "BT", 1 );
 
 	output_date( fp, f );
 /*	output_easy( fp, f, "PARTMONTH", "PD", -1 );

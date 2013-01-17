@@ -1,9 +1,9 @@
 /*
  * medin.c
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -36,7 +36,6 @@ medin_initparams( param *p, const char *progname )
 	p->processf = medin_processf;
 	p->cleanf   = NULL;
 	p->typef    = NULL;
-/*	p->convertf = medin_convertf;*/
 	p->convertf = NULL;
 	p->all      = NULL;
 	p->nall     = 0;
@@ -527,19 +526,4 @@ medin_processf( fields *medin, char *data, char *filename, long nref )
 	medin_assembleref( &top, medin );
 	xml_free( &top );
 	return 1;
-}
-
-void
-medin_convertf( fields *medin, fields *info, int reftype, int verbose, 
-	variants *all, int nall )
-{
-	char *tag, *value;
-	int i, n, level;
-	n = fields_num( medin );
-	for ( i=0; i<n; ++i ) {
-		tag = fields_tag( medin, i, FIELDS_CHRP );
-		value = fields_value( medin, i, FIELDS_CHRP );
-		level = fields_level( medin, i );
-		fields_add( info, tag, value, level );
-	}
 }

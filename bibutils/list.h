@@ -1,11 +1,11 @@
 /*
  * list.h
  *
- * version: 2012-03-06
+ * version: 2012-12-19
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 
@@ -41,11 +41,14 @@ extern list*   list_dup( list *a );
 extern void    list_copy( list *to, list *from );
 
 extern int     list_add( list *a, char *value );
+extern int     list_adds( list *a, ... );
 extern int     list_add_unique( list *a, char *value );
 extern int     list_add_newstr( list *a, newstr *value );
 extern int     list_add_newstr_unique( list *a, newstr *value );
 extern void    list_append( list *a, list *toadd );
 extern void    list_append_unique( list *a, list *toadd );
+
+extern void    list_remove( list *a, int n );
 
 extern newstr* list_get( list *a, int n );
 extern newstr* list_getstr( list *a, int n );
@@ -62,7 +65,7 @@ extern void    list_trimend( list *a, int n );
 
 extern int     list_fill( list *a, char *filename );
 extern void    list_fillfp( list *a, FILE *fp );
-extern void    list_tokenize( list *tokens, newstr *in, char delim );
+extern void    list_tokenize( list *tokens, newstr *in, char delim, int merge_delim );
 extern void    list_newstrtok( list *t, newstr *s, char *sep );
 
 

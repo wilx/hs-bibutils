@@ -1,3 +1,11 @@
+/*
+ * modstypes.c
+ *
+ * Copyright (c) Chris Putnam 2004-2013
+ *
+ * Source code released under the GPL version 2
+ *      
+ */
 #include <stdio.h>
 #include <string.h>
 #include "modstypes.h"

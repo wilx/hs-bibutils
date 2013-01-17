@@ -1,9 +1,9 @@
 /*
  * wordout.h
  *
- * Copyright (c) Chris Putnam 2008-2012
+ * Copyright (c) Chris Putnam 2008-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #ifndef WORDOUT_H

@@ -1,12 +1,11 @@
 /*
  * endtypes.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Program and source code released under the GPL
+ * Program and source code released under the GPL version 2
  *
  */
-
 #include <stdio.h>
 #include <string.h>
 #include "is_ws.h"
@@ -31,8 +30,8 @@ static lookups generic[] = {
 	{ "%N", "NUMBER",    SIMPLE, LEVEL_MAIN },
 	{ "%P", "PAGES",        PAGES,  LEVEL_MAIN },
 	{ "%&", "SECTION",      SIMPLE, LEVEL_MAIN },
-	{ "%Y", "3RD_AUTHOR",   PERSON, LEVEL_MAIN },
-	{ "%S", "3RD_TITLE",    SIMPLE, LEVEL_MAIN },
+	{ "%Y", "AUTHOR",   PERSON, LEVEL_SERIES },
+	{ "%S", "TITLE",     TITLE, LEVEL_SERIES },
 	{ "%7", "EDITION",      SIMPLE, LEVEL_MAIN },
 	{ "%8", "MONTH",    DATE,   LEVEL_MAIN },
 	{ "%9", "GENRE",        SIMPLE, LEVEL_MAIN },
@@ -453,8 +452,8 @@ static lookups proceedings[] = {
 	{ "%6", "NUMVOLUMES",SIMPLE,  LEVEL_HOST },
 	{ "%N", "NUMBER",    SIMPLE,  LEVEL_MAIN },
 	{ "%P", "PAGES",     PAGES,   LEVEL_MAIN },
-	{ "%Y", "EDITOR",    PERSON,  LEVEL_HOST }, /* SERIES_EDITOR */
-	{ "%S", "TITLE",     TITLE,   LEVEL_HOST+1 }, /* SERIES_TITLE */
+	{ "%Y", "EDITOR",    PERSON,  LEVEL_SERIES },
+	{ "%S", "TITLE",     TITLE,   LEVEL_SERIES },
 	{ "%7", "EDITION",   SIMPLE,  LEVEL_HOST },
 	{ "%8", "MONTH", DATE,    LEVEL_MAIN },
 	{ "%!", "SHORTTITLE",TITLE,   LEVEL_MAIN },
@@ -1110,13 +1109,13 @@ static lookups chart[] = {
 	{ "%V", "VOLUME" ,   SIMPLE, LEVEL_MAIN },
 	{ "%6", "NUMVOLUMES",SIMPLE, LEVEL_HOST },
 	{ "%N", "NUMBER",    SIMPLE, LEVEL_MAIN },
-	{ "%P", "PAGES",        PAGES,  LEVEL_MAIN },
-	{ "%&", "SECTION",      SIMPLE, LEVEL_MAIN },
-	{ "%Y", "3RD_AUTHOR",   PERSON, LEVEL_MAIN },
-	{ "%S", "3RD_TITLE",    SIMPLE, LEVEL_MAIN },
-	{ "%7", "EDITION",      SIMPLE, LEVEL_MAIN },
-	{ "%8", "MONTH",    DATE,   LEVEL_MAIN },
-	{ "%9", "GENRE",        SIMPLE, LEVEL_MAIN },
+	{ "%P", "PAGES",     PAGES,  LEVEL_MAIN },
+	{ "%&", "SECTION",   SIMPLE, LEVEL_MAIN },
+	{ "%Y", "AUTHOR",    PERSON, LEVEL_SERIES },
+	{ "%S", "TITLE",     TITLE,  LEVEL_SERIES },
+	{ "%7", "EDITION",   SIMPLE, LEVEL_MAIN },
+	{ "%8", "MONTH",     DATE,   LEVEL_MAIN },
+	{ "%9", "GENRE",     SIMPLE, LEVEL_MAIN },
 	{ "%?", "SUB_AUTHOR",   PERSON, LEVEL_MAIN }, /* subsidiary-authors */
 	{ "%!", "SHORTTITLE",   TITLE,  LEVEL_MAIN },
 	{ "%@", "SERIALNUMBER", SERIALNO,  LEVEL_MAIN },
@@ -1165,8 +1164,8 @@ static lookups unpublished[] = {
 	{ "%N", "NUMBER",    SIMPLE, LEVEL_MAIN },
 	{ "%P", "PAGES",        PAGES,  LEVEL_MAIN },
 	{ "%&", "SECTION",      SIMPLE, LEVEL_MAIN },
-	{ "%Y", "3RD_AUTHOR",   PERSON, LEVEL_MAIN },
-	{ "%S", "3RD_TITLE",    SIMPLE, LEVEL_MAIN },
+	{ "%Y", "AUTHOR",   PERSON, LEVEL_SERIES },
+	{ "%S", "TITLE",    TITLE, LEVEL_SERIES },
 	{ "%7", "EDITION",      SIMPLE, LEVEL_MAIN },
 	{ "%8", "MONTH",    DATE,   LEVEL_MAIN },
 	{ "%9", "GENRE",        SIMPLE, LEVEL_MAIN },

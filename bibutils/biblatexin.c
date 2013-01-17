@@ -1,10 +1,10 @@
 /*
  * biblatexin.c
  *
- * Copyright (c) Chris Putnam 2008-2012
- * Copyright (c) Johannes Wilm 2010-2012
+ * Copyright (c) Chris Putnam 2008-2013
+ * Copyright (c) Johannes Wilm 2010-2013
  *
- * Program and source code released under the GPL
+ * Program and source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -20,6 +20,9 @@
 #include "name.h"
 #include "reftypes.h"
 #include "biblatexin.h"
+
+static list find    = { 0, 0, 0, NULL };
+static list replace = { 0, 0, 0, NULL };
 
 void
 biblatexin_initparams( param *p, const char *progname )
@@ -99,25 +102,37 @@ biblatexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, n
 static char *
 biblatex_item( char *p, newstr *s )
 {
-	int nquotes = 0;
+	int surrounding_quotes = 0;
 	int nbrackets = 0;
+	int nquotes = 0;
 	while ( *p ) {
 		if ( !nquotes && !nbrackets ) {
 			if ( *p==',' || *p=='=' || *p=='}' || *p==')' )
 				goto out;
 		}
 		if ( *p=='\"' && *(p-1)!='\\' && nbrackets==0 ) {
+			if ( s->len == 0 ) surrounding_quotes = 1;
+			else {
+				if ( !surrounding_quotes ) newstr_addchar( s, *p );
+				if ( nquotes ) surrounding_quotes = 0;
+			}
 			nquotes = ( nquotes==0 );
-			newstr_addchar( s, *p );
 		} else if ( *p=='{' ) {
+			if ( nbrackets>0 || nquotes ) newstr_addchar( s, *p );
 			nbrackets++;
-			/*if ( s->len!=0 )*/ newstr_addchar( s, *p );
 		} else if ( *p=='}' ) {
 			nbrackets--;
-			/*if ( nbrackets>0 )*/ newstr_addchar( s, *p );
+			if ( nbrackets>0 || nquotes ) newstr_addchar( s, *p );
 		} else {
-			if ( s->len!=0 || ( s->len==0 && !is_ws( *p ) ) )
-				newstr_addchar( s, *p );
+			if ( !is_ws( *p ) ) newstr_addchar( s, *p );
+			else {
+				if ( s->len!=0 && *p!='\n' && *p!='\r' )
+					newstr_addchar( s, *p );
+				else if ( s->len!=0 && (*p=='\n' || *p=='\r')) {
+					newstr_addchar( s, ' ' );
+					while ( is_ws( *(p+1) ) ) p++;
+				}
+			}
 		}
 		p++;
 	}
@@ -144,11 +159,8 @@ process_biblatexline( char *p, newstr *tag, newstr *data )
 }
 
 static void
-biblatex_cleantoken( newstr *s, param *p )
+biblatex_cleantoken( newstr *s )
 {
-
-	if ( p && p->latexin==0 ) return;
-
 	/* 'textcomp' annotations */
 	newstr_findreplace( s, "\\textit", "" );
 	newstr_findreplace( s, "\\textbf", "" );
@@ -176,56 +188,35 @@ biblatex_cleantoken( newstr *s, param *p )
 	newstr_findreplace( s, "\\textunderscore", "_" );
 }
 
-static int
-biblatex_protected( newstr *data )
-{
-	if ( data->data[0]=='{' && data->data[data->len-1]=='}' ) return 1;
-	if ( data->data[0]=='\"' && data->data[data->len-1]=='\"' ) return 1;
-	return 0;
-}
-
-static void
-biblatex_removeprotection( newstr *data )
-{
-	newstr s;
-	if ( data->len<3 ) newstr_empty( data ); /* "", {} to nothing */
-	else {
-		newstr_init( &s );
-		newstr_segcpy( &s, &(data->data[1]), 
-				&(data->data[data->len-1]) );
-		newstr_newstrcpy( data, &s );
-		newstr_free( &s );
-	}
-}
-
 static void
 biblatex_split( list *tokens, newstr *s )
 {
+	int i, n = s->len, nbrackets = 0;
 	newstr currtok;
-	int nquotes = 0, nbrackets = 0;
-	int i, n = s->len;
+
 	newstr_init( &currtok );
+
 	for ( i=0; i<n; ++i ) {
-		if ( s->data[i]=='\"' ) {
-			if ( nquotes ) nquotes = 0;
-			else nquotes = 1;
-			newstr_addchar( &currtok, '\"' );
-		} else if ( s->data[i]=='{' ) {
+		if ( s->data[i]=='{' ) {
 			nbrackets++;
 			newstr_addchar( &currtok, '{' );
 		} else if ( s->data[i]=='}' ) {
 			nbrackets--;
 			newstr_addchar( &currtok, '}' );
-		} else if ( s->data[i]=='#' && !nquotes && !nbrackets ) {
+		} else if ( s->data[i]=='#' && !nbrackets ) {
 			if ( currtok.len ) list_add( tokens, currtok.data );
 			newstr_empty( &currtok );
-		} else if ( !is_ws( s->data[i] ) || nquotes || nbrackets ) {
+		} else if ( !is_ws( s->data[i] ) || nbrackets ) {
 			newstr_addchar( &currtok, s->data[i] );
+		} else if ( is_ws( s->data[i] ) ) {
+			if ( currtok.len ) list_add( tokens, currtok.data );
+			newstr_empty( &currtok );
 		}
 	}
 	if ( currtok.len ) list_add( tokens, currtok.data );
 	for ( i=0; i<tokens->n; ++i ) {
-		newstr_trimendingws( &(tokens->str[i]) );
+		newstr_trimstartingws( list_get( tokens, i ) );
+		newstr_trimendingws( list_get( tokens, i ) );
 	}
 	newstr_free( &currtok );
 }
@@ -306,11 +297,55 @@ process_cite( fields *bibin, char *p, char *filename, long nref )
 	newstrs_free( &tag, &data, NULL );
 }
 
+static void
+biblatex_addstring( char *p )
+{
+	newstr s1, s2;
+	newstrs_init( &s1, &s2, NULL );
+	p = skip_ws( p );
+	if ( *p=='(' || *p=='{' ) p++;
+	p = process_biblatexline( p, &s1, &s2 );
+	newstr_findreplace( &s2, "\\ ", " " );
+	biblatex_cleantoken( &s2 );
+	if ( s1.data ) {
+		list_add( &find, s1.data );
+		if ( s2.data ) list_add( &replace, s2.data );
+		else list_add( &replace, "" );
+	}
+	newstrs_free( &s1, &s2, NULL );
+}
+
+static int
+biblatex_usestrings( newstr *s )
+{
+	int i;
+	for ( i=0; i<find.n; ++i ) {
+		if ( !strcasecmp( s->data, (find.str[i]).data ) ) {
+			newstr_findreplace( s, (find.str[i]).data, 
+					(replace.str[i]).data );
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static void
+process_string( char *p )
+{
+	while ( *p && *p!='{' && *p!='(' ) p++;
+	biblatex_addstring( p );
+}
+
 int
 biblatexin_processf( fields *bibin, char *data, char *filename, long nref )
 {
-	process_cite( bibin, data, filename, nref );
-	return 1;
+	if ( !strncasecmp( data, "@STRING", 7 ) ) {
+		process_string( data );
+		return 0;
+        } else {
+		process_cite( bibin, data, filename, nref );
+		return 1;
+	}
 }
 
 static void
@@ -332,25 +367,45 @@ biblatex_addtitleurl( fields *info, newstr *in )
 	newstr_free( &s );
 }
 
+static int
+is_name_tag( newstr *tag )
+{
+	if ( tag->len ) {
+		if ( !strcasecmp( tag->data, "author" ) ) return 1;
+		if ( !strcasecmp( tag->data, "editor" ) ) return 1;
+		if ( !strcasecmp( tag->data, "director" ) ) return 1;
+		if ( !strcasecmp( tag->data, "producer" ) ) return 1;
+		if ( !strcasecmp( tag->data, "execproducer" ) ) return 1;
+		if ( !strcasecmp( tag->data, "writer" ) ) return 1;
+		if ( !strcasecmp( tag->data, "redactor" ) ) return 1;
+		if ( !strcasecmp( tag->data, "annotator" ) ) return 1;
+		if ( !strcasecmp( tag->data, "commentator" ) ) return 1;
+		if ( !strcasecmp( tag->data, "translator" ) ) return 1;
+	}
+	return 0;
+}
+
 static void
-biblatex_cleandata( newstr *s, fields *info, param *p )
+biblatex_cleandata( newstr *tag, newstr *s, fields *info, param *p )
 {
 	list tokens;
+	newstr *tok;
 	int i;
 	if ( !s->len ) return;
 	list_init( &tokens );
 	biblatex_split( &tokens, s );
 	for ( i=0; i<tokens.n; ++i ) {
+		biblatex_usestrings( &(tokens.str[i]) );
 		if (!strncasecmp(tokens.str[i].data,"\\href{", 6)) {
 			biblatex_addtitleurl( info, &(tokens.str[i]) );
 		}
-		biblatex_cleantoken( &(tokens.str[i]), p );
+		if ( p && p->latexin && !is_name_tag( tag ) ) biblatex_cleantoken( &(tokens.str[i]) );
 	}
 	newstr_empty( s );
 	for ( i=0; i<tokens.n; ++i ) {
-		if ( biblatex_protected( &(tokens.str[i]) ) )
-			biblatex_removeprotection( &(tokens.str[i]));
-		newstr_strcat( s, tokens.str[i].data ); 
+		tok = list_get( &tokens, i );
+		if ( i>0 ) newstr_addchar( s, ' ' );
+		newstr_newstrcat( s, tok );
 	}
 	list_free( &tokens );
 }
@@ -435,7 +490,7 @@ biblatexin_cleanref( fields *bibin, param *p )
 	for ( i=0; i<n; ++i ) {
 		t = fields_tag( bibin, i, FIELDS_STRP_NOUSE );
 		d = fields_value( bibin, i, FIELDS_STRP_NOUSE );
-		biblatex_cleandata( d, bibin, p );
+		biblatex_cleandata( t, d, bibin, p );
 		if ( !strsearch( t->data, "AUTHORS" ) ) {
 			newstr_findreplace( d, "\n", " " );
 			newstr_findreplace( d, "\r", " " );
@@ -464,120 +519,232 @@ biblatexin_cleanf( bibl *bin, param *p )
  * split names in author list separated by and's (use '|' character)
  * and add names
  */
-static void
+static int
 process_names( fields *info, char *tag, newstr *data, int level, list *asis,
 	list *corps )
 {
 	newstr_findreplace( data, " and ", "|" );
-	name_add( info, tag, data->data, level, asis, corps );
+	return name_add( info, tag, data->data, level, asis, corps );
 }
 
-static void
+/* is_utf8_emdash()
+ *
+ * Internally pages="A---B" will convert --- to a UTF8
+ * emdash = 0xE2 (-30) 0x80 (-128) 0x94 (-108)
+ */
+static int
+is_utf8_emdash( char *p )
+{
+	static char emdash[3] = { -30, -128, -108 };
+	if ( strncmp( p, emdash, 3 ) ) return 0;
+	return 1;
+}
+/* is_utf8_endash()
+ *
+ * Internally pages="A--B" will convert -- to a UTF8
+ * endash = 0xE2 (-30) 0x80 (-128) 0x93 (-109)
+ */
+static int
+is_utf8_endash( char *p )
+{
+	static char endash[3] = { -30, -128, -109 };
+	if ( strncmp( p, endash, 3 ) ) return 0;
+	return 1;
+}
+
+static int
 process_pages( fields *info, newstr *s, int level )
 {
-	char *p, *q;
-	newstr sp, ep;
-
-	newstr_init( &sp );
-	newstr_init( &ep );
+	newstr page;
+	char *p;
+	int ok;
 
 	newstr_findreplace( s, " ", "" );
+	if ( s->len==0 ) return 1;
 
-	p = q = s->data;
-	while ( isdigit( *q ) ) q++;
-	newstr_segcpy( &sp, p, q );
-	if ( sp.len>0 )
-		fields_add( info, "PAGESTART", sp.data, level );
+	newstr_init( &page );
+	p = skip_ws( s->data );
+	while ( *p && !is_ws(*p) && *p!='-' && *p!='\r' && *p!='\n' && *p!=-30 )
+		newstr_addchar( &page, *p++ );
+	if ( page.len>0 ) {
+		ok = fields_add( info, "PAGESTART", page.data, level );
+		if ( !ok ) return 0;
+	}
 
-	p = q;
-	while ( *p && !isdigit(*p) ) p++;
-	q = p;
-	while ( isdigit( *q ) ) q++;
-	newstr_segcpy( &ep, p, q );
-	if ( ep.len>0 )
-		fields_add( info, "PAGEEND", ep.data, level );
+	while ( *p && (is_ws(*p) || *p=='-' ) ) p++;
+	if ( *p && is_utf8_emdash( p ) ) p+=3;
+	if ( *p && is_utf8_endash( p ) ) p+=3;
 
-	newstr_free(&sp);
-	newstr_free(&ep);
+	newstr_empty( &page );
+	while ( *p && !is_ws(*p) && *p!='-' && *p!='\r' && *p!='\n' )
+		newstr_addchar( &page, *p++ );
+	if ( page.len>0 ) {
+		ok = fields_add( info, "PAGEEND", page.data, level );
+		if ( !ok ) return 0;
+	}
+
+	newstr_free( &page );
+	return 1;
 }
 
-static void
+static int
 process_urlcore( fields *info, char *p, int level, char *default_tag )
 {
 	if ( !strncasecmp( p, "\\urllink", 8 ) )
-		fields_add( info, "URL", p+8, level );
+		return fields_add( info, "URL", p+8, level );
 	else if ( !strncasecmp( p, "\\url", 4 ) )
-		fields_add( info, "URL", p+4, level );
+		return fields_add( info, "URL", p+4, level );
 	else if ( !strncasecmp( p, "arXiv:", 6 ) )
-		fields_add( info, "ARXIV", p+6, level ); 
+		return fields_add( info, "ARXIV", p+6, level ); 
 	else if ( !strncasecmp( p, "http://arxiv.org/abs/", 21 ) )
-		fields_add( info, "ARXIV", p+21, level );
+		return fields_add( info, "ARXIV", p+21, level );
 	else if ( !strncasecmp( p, "http:", 5 ) )
-		fields_add( info, "URL", p, level );
-	else fields_add( info, default_tag, p, level );
+		return fields_add( info, "URL", p, level );
+	else return fields_add( info, default_tag, p, level );
 }
 
-static void
+static int
 process_url( fields *info, char *p, int level )
 {
-	process_urlcore( info, p, level, "URL" );
+	return process_urlcore( info, p, level, "URL" );
 }
 
-static void
+/* process_howpublished()
+ *
+ *    howpublished={},
+ *
+ * Normally indicates the manner in which something was
+ * published in lieu of a formal publisher, so typically
+ * 'howpublished' and 'publisher' will never be in the
+ * same reference.
+ *
+ * Occasionally, people put Diploma thesis information
+ * into this field, so check for that first.
+ */
+static int
 process_howpublished( fields *info, char *p, int level )
 {
-        /* Some users put Diploma thesis in "type" */
         if ( !strncasecmp( p, "Diplom", 6 ) )
-                fields_replace_or_add( info, "GENRE", "Diploma thesis", level );
+                return fields_replace_or_add( info, "NGENRE", "Diploma thesis", level );
         else if ( !strncasecmp( p, "Habilitation", 13 ) )
-                fields_replace_or_add( info, "GENRE", "Habilitation thesis", level );
-        else 
-		process_urlcore( info, p, level, "DESCRIPTION" );
+                return fields_replace_or_add( info, "NGENRE", "Habilitation thesis", level );
+        else
+		return fields_add( info, "PUBLISHER", p, level );
 }
 
-static void
-process_genre( fields *info, char *p, int level )
+static int
+process_thesistype( fields *info, char *p, int level )
 {
-	/* Some users put Diploma thesis in "type" */
-	if ( !strncasecmp( p, "Diplom", 6 ) )
-		fields_replace_or_add( info, "GENRE", "Diploma thesis", level );
-	else if ( !strncasecmp( p, "Habilitation", 13 ) )
-		fields_replace_or_add( info, "GENRE", "Habilitation thesis", level );
-	else
-		fields_add( info, "GENRE", p, level );
+	/* type in the @thesis is used to distinguish Ph.D. and Master's thesis */
+	if ( !strncasecmp( p, "phdthesis", 9 ) ) {
+		return fields_replace_or_add( info, "NGENRE", "Ph.D. thesis", level );
+	} else if ( !strncasecmp( p, "mastersthesis", 13 ) || !strncasecmp( p, "masterthesis", 12 ) ) {
+		return fields_replace_or_add( info, "NGENRE", "Masters thesis", level );
+	} else if ( !strncasecmp( p, "mathesis", 8 ) ) {
+		return fields_replace_or_add( info, "NGENRE", "Masters thesis", level );
+	} else if ( !strncasecmp( p, "diploma", 7 ) ) {
+		return fields_replace_or_add( info, "NGENRE", "Diploma thesis", level );
+	} else if ( !strncasecmp( p, "habilitation", 12 ) ) {
+		return fields_replace_or_add( info, "NGENRE", "Habilitation thesis", level );
+	}
+	return 1;
 }
 
-static void
+/* biblatex drops school field if institution is present */
+static int
+process_school( fields *bibin, fields *info, char *tag, char *value, int level )
+{
+	if ( fields_find( bibin, "institution", LEVEL_ANY ) != -1 )
+		return 1;
+	else
+		return fields_add( info, tag, value, level );
+}
+
+
+/*
+ * biblatex has multiple editor fields "editor", "editora", "editorb", "editorc",
+ * each of which can be modified from a type of "EDITOR" via "editortype",
+ * "editoratype", "editorbtype", "editorctype".
+ *
+ * Defined types:
+ *     "editor"
+ *     "collaborator"
+ *     "compiler"
+ *     "redactor"
+ *
+ *     "reviser" ?
+ *     "founder" ?
+ *     "continuator" ?
+ *
+ *  bibtex-chicago
+ *
+ *     "director"
+ *     "producer"
+ *     "conductor"
+ *     "none" (for performer)
+ */
+static int
+process_editor( fields *bibin, fields *info, newstr *tag, newstr *value, int level, list *asis, list *corps )
+{
+	char *editor_fields[] = { "editor", "editora", "editorb", "editorc" };
+	char *editor_types[]  = { "editortype", "editoratype", "editorbtype", "editorctype" };
+	int i, n = 0, ntype, neditors = sizeof( editor_fields ) / sizeof( editor_fields[0] );
+	char *type, *outtag = "EDITOR";
+	for ( i=1; i<neditors; ++i )
+		if ( !strcasecmp( tag->data, editor_fields[i] ) ) n = i;
+	ntype = fields_find( bibin, editor_types[n], LEVEL_ANY );
+	if ( ntype!=-1 ) {
+		type = fields_value( bibin, ntype, FIELDS_CHRP_NOUSE );
+		if ( !strcasecmp( type, "collaborator" ) )  outtag = "COLLABORATOR";
+		else if ( !strcasecmp( type, "compiler" ) ) outtag = "COMPILER";
+		else if ( !strcasecmp( type, "redactor" ) ) outtag = "REDACTOR";
+		else if ( !strcasecmp( type, "director" ) ) outtag = "DIRECTOR";
+		else if ( !strcasecmp( type, "producer" ) ) outtag = "PRODUCER";
+		else if ( !strcasecmp( type, "none" ) )     outtag = "PERFORMER";
+	}
+	return process_names( info, outtag, value, level, asis, corps );
+}
+
+static int
 process_eprint( fields *bibin, fields *info, int level )
 {
-	int neprint, netype;
+	int neprint, netype, ok;
 	char *eprint = NULL, *etype = NULL;
 	neprint = fields_find( bibin, "eprint", -1 );
 	netype  = fields_find( bibin, "eprinttype", -1 );
 	if ( neprint!=-1 ) eprint = bibin->data[neprint].data;
 	if ( netype!=-1 ) etype = bibin->data[netype].data;
 	if ( eprint && etype ) {
-		if ( !strncasecmp( etype, "arxiv", 5 ) )
-			fields_add( info, "ARXIV", eprint, level );
-		else if ( !strncasecmp( etype, "jstor", 5 ) )
-			fields_add( info, "JSTOR", eprint, level );
-		else if ( !strncasecmp( etype, "pubmed", 6 ) )
-			fields_add( info, "PMID", eprint, level );
-		else if ( !strncasecmp( etype, "medline", 7 ) )
-			fields_add( info, "MEDLINE", eprint, level );
-		else {
-			fields_add( info, "EPRINT", eprint, level );
-			fields_add( info, "EPRINTTYPE", etype, level );
+		if ( !strncasecmp( etype, "arxiv", 5 ) ) {
+			ok = fields_add( info, "ARXIV", eprint, level );
+			if ( !ok ) return 0;
+		} else if ( !strncasecmp( etype, "jstor", 5 ) ) {
+			ok = fields_add( info, "JSTOR", eprint, level );
+			if ( !ok ) return 0;
+		} else if ( !strncasecmp( etype, "pubmed", 6 ) ) {
+			ok = fields_add( info, "PMID", eprint, level );
+			if ( !ok ) return 0;
+		} else if ( !strncasecmp( etype, "medline", 7 ) ) {
+			ok = fields_add( info, "MEDLINE", eprint, level );
+			if ( !ok ) return 0;
+		} else {
+			ok = fields_add( info, "EPRINT", eprint, level );
+			if ( !ok ) return 0;
+			ok = fields_add( info, "EPRINTTYPE", etype, level );
+			if ( !ok ) return 0;
 		}
 		fields_setused( bibin, neprint );
 		fields_setused( bibin, netype );
 	} else if ( eprint ) {
-		fields_add( info, "EPRINT", eprint, level );
+		ok = fields_add( info, "EPRINT", eprint, level );
+		if ( !ok ) return 0;
 		fields_setused( bibin, neprint );
 	} else if ( etype ) {
-		fields_add( info, "EPRINTTYPE", etype, level );
+		ok = fields_add( info, "EPRINTTYPE", etype, level );
+		if ( !ok ) return 0;
 		fields_setused( bibin, netype );
 	}
+	return 1;
 }
 
 int
@@ -605,9 +772,9 @@ report( fields *f )
 	int i, n;
 	n = fields_num( f );
 	for ( i=0; i<n; ++i )
-		fprintf(stderr, "'%s' %d = '%s'\n",
-			(char*)fields_tag( f, i, FIELDS_CHRP_NOUSE ),
+		fprintf(stderr, "%d '%s' = '%s'\n",
 			fields_level( f, i ),
+			(char*)fields_tag( f, i, FIELDS_CHRP_NOUSE ),
 			(char*)fields_value( f, i, FIELDS_CHRP_NOUSE ) );
 }
 
@@ -620,53 +787,286 @@ biblatexin_notag( param *p, char *tag )
 	}
 }
 
-void
+/* get_title_elements()
+ *
+ * find all of the biblatex title elements for the current level
+ *    internal "TITLE"      -> "title", "booktitle", "maintitle"
+ *    internal "SUBTITLE"   -> "subtitle", "booksubtitle", "mainsubtitle"
+ *    internal "TITLEADDON" -> "titleaddon", "booktitleaddon", "maintitleaddon"
+ *
+ * place in ttl, subttl, and ttladdon strings
+ *
+ * return 1 if an element is found, 0 if not
+ */
+static int
+get_title_elements( fields *bibin, int currlevel, int reftype, variants *all, int nall,
+	newstr *ttl, newstr *subttl, newstr *ttladdon )
+{
+	int nfields, process, level, i, n;
+	newstr *t, *d;
+	char *newtag;
+
+	newstrs_empty( ttl, subttl, ttladdon, NULL );
+
+	nfields = fields_num( bibin );
+
+	for ( i=0; i<nfields; ++i ) {
+
+		/* ...skip already used titles */
+		if ( fields_used( bibin, i ) ) continue;
+
+		/* ...skip empty elements */
+		t = fields_tag  ( bibin, i, FIELDS_STRP_NOUSE );
+		d = fields_value( bibin, i, FIELDS_STRP_NOUSE );
+		if ( d->len == 0 ) continue;
+
+		n = translate_oldtag( t->data, reftype, all, nall, &process, &level, &newtag );
+		if ( n==-1 ) continue;
+		if ( process != TITLE ) continue;
+		if ( level != currlevel ) continue;
+
+		fields_setused( bibin, i );
+
+		if ( !strcasecmp( newtag, "TITLE" ) ) {
+			if ( ttl->len ) newstr_addchar( ttl, ' ' );
+			newstr_newstrcat( ttl, d );
+		} else if ( !strcasecmp( newtag, "SUBTITLE" ) ) {
+			if ( subttl->len ) newstr_addchar( subttl, ' ' );
+			newstr_newstrcat( subttl, d );
+		} else if ( !strcasecmp( newtag, "TITLEADDON" ) ) {
+			if ( ttladdon->len ) newstr_addchar( ttladdon, ' ' );
+			newstr_newstrcat( ttladdon, d );
+		}
+	}
+
+	return ( ttl->len>0 || subttl->len > 0 || ttladdon->len > 0 );
+}
+
+/* attach_addon()
+ *
+ * Add titleaddon to the title.
+ */
+static void
+attach_addon( newstr *title, newstr *addon )
+{
+	if ( title->len ) {
+		if ( title->data[title->len-1]!='.' )
+			newstr_addchar( title, '.' );
+		newstr_addchar( title, ' ' );
+	}
+	newstr_newstrcat( title, addon );
+}
+
+static int
+process_combined_title( fields *info, newstr *ttl, newstr *subttl, newstr *ttladdon, int currlevel )
+{
+	newstr combined;
+	int ok, ret = 1;
+	newstr_init( &combined );
+	newstr_newstrcpy( &combined, ttl );
+	if ( subttl->len ) {
+		if ( combined.len && combined.data[combined.len-1]!=':' && combined.data[combined.len-1]!='?' )
+			newstr_addchar( &combined, ':' );
+		newstr_addchar( &combined, ' ' );
+		newstr_newstrcat( &combined, subttl );
+	}
+	if ( ttladdon->len ) attach_addon( &combined, ttladdon );
+	ok = fields_add( info, "TITLE", combined.data, currlevel );
+	if ( !ok ) ret = 0;
+	newstr_free( &combined );
+	return ret;
+}
+
+static int
+process_separated_title( fields *info, newstr *ttl, newstr *subttl, newstr *ttladdon, int currlevel )
+{
+	int ok;
+	if ( ttladdon->len ) {
+		if ( subttl->len ) attach_addon( subttl, ttladdon );
+		else attach_addon( ttl, ttladdon );
+	}
+	if ( ttl->len ) {
+		ok = fields_add( info, "TITLE", ttl->data, currlevel );
+		if ( !ok ) return 0;
+	}
+	if ( subttl->len ) {
+		ok = fields_add( info, "SUBTITLE", subttl->data, currlevel );
+		if ( !ok ) return 0;
+	}
+	return 1;
+}
+
+static int
+process_title_all( fields *bibin, fields *info, int reftype, param *p,
+	variants *all, int nall )
+{
+	int currlevel, ok, found, ret=1;
+	newstr ttl, subttl, ttladdon;
+	newstrs_init( &ttl, &subttl, &ttladdon, NULL );
+	for ( currlevel = 0; currlevel<LEVEL_SERIES+2; currlevel++ ) {
+		found = get_title_elements( bibin, currlevel, reftype, all, nall,
+				&ttl, &subttl, &ttladdon );
+		if ( !found ) continue;
+		if ( p->nosplittitle )
+			ok = process_combined_title( info, &ttl, &subttl, &ttladdon, currlevel );
+		else
+			ok = process_separated_title( info, &ttl, &subttl, &ttladdon, currlevel );
+		if ( !ok ) { ret = 0; goto out; }
+	}
+out:
+	newstrs_free( &ttl, &subttl, &ttladdon, NULL );
+	return ret;
+}
+
+
+static int
+biblatex_names( fields *info, char *tag, newstr *data, int level, list *asis, list *corps )
+{
+	int begin, end, ok, n, etal, i, ret = 1;
+	list tokens;
+
+	list_init( &tokens );
+
+	biblatex_split( &tokens, data );
+	for ( i=0; i<tokens.n; ++i )
+		biblatex_cleantoken( list_get( &tokens, i ) );
+
+	etal = name_findetal( &tokens );
+
+	begin = 0;
+	n = tokens.n - etal;
+	while ( begin < n ) {
+
+		end = begin + 1;
+
+		while ( end < n && strcasecmp( list_getc( &tokens, end ), "and" ) )
+			end++;
+
+		if ( end - begin == 1 ) {
+			ok = name_addsingleelement( info, tag, list_getc( &tokens, begin ), level, 0 );
+			if ( !ok ) { ret = 0; goto out; }
+		} else {
+			ok = name_addmultielement( info, tag, &tokens, begin, end, level );
+			if ( !ok ) { ret = 0; goto out; }
+		}
+
+		begin = end + 1;
+
+		/* Handle repeated 'and' errors */
+		while ( begin < n && !strcasecmp( list_getc( &tokens, begin ), "and" ) )
+			begin++;
+
+	}
+
+	if ( etal ) {
+		ret = name_addsingleelement( info, tag, "et al.", level, 0 );
+	}
+
+out:
+	list_free( &tokens );
+	return ret;
+}
+
+int
 biblatexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 		variants *all, int nall )
 {
+	int process, level, i, n, nfields, ok;
 	newstr *t, *d;
-	int process, level, i, n, nfields;
 	char *newtag;
 
 	nfields = fields_num( bibin );
 	for ( i=0; i<nfields; ++i ) {
 
                /* skip ones already "used" such as successful crossref */
-                if ( bibin->used[i] ) continue;
+                if ( fields_used( bibin, i ) ) continue;
 
-		/* skip ones with no data */
-		d = &( bibin->data[i] );
-		if ( d->len == 0 ) continue;
+		/* skip ones with no data or no tags (e.g. don't match ALWAYS/DEFAULT entries) */
+		t = fields_tag  ( bibin, i, FIELDS_STRP_NOUSE );
+		d = fields_value( bibin, i, FIELDS_STRP_NOUSE );
+		if ( t->len == 0 || d->len == 0 ) continue;
 
-		t = &( bibin->tag[i] );
-		n = process_findoldtag( t->data, reftype, all, nall );
+		n = translate_oldtag( t->data, reftype, all, nall, &process, &level, &newtag );
 		if ( n==-1 ) {
 			biblatexin_notag( p, t->data );
 			continue;
 		}
 
-		process = ((all[reftype]).tags[n]).processingtype;
-		if ( process == ALWAYS ) continue; /* added before */
+		switch ( process ) {
 
-		level   = ((all[reftype]).tags[n]).level;
-		newtag  = ((all[reftype]).tags[n]).newstr;
+		case SIMPLE:
+			ok = fields_add( info, newtag, d->data, level );
+			fields_setused( bibin, i );
+			break;
 
-		if ( process==SIMPLE || process==TITLE )
-			fields_add( info, newtag, d->data, level );
-		else if ( process==PERSON )
-			process_names( info, newtag, d, level, &(p->asis), 
-				&(p->corps) );
-		else if ( process==PAGES )
-			process_pages( info, d, level);
-		else if ( process==HOWPUBLISHED )
-			process_howpublished( info, d->data, level );
-		else if ( process==BIBTEX_URL )
-			process_url( info, d->data, level );
-		else if ( process==BIBTEX_GENRE )
-			process_genre( info, d->data, level );
-		else if ( process==BIBTEX_EPRINT )
-			process_eprint( bibin, info, level );
+		case PERSON:
+			ok = biblatex_names( info, newtag, d, level, &(p->asis), &(p->corps) );
+			fields_setused( bibin, i );
+			break;
+
+		case BLT_EDITOR:
+			ok = process_editor( bibin, info, t, d, level, &(p->asis), &(p->corps) );
+			fields_setused( bibin, i );
+			break;
+
+		case PAGES:
+			ok = process_pages( info, d, level);
+			fields_setused( bibin, i );
+			break;
+
+		case HOWPUBLISHED:
+			ok = process_howpublished( info, d->data, level );
+			fields_setused( bibin, i );
+			break;
+
+		case BIBTEX_URL:
+			ok = process_url( info, d->data, level );
+			fields_setused( bibin, i );
+			break;
+
+		case BIBTEX_GENRE:
+			ok = fields_add( info, "NGENRE", d->data, level );
+			fields_setused( bibin, i );
+			break;
+
+		case BIBTEX_EPRINT:
+			ok = process_eprint( bibin, info, level );
+			fields_setused( bibin, i );
+			break;
+
+		case BLT_THESIS_TYPE:
+			ok = process_thesistype( info, d->data, level );
+			fields_setused( bibin, i );
+			break;
+
+		case BLT_SCHOOL:
+			ok = process_school( bibin, info, newtag, d->data, level );
+			fields_setused( bibin, i );
+			break;
+
+		case BLT_SKIP:
+			ok = 1;
+			fields_setused( bibin, i );
+			break;
+
+		case TITLE:
+			ok = 1; /* delay title processing until later */
+			break;
+
+		default:
+			ok = 1;
+			break;
+
+		}
+		if ( !ok ) return BIBL_ERR_MEMERR;
+
 	}
+
+	ok = process_title_all( bibin, info, reftype, p, all, nall );
+	if ( !ok ) return BIBL_ERR_MEMERR;
+
 	if ( p->verbose ) report( info );
+
+	return BIBL_OK;
 }
 

@@ -1,11 +1,11 @@
 /*
  * newstr.c
  *
- * Version: 9/20/12
+ * Version: 12/24/12
  *
- * Copyright (c) Chris Putnam 1999-2012
+ * Copyright (c) Chris Putnam 1999-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  *
  * routines for dynamically allocated strings
@@ -530,7 +530,7 @@ newstr_toupper( newstr *s )
 	unsigned long i;
 	assert( s );
 	for ( i=0; i<s->len; ++i )
-		s->data[i] = toupper( s->data[i] );
+		s->data[i] = toupper( (unsigned char)s->data[i] );
 }
 
 void
@@ -539,7 +539,7 @@ newstr_tolower( newstr *s )
 	unsigned long i;
 	assert( s );
 	for ( i=0; i<s->len; ++i )
-		s->data[i] = tolower( s->data[i] );
+		s->data[i] = tolower( (unsigned char)s->data[i] );
 }
 
 /* newstr_swapstrings( s1, s2 )
@@ -653,9 +653,9 @@ newstr_check_case( newstr *s, int *lowercase, int *uppercase )
 	*uppercase = 0;
 	if ( s->len < 1 ) return;
 	for ( i=0; i<s->len && !( *lowercase && *uppercase ); ++i ) {
-		if ( isalpha( s->data[i] ) ) {
-			if ( isupper( s->data[i] ) ) *uppercase += 1;
-			else if ( islower( s->data[i] ) ) *lowercase += 1;
+		if ( isalpha( (unsigned char)s->data[i] ) ) {
+			if ( isupper( (unsigned char)s->data[i] ) ) *uppercase += 1;
+			else if ( islower( (unsigned char)s->data[i] ) ) *lowercase += 1;
 		}
 	}
 }

@@ -1,5 +1,5 @@
 name:               hs-bibutils
-version:            4.15
+version:            4.16
 homepage:           http://gorgias.mine.nu/repos/hs-bibutils/
 
 synopsis:           Haskell bindings to bibutils, the bibliography
@@ -43,10 +43,11 @@ extra-source-files:
     bibutils/endxmlin.h bibutils/entities.c bibutils/entities.h
     bibutils/fields.c bibutils/fields.h bibutils/gb18030.c
     bibutils/gb18030.h bibutils/gb18030_enumeration.c bibutils/is_ws.c
-    bibutils/is_ws.h bibutils/isiin.c bibutils/isiin.h
-    bibutils/isiout.c bibutils/isiout.h bibutils/isitypes.c
-    bibutils/latex.c bibutils/latex.h bibutils/list.c bibutils/list.h
-    bibutils/marc.c bibutils/marc.h bibutils/medin.c bibutils/medin.h
+    bibutils/intlis.h bibutils/intlis.c bibutils/is_ws.h
+    bibutils/isiin.c bibutils/isiin.h bibutils/isiout.c
+    bibutils/isiout.h bibutils/isitypes.c bibutils/latex.c
+    bibutils/latex.h bibutils/list.c bibutils/list.h bibutils/marc.c
+    bibutils/marc.h bibutils/medin.c bibutils/medin.h
     bibutils/modsin.c bibutils/modsin.h bibutils/modsout.c
     bibutils/modsout.h bibutils/modstypes.c bibutils/modstypes.h
     bibutils/mycvout.c bibutils/name.c bibutils/name.h
@@ -56,7 +57,8 @@ extra-source-files:
     bibutils/risout.h bibutils/ristypes.c bibutils/vplist.c
     bibutils/vplist.h bibutils/serialno.c bibutils/serialno.h
     bibutils/strsearch.c bibutils/strsearch.h bibutils/title.c
-    bibutils/title.h bibutils/utf8.c bibutils/utf8.h bibutils/wordin.c
+    bibutils/title.h bibutils/unicode. bibutils/unicode.c
+    bibutils/utf8.c bibutils/utf8.h bibutils/wordin.c
     bibutils/wordin.h bibutils/wordout.c bibutils/wordout.h
     bibutils/xml.c bibutils/xml.h bibutils/xml_encoding.c
     bibutils/xml_encoding.h
@@ -80,15 +82,16 @@ library
         bibutils/doi.c bibutils/ebiin.c bibutils/endin.c
         bibutils/endout.c bibutils/endtypes.c bibutils/endxmlin.c
         bibutils/entities.c bibutils/fields.c bibutils/gb18030.c
-        bibutils/is_ws.c bibutils/isiin.c bibutils/isiout.c
-        bibutils/isitypes.c bibutils/latex.c bibutils/list.c
-        bibutils/marc.c bibutils/medin.c bibutils/modsin.c
-        bibutils/modsout.c bibutils/modstypes.c bibutils/name.c
-        bibutils/newstr.c bibutils/newstr_conv.c bibutils/reftypes.c
-        bibutils/risin.c bibutils/risout.c bibutils/ristypes.c
-        bibutils/vplist.c bibutils/serialno.c bibutils/strsearch.c
-        bibutils/title.c bibutils/utf8.c bibutils/wordin.c
-        bibutils/wordout.c bibutils/xml.c bibutils/xml_encoding.c
+        bibutils/intlist.c bibutils/is_ws.c bibutils/isiin.c
+        bibutils/isiout.c bibutils/isitypes.c bibutils/latex.c
+        bibutils/list.c bibutils/marc.c bibutils/medin.c
+        bibutils/modsin.c bibutils/modsout.c bibutils/modstypes.c
+        bibutils/name.c bibutils/newstr.c bibutils/newstr_conv.c
+        bibutils/reftypes.c bibutils/risin.c bibutils/risout.c
+        bibutils/ristypes.c bibutils/vplist.c bibutils/serialno.c
+        bibutils/strsearch.c bibutils/title.c bibutils/unicode.c
+        bibutils/utf8.c bibutils/wordin.c bibutils/wordout.c
+        bibutils/xml.c bibutils/xml_encoding.c
 
     if impl(ghc >= 6.10)
        build-depends: base >= 4, syb

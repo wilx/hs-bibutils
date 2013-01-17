@@ -1,9 +1,9 @@
 /*
  * modsin.c
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -199,32 +199,66 @@ modsin_title( xml *node, fields *info, int level )
 	}
 }
 
-/*
- * find match in roles if newstr has the format of
+/* modsin_marcrole_convert()
  *
- * creator|cre
+ * Map MARC-authority roles for people or organizations associated
+ * with a reference to internal roles.
+ *
+ * Take input strings with roles separated by '|' characters, e.g.
+ * "author" or "author|creator" or "edt" or "editor|edt".
  */
-static int
-modsin_rolesmatch( convert *roles_convert, int nroles, newstr *s )
+static void
+modsin_marcrole_convert( newstr *s, char *suffix, newstr *out )
 {
+	convert roles[] = {
+		{ "author",              "AUTHOR" },
+		{ "aut",                 "AUTHOR" },
+		{ "aud",                 "AUTHOR" },
+		{ "aui",                 "AUTHOR" },
+		{ "aus",                 "AUTHOR" },
+		{ "creator",             "AUTHOR" },
+		{ "cre",                 "AUTHOR" },
+		{ "editor",              "EDITOR" },
+		{ "edt",                 "EDITOR" },
+		{ "degree grantor",      "DEGREEGRANTOR" },
+		{ "dgg",                 "DEGREEGRANTOR" },
+		{ "organizer of meeting","ORGANIZER" },
+		{ "orm",                 "ORGANIZER" },
+		{ "patent holder",       "ASSIGNEE" },
+		{ "pth",                 "ASSIGNEE" }
+	};
+	int nroles = sizeof( roles ) / sizeof( roles[0] );
+	int i, nmismatch, n = -1;
 	char *p, *q;
-	int i, nmismatch;
-	for ( i=0; i<nroles; ++i ) {
-		p = s->data;
-		while ( *p ) {
-			q = roles_convert[i].mods;
-			nmismatch = 0;
-			while ( *p && *p!='|' && nmismatch == 0) {
-				if ( toupper( *p ) != toupper( *q ) )
-					nmismatch++;
-				p++;
-				q++;
+
+	if ( s->len == 0 ) {
+		/* ...default to author on an empty string */
+		n = 0;
+	} else {
+		/* ...find first match in '|'-separated list */
+		for ( i=0; i<nroles && n==-1; ++i ) {
+			p = s->data;
+			while ( *p ) {
+				q = roles[i].mods;
+				nmismatch = 0;
+				while ( *p && *p!='|' && nmismatch == 0) {
+					if ( toupper( (unsigned char)*p ) != toupper( (unsigned char)*q ) )
+						nmismatch++;
+					p++;
+					q++;
+				}
+				if ( !nmismatch && !(*(q++))) n = i;
+				if ( *p=='|' ) p++;
 			}
-			if ( !nmismatch && !(*(q++))) return i;
-			if ( *p=='|' ) p++;
 		}
 	}
-	return -1;
+
+	if ( n!=-1 ) {
+		newstr_strcpy( out, roles[n].internal );
+		if ( suffix ) newstr_strcat( out, suffix );
+	} else {
+		newstr_strcpy( out, s->data );
+	}
 }
 
 static void
@@ -241,106 +275,61 @@ modsin_asis_corp_r( xml *node, newstr *name, newstr *role )
 }
 
 static void
-modsin_personr( xml *node, newstr *name, newstr *roles )
+modsin_personr( xml *node, newstr *name, newstr *suffix, newstr *roles )
 {
+	newstr outname;
+	newstr_init( &outname );
 	if ( xml_tagexact( node, "namePart" ) ) {
 		if ( xml_tag_attrib( node, "namePart", "type", "family" ) ) {
 			if ( name->len ) newstr_prepend( name, "|" );
 			newstr_prepend( name, node->value->data );
+		} else if (xml_tag_attrib( node, "namePart", "type", "suffix")) {
+			if ( suffix->len ) newstr_addchar( suffix, ' ' );
+			newstr_strcat( suffix, node->value->data );
 		} else if (xml_tag_attrib( node, "namePart", "type", "date")){
 		} else {
 			if ( name->len ) newstr_addchar( name, '|' );
-			if ( strchr( node->value->data, ',' ) ) 
-				name_comma( node->value->data, name );
-			else name_nocomma( node->value->data, name );
+			name_parse( &outname, node->value, NULL, NULL );
+			newstr_newstrcat( name, &outname );
 		}
 	} else if ( xml_tagexact( node, "roleTerm" ) ) {
 		if ( roles->len ) newstr_addchar( roles, '|' );
 		newstr_newstrcat( roles, node->value );
 	}
-	if ( node->down ) modsin_personr( node->down, name, roles );
-	if ( node->next ) modsin_personr( node->next, name, roles );
+	if ( node->down ) modsin_personr( node->down, name, suffix, roles );
+	if ( node->next ) modsin_personr( node->next, name, suffix, roles );
+	newstr_free( &outname );
 }
 
 static void
-modsin_asis_corp( xml *node, fields *info, int level, convert *roles_convert,
-		int nroles )
+modsin_asis_corp( xml *node, fields *info, int level, char *suffix )
 {
-	newstr name, roles;
-	int n;
+	newstr name, roles, role_out;
 	xml *dnode = node->down;
 	if ( dnode ) {
-		newstrs_init( &name, &roles, NULL );
+		newstrs_init( &name, &roles, &role_out, NULL );
 		modsin_asis_corp_r( dnode, &name, &roles );
-		if ( roles.len ) {
-			n = modsin_rolesmatch( roles_convert, nroles, &roles );
-			if ( n!=-1 ) {
-				fields_add( info, roles_convert[n].internal, 
-					name.data, level );
-			} else {
-				fields_add( info, roles.data, name.data, level);
-			}
-		}
-		else fields_add( info, roles_convert[0].internal, name.data, 
-			level );
-		newstrs_free( &name, &roles, NULL );
+		modsin_marcrole_convert( &roles, suffix, &role_out );
+		fields_add( info, role_out.data, name.data, level );
+		newstrs_free( &name, &roles, &role_out, NULL );
 	}
-}
-
-static void
-modsin_asis( xml *node, fields *info, int level )
-{
-	convert roles_convert[] = {
-		{ "author",              "AUTHOR:ASIS" },
-		{ "creator",             "AUTHOR:ASIS" },
-		{ "editor",              "EDITOR:ASIS" },
-		{ "degree grantor",      "DEGREEGRANTOR:ASIS" },
-		{ "organizer of meeting","ORGANIZER:ASIS" },
-		{ "patent holder",       "ASSIGNEE:ASIS" }
-	};
-	int nroles = sizeof( roles_convert ) / sizeof( roles_convert[0] );
-	modsin_asis_corp( node, info, level, roles_convert, nroles );
-}
-
-static void
-modsin_corp( xml *node, fields *info, int level )
-{
-	convert roles_convert[] = {
-		{ "author",              "AUTHOR:CORP" },
-		{ "creator",             "AUTHOR:CORP" },
-		{ "editor",              "EDITOR:CORP" },
-		{ "degree grantor",      "DEGREEGRANTOR:CORP" },
-		{ "organizer of meeting","ORGANIZER:CORP" },
-		{ "patent holder",       "ASSIGNEE:CORP" }
-	};
-	int nroles = sizeof( roles_convert ) / sizeof( roles_convert[0] );
-	modsin_asis_corp( node, info, level, roles_convert, nroles );
 }
 
 static void
 modsin_person( xml *node, fields *info, int level )
 {
-	newstr name, roles, role;
-	char *p;
+	newstr name, suffix, roles, role, role_out;
 	xml *dnode = node->down;
 	if ( dnode ) {
-		newstrs_init( &name, &role, &roles, NULL );
-		modsin_personr( dnode, &name, &roles );
-		/* no defined role, default to author */
-		if ( !roles.len ) newstr_strcpy( &roles, "author" );
-		p = roles.data;
-		while ( p && *p ) {
-			while ( p && *p && *p!='|' ) newstr_addchar(&role,*p++);
-			if ( !strcasecmp( role.data, "author" ) ||
-			     !strcasecmp( role.data, "creator" ) ) 
-				fields_add( info, "AUTHOR", name.data, level );
-			else if ( !strcasecmp( role.data, "editor" ) )
-				fields_add( info, "EDITOR", name.data, level );
-			else fields_add( info, role.data, name.data, level );
-			if ( *p=='|' ) p++;
-			newstr_empty( &role );
+		newstrs_init( &name, &suffix, &role, &roles, &role_out, NULL );
+		modsin_personr( dnode, &name, &suffix, &roles );
+		modsin_marcrole_convert( &roles, NULL, &role_out );
+		if ( suffix.len ) {
+			newstr_strcat( &name, "||" );
+			newstr_newstrcat( &name, &suffix );
 		}
-		newstrs_free( &name, &role, &roles, NULL );
+		fields_add( info, role_out.data, name.data, level );
+		newstrs_free( &name, &suffix, &role, &roles, NULL );
 	}
 }
 
@@ -657,9 +646,9 @@ modsin_mods( xml *node, fields *info, int level )
 	else if ( xml_tag_attrib( node, "name", "type", "personal" ) )
 		modsin_person( node, info, level );
 	else if ( xml_tag_attrib( node, "name", "type", "corporate" ) )
-		modsin_corp( node, info, level );
+		modsin_asis_corp( node, info, level, ":CORP" );
 	else if ( xml_tagexact( node, "name" ) )
-		modsin_asis( node, info, level );
+		modsin_asis_corp( node, info, level, ":ASIS" );
 	else if ( xml_tagexact( node, "recordInfo" ) && node->down )
 		modsin_recordinfo( node->down, info, level );
 	else if  ( xml_tagexact( node, "part" ) )
@@ -693,7 +682,7 @@ modsin_mods( xml *node, fields *info, int level )
 	else if ( xml_tagexact( node, "physicalDescription" ) )
 		modsin_description( node, info, level );
 	else if ( xml_tag_attrib( node, "relatedItem", "type", "host" ) ||
-	          xml_tag_attrib( node, "relatedItem", "type", "series" ) ) {
+		  xml_tag_attrib( node, "relatedItem", "type", "series" ) ) {
 		if ( node->down ) modsin_mods( node->down, info, level+1 );
 	}
 
@@ -709,21 +698,6 @@ modsin_assembleref( xml *node, fields *info )
 		if ( node->down ) modsin_mods( node->down, info, 0 );
 	} else if ( node->down ) modsin_assembleref( node->down, info );
 	if ( node->next ) modsin_assembleref( node->next, info );
-}
-
-void
-modsin_convertf( fields *modsin, fields *info, int reftype, int verbose, 
-	variants *all, int nall )
-{
-	char *tag, *value;
-	int i, n, level;
-	n = fields_num( modsin );
-	for ( i=0; i<n; ++i ) {
-		tag = fields_tag( modsin, i, FIELDS_CHRP );
-		value = fields_value( modsin, i, FIELDS_CHRP );
-		level = fields_level( modsin, i );
-		fields_add( info, tag, value, level );
-	}
 }
 
 int

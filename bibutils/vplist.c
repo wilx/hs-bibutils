@@ -3,9 +3,9 @@
  *
  * Version: 9/20/2012
  *
- * Copyright (c) Chris Putnam 2011-2012
+ * Copyright (c) Chris Putnam 2011-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  * Implements a simple managed array of pointers to void
  *

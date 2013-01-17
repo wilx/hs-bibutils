@@ -1,7 +1,9 @@
 /*
  * bibl.h
  *
- * Copyright (c) Chris Putnam 2005-12
+ * Copyright (c) Chris Putnam 2005-2013
+ *
+ * Source code released under the GPL version 2
  *
  */
 #ifndef BIBL_H
@@ -19,9 +21,9 @@ typedef struct {
 } bibl;
 
 extern void bibl_init( bibl *b );
-extern void bibl_addref( bibl *b, fields *ref );
+extern int  bibl_addref( bibl *b, fields *ref );
 extern void bibl_free( bibl *b );
-extern void bibl_copy( bibl *bout, bibl *bin );
+extern int  bibl_copy( bibl *bout, bibl *bin );
 
 #endif
 

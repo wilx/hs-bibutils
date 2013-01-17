@@ -1,11 +1,11 @@
 /*
  * list.c
  *
- * version: 2012-03-06
+ * version: 2012-12-19
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  * Implements a simple managed array of newstrs.
  *
@@ -62,7 +62,7 @@ list_delete( list *a )
 static inline int
 list_valid_num( list *a, int n )
 {
-	if ( n < 0 || n > a->n ) return 0;
+	if ( n < 0 || n >= a->n ) return 0;
 	return 1;
 }
 
@@ -84,18 +84,39 @@ list_getstr( list *a, int n )
 
 /*
  * return pointer to C string 'n', list_getstr_char() is deprecated
+ *
+ * Ensure that a pointer is returned even if the newstr doesn't
+ * point to data. Thus we can convert loops like:
+ *
+ * for ( i=0; i<a->n; ++i ) {
+ *      p = list_getc( a, i );
+ *      if ( p==NULL ) continue; // empty string
+ *      ...
+ * }
+ *
+ * to
+ *
+ * i = 0;
+ * while ( ( p = list_getc( a, i ) ) ) {
+ *      ...
+ *      i++;
+ * }
+ *
  */
 char *
 list_getc( list *a, int n )
 {
+	static char empty[] = "";
+	char *p;
 	if ( !list_valid_num( a, n ) ) return NULL;
-	else return a->str[n].data;
+	p = a->str[n].data;
+	if ( p ) return p;
+	else return empty;
 }
 char *
 list_getstr_char( list *a, int n )
 {
-	if ( !list_valid_num( a, n ) ) return NULL;
-	else return a->str[n].data;
+	return list_getc( a, n );
 }
 
 static int
@@ -147,6 +168,25 @@ list_add( list *a, char *s )
 }
 
 int
+list_adds( list *a, ... )
+{
+	int ok, ret = 1;
+	va_list ap;
+	char *v;
+	va_start( ap, a );
+	do {
+		v = va_arg( ap, char * );
+		if ( v ) {
+			ok = list_add( a, v );
+			if ( !ok ) { ret=0; goto out; }
+		}
+	} while( v );
+out:
+	va_end( ap );
+	return ret;
+}
+
+int
 list_add_unique( list *a, char *s )
 {
 	if ( list_find( a, s )==-1 ) return list_add( a, s );
@@ -188,6 +228,16 @@ list_append_unique( list *a, list *toadd )
 	for ( i=0; i<toadd->n; ++i ) {
 		list_add_newstr_unique( a, &(toadd->str[i]) );
 	}
+}
+
+void
+list_remove( list *a, int n )
+{
+	int i;
+	if ( !list_valid_num( a, n ) ) return;
+	for ( i=n+1; i<a->n; ++i )
+		newstr_newstrcpy( &(a->str[i-1]), &(a->str[i]) );
+	a->n--;
 }
 
 static int
@@ -359,7 +409,7 @@ list_trimend( list *a, int n )
 }
 
 void
-list_tokenize( list *tokens, newstr *in, char delim )
+list_tokenize( list *tokens, newstr *in, char delim, int merge_delim )
 {
 	newstr s;
 	char *p;
@@ -369,6 +419,7 @@ list_tokenize( list *tokens, newstr *in, char delim )
 	while ( p && *p ) {
 		while ( *p && *p!=delim ) newstr_addchar( &s, *p++ );
 		if ( s.len ) list_add( tokens, s.data );
+		else if ( !merge_delim ) list_add( tokens, "" );
 		newstr_empty( &s );
 		if ( *p==delim ) p++;
 	}

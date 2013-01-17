@@ -1,9 +1,9 @@
 /*
  * reftypes.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -40,4 +40,18 @@ process_findoldtag( char *oldtag, int reftype, variants all[], int nall )
         return -1;
 }
 
-
+/* translate_oldtag()
+ */
+int
+translate_oldtag( char *oldtag, int reftype, variants all[], int nall,
+		int *processingtype, int *level, char **newtag )
+{
+	int n;
+	n = process_findoldtag( oldtag, reftype, all, nall );
+	if ( n!=-1 ) {
+		*processingtype = ((all[reftype]).tags[n]).processingtype;
+		*level          = ((all[reftype]).tags[n]).level;
+		*newtag         = ((all[reftype]).tags[n]).newstr;
+	}
+	return n;
+}

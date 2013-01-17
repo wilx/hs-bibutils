@@ -1,9 +1,9 @@
 /*
  * utf8.c
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -77,6 +77,18 @@ utf8_encode( unsigned int value, unsigned char out[6] )
 		/* error, above 2^31 bits encodable by UTF-8 */
 		return 0;
 	}
+}
+
+/* Generate UTF8 character as null-terminated string */
+void
+utf8_encode_str( unsigned int value, char outstr[7] )
+{
+	unsigned char encoded[6];
+	int i, n;
+	n = utf8_encode( value, encoded );
+	for ( i=0; i<n; ++i )
+		outstr[i] = ( char ) encoded[i];
+	outstr[n] = '\0';
 }
 
 unsigned int

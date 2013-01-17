@@ -1,14 +1,13 @@
 /*
  * newstring.h
  *
- * Version: 9/20/12
+ * Version: 12/24/12
  *
- * Copyright (c) Chris Putnam 1999-2011
+ * Copyright (c) Chris Putnam 1999-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
-
 #ifndef NEWSTR_H
 #define NEWSTR_H
 

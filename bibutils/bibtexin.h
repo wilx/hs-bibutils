@@ -1,9 +1,9 @@
 /*
  * bibtexin.h
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #ifndef BIBTEXIN_H
@@ -16,7 +16,7 @@
 #include "bibutils.h"
 #include "reftypes.h"
 
-extern void bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p, variants *all, int nall );
+extern int  bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p, variants *all, int nall );
 extern int  bibtexin_processf( fields *bibin, char *data, char *filename, long nref );
 extern void bibtexin_cleanf( bibl *bin, param *p );
 extern int  bibtexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, newstr *reference, int *fcharset );

@@ -9,9 +9,10 @@
  * is_doi()
  * Check for DOI buried in another field.
  *
- * Copyright (c) Chris Putnam 2008-2012
+ * Copyright (c) Chris Putnam 2008-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
+ *
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,9 +92,9 @@ string_pattern( char *s, char *pattern, int matchcase )
 	for ( i=0; i<patlen; ++i ) {
 		match = 0;
 		if ( pattern[i]=='#' ) {
-			if ( isdigit( s[i] ) ) match = 1;
-		} else if ( !matchcase && isalpha( pattern[i] ) ) {
-			if ( tolower(pattern[i])==tolower(s[i])) match = 1;
+			if ( isdigit( (unsigned char)s[i] ) ) match = 1;
+		} else if ( !matchcase && isalpha( (unsigned char)pattern[i] ) ) {
+			if ( tolower((unsigned char)pattern[i])==tolower((unsigned char)s[i])) match = 1;
 		} else {
 			if ( pattern[i] == s[i] ) match = 1;
 		}

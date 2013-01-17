@@ -1,9 +1,9 @@
 /*
  * endout.c
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Program and source code released under the GPL
+ * Program and source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -15,6 +15,7 @@
 #include "strsearch.h"
 #include "fields.h"
 #include "doi.h"
+#include "name.h"
 #include "endout.h"
 
 void
@@ -336,40 +337,23 @@ output_title( FILE *fp, fields *info, char *full, char *sub, char *endtag,
 }
 
 static void
-output_person( FILE *fp, char *p )
-{
-	int nseps = 0, nch;
-	while ( *p ) {
-		nch = 0;
-		if ( nseps==1 ) fprintf( fp, "," );
-		if ( nseps ) fprintf( fp, " " );
-		while ( *p && *p!='|' ) {
-			fprintf( fp, "%c", *p++ );
-			nch++;
-		}
-		if ( *p=='|' ) p++;
-		if ( nseps!=0 && nch==1 ) fprintf( fp, "." );
-		nseps++;
-	}
-}
-
-static void
 output_people( FILE *fp, fields *info, char *tag, char *entag, int level )
 {
+	newstr oneperson;
 	int i, n, flvl;
-	char *ftag, *fval;
+	char *ftag;
+	newstr_init( &oneperson );
 	n = fields_num( info );
 	for ( i=0; i<n; ++i ) {
 		flvl = fields_level( info, i );
 		if ( level!=LEVEL_ANY && flvl!=level ) continue;
 		ftag = fields_tag( info, i, FIELDS_CHRP );
 		if ( !strcasecmp( ftag, tag ) ) {
-			fval = fields_value( info, i, FIELDS_CHRP );
-			fprintf( fp, "%s ", entag );
-			output_person( fp, fval );
-			fprintf( fp, "\n" );
+			name_build_withcomma( &oneperson, fields_value( info, i, FIELDS_CHRP ) );
+			fprintf( fp, "%s %s\n", entag, oneperson.data );
 		}
 	}
+	newstr_free( &oneperson );
 }
 
 static void
@@ -548,8 +532,18 @@ endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 	output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%!", LEVEL_MAIN );
 
 	output_people( fp, info, "AUTHOR",     "%A", LEVEL_MAIN );
-	output_people( fp, info, "EDITOR",     "%E", LEVEL_ANY  );
+	output_people( fp, info, "EDITOR",     "%E", LEVEL_MAIN );
+	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE || type==TYPE_ELECTRONICARTICLE || type==TYPE_NEWSARTICLE )
+		output_people( fp, info, "EDITOR", "%E", LEVEL_HOST );
+	else if ( type==TYPE_INBOOK || type==TYPE_INPROCEEDINGS ) {
+		output_people( fp, info, "EDITOR", "%E", LEVEL_HOST );
+	} else {
+		output_people( fp, info, "EDITOR", "%Y", LEVEL_HOST );
+	}
 	output_people( fp, info, "TRANSLATOR", "%H", LEVEL_ANY  );
+
+	output_people( fp, info, "AUTHOR",     "%Y", LEVEL_SERIES );
+	output_people( fp, info, "EDITOR",     "%Y", LEVEL_SERIES );
 
 	if ( type==TYPE_CASE )
 		output_easy(    fp, info, "AUTHOR:CORP", "%I", LEVEL_MAIN );
@@ -568,9 +562,17 @@ endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 		output_easyall( fp, info, "TRANSLATOR:ASIS", "%H", LEVEL_ANY  );
 	}
 
-	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE )
+	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE || type==TYPE_ELECTRONICARTICLE || type==TYPE_NEWSARTICLE )
 		output_title( fp, info, "TITLE", "SUBTITLE", "%J", LEVEL_HOST );
-	else output_title( fp, info, "TITLE", "SUBTITLE", "%B", LEVEL_HOST );
+	else if ( type==TYPE_INBOOK || type==TYPE_INPROCEEDINGS ) {
+		output_title( fp, info, "TITLE", "SUBTITLE", "%B", LEVEL_HOST );
+	} else {
+		output_title( fp, info, "TITLE", "SUBTITLE", "%S", LEVEL_HOST );
+	}
+
+	if ( type!=TYPE_CASE && type!=TYPE_HEARING ) {
+		output_title( fp, info, "TITLE", "SUBTITLE", "%S", LEVEL_SERIES );
+	}
 
 	output_year( fp, info, LEVEL_ANY );
 	output_monthday( fp, info, LEVEL_ANY );

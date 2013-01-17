@@ -1,9 +1,9 @@
 /*
  * modsin.h
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #ifndef MODSIN_H
@@ -15,7 +15,6 @@
 
 extern int modsin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, newstr *reference, int *fcharset );
 extern int modsin_processf( fields *medin, char *data, char *filename, long nref );
-extern void modsin_convertf( fields *medin, fields *info, int reftype, int verbose, variants *all, int nall );
 extern void modsin_initparams( param *p, const char *progname );
 
 #endif

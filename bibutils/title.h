@@ -3,9 +3,9 @@
  *
  * process titles into title/subtitle pairs for MODS
  *
- * Copyright (c) Chris Putnam 2004-2012
+ * Copyright (c) Chris Putnam 2004-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL verison 2
  *
  */
 #ifndef TITLE_H
@@ -14,7 +14,7 @@
 #include "newstr.h"
 #include "fields.h"
 
-extern void title_process( fields *info, char *tag, char *data, int level,
+extern int title_process( fields *info, char *tag, char *data, int level,
 		unsigned char nosplittitle );
 
 #endif

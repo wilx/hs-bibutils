@@ -1,12 +1,11 @@
 /*
  * bibtypes.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Program and source code released under the GPL
+ * Program and source code released under the GPL version 2
  *
  */
-
 #include <stdio.h>
 #include "fields.h"
 #include "reftypes.h"
@@ -34,7 +33,7 @@ static lookups article[] = {
 	{ "abstract",     "ABSTRACT",  SIMPLE, LEVEL_MAIN },
 	{ "contents",     "CONTENTS",  SIMPLE, LEVEL_MAIN },
 	{ "language",     "LANGUAGE",  SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",     SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",     BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "location",     "LOCATION",  SIMPLE, LEVEL_MAIN },
 	{ "ftp",          "",      BIBTEX_URL, LEVEL_MAIN },
@@ -48,12 +47,12 @@ static lookups article[] = {
 	{ "refnum",       "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",            "INTERNAL_TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
-	{ " ",            "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
-	{ " ",            "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
-	{ " ",            "GENRE|journal article",  ALWAYS, LEVEL_MAIN },
-	{ " ",            "GENRE|periodical",       ALWAYS, LEVEL_HOST },
-	{ " ",            "GENRE|academic journal", ALWAYS, LEVEL_HOST }
+	{ "",             "INTERNAL_TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
+	{ "",             "ISSUANCE|continuing",     ALWAYS, LEVEL_HOST },
+	{ "",             "RESOURCE|text",           ALWAYS, LEVEL_MAIN },
+	{ "",             "NGENRE|journal article",  ALWAYS, LEVEL_MAIN },
+	{ "",             "GENRE|periodical",        ALWAYS, LEVEL_HOST },
+	{ "",             "NGENRE|academic journal", ALWAYS, LEVEL_HOST }
 };
 
 /* Book */
@@ -80,7 +79,7 @@ static lookups book[] = {
 	{ "contents",     "CONTENTS",  SIMPLE, LEVEL_MAIN },
 	{ "language",     "LANGUAGE",  SIMPLE, LEVEL_MAIN },
 	{ "location",     "LOCATION",  SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",     SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",     BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "type",         "GENRE",     SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",    SIMPLE, LEVEL_MAIN },
@@ -89,17 +88,17 @@ static lookups book[] = {
 	{ "pdf",          "FILEATTACH",SIMPLE, LEVEL_MAIN },
 	{ "sentelink",    "FILEATTACH",BIBTEX_SENTE, LEVEL_MAIN },
 	{ "file",         "FILEATTACH",LINKEDFILE,   LEVEL_MAIN },
-	{ "address"       "ADDRESS",   SIMPLE, LEVEL_MAIN },
+	{ "address",      "ADDRESS",   SIMPLE, LEVEL_MAIN },
 	{ "howpublished", "",       HOWPUBLISHED, LEVEL_MAIN },
 	{ "doi",          "DOI",       SIMPLE, LEVEL_MAIN },
 	{ "refnum",       "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
 	{ "refnum",       "REFNUM",    SIMPLE, LEVEL_MAIN },
-	{ " ",            "INTERNAL_TYPE|BOOK",     ALWAYS, LEVEL_MAIN },
-	{ " ",            "RESOURCE|text", ALWAYS, LEVEL_MAIN },
-	{ " ",            "ISSUANCE|monographic", ALWAYS, LEVEL_MAIN },
-	{ " ",            "GENRE|book",    ALWAYS, LEVEL_MAIN }
+	{ "",             "INTERNAL_TYPE|BOOK",   ALWAYS, LEVEL_MAIN },
+	{ "",             "RESOURCE|text",        ALWAYS, LEVEL_MAIN },
+	{ "",             "ISSUANCE|monographic", ALWAYS, LEVEL_MAIN },
+	{ "",             "GENRE|book",           ALWAYS, LEVEL_MAIN }
 };
 
 /* Technical reports */
@@ -109,6 +108,7 @@ static lookups report[] = {
 	{ "translator",   "TRANSLATOR",PERSON, LEVEL_MAIN },
 	{ "title",        "TITLE",        TITLE,  LEVEL_MAIN },
 	{ "booktitle",    "TITLE",        TITLE,  LEVEL_MAIN },
+	{ "series",       "TITLE",        TITLE,  LEVEL_HOST },
 	{ "editor",       "EDITOR",       PERSON, LEVEL_MAIN },
 	{ "publisher",    "PUBLISHER",    SIMPLE, LEVEL_MAIN },
 	{ "institution",  "PUBLISHER",    SIMPLE, LEVEL_MAIN },
@@ -123,7 +123,7 @@ static lookups report[] = {
 	{ "contents",     "CONTENTS",     SIMPLE, LEVEL_MAIN },
 	{ "language",     "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "location",     "LOCATION",     SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "doi",          "DOI",          SIMPLE, LEVEL_MAIN },
@@ -137,9 +137,9 @@ static lookups report[] = {
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "type",      "GENRE",            SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|REPORT",     ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|report",    ALWAYS, LEVEL_MAIN }
+	{ "",         "INTERNAL_TYPE|REPORT", ALWAYS, LEVEL_MAIN },
+	{ "",         "RESOURCE|text",        ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|report",         ALWAYS, LEVEL_MAIN }
 };
 
 static lookups manual[] = {
@@ -160,7 +160,7 @@ static lookups manual[] = {
 	{ "abstract",  "ABSTRACT",  SIMPLE, LEVEL_MAIN },
 	{ "contents",  "CONTENTS",  SIMPLE, LEVEL_MAIN },
 	{ "location",     "LOCATION",     SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "doi",       "DOI",       SIMPLE, LEVEL_MAIN },
@@ -174,9 +174,9 @@ static lookups manual[] = {
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|REPORT",       ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text",     ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|instruction", ALWAYS, LEVEL_MAIN }
+	{ "",         "INTERNAL_TYPE|REPORT", ALWAYS, LEVEL_MAIN },
+	{ "",         "RESOURCE|text",        ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|instruction",    ALWAYS, LEVEL_MAIN }
 };
 
 /* Part of a book (e.g. chapter or section) */
@@ -214,15 +214,15 @@ static lookups inbook[] = {
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "type",      "GENRE",      SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|INBOOK", ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text",        ALWAYS, LEVEL_MAIN },
-	{ " ",         "ISSUANCE|monographic", ALWAYS, LEVEL_HOST },
-	{ " ",         "GENRE|book chapter",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|book",           ALWAYS, LEVEL_HOST }
+	{ "",         "INTERNAL_TYPE|INBOOK", ALWAYS, LEVEL_MAIN },
+	{ "",         "RESOURCE|text",        ALWAYS, LEVEL_MAIN },
+	{ "",         "ISSUANCE|monographic", ALWAYS, LEVEL_HOST },
+	{ "",         "NGENRE|book chapter",  ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|book",           ALWAYS, LEVEL_HOST }
 };
 
 /* References of papers in conference proceedings */
@@ -258,16 +258,16 @@ static lookups inproceedings[] = {
 	{ "sentelink",    "FILEATTACH",BIBTEX_SENTE, LEVEL_MAIN },
 	{ "file",         "FILEATTACH",LINKEDFILE,   LEVEL_MAIN },
 	{ "type",      "GENRE",      SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "howpublished", "",    HOWPUBLISHED, LEVEL_MAIN },
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|INPROCEEDINGS",  ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text",       ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|conference publication",   ALWAYS, LEVEL_HOST }
+	{ "",         "INTERNAL_TYPE|INPROCEEDINGS",  ALWAYS, LEVEL_MAIN },
+	{ "",         "RESOURCE|text",                ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|conference publication", ALWAYS, LEVEL_HOST }
 };
 
 /* Used for a section of a book with its own title */
@@ -295,7 +295,7 @@ static lookups incollection[] = {
 	{ "contents",  "CONTENTS",  SIMPLE, LEVEL_HOST },
 	{ "language",     "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "type",      "GENRE",      SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "doi",       "DOI",       SIMPLE, LEVEL_MAIN },
@@ -309,10 +309,10 @@ static lookups incollection[] = {
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|INCOLLECTION",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text", ALWAYS, LEVEL_MAIN },
-	{ " ",         "ISSUANCE|monographic", ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|collection",    ALWAYS, LEVEL_HOST }
+	{ "",         "INTERNAL_TYPE|INCOLLECTION", ALWAYS, LEVEL_MAIN },
+	{ "",         "RESOURCE|text",              ALWAYS, LEVEL_MAIN },
+	{ "",         "ISSUANCE|monographic",       ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|collection",           ALWAYS, LEVEL_HOST }
 };
 
 /* Proceedings */
@@ -346,15 +346,15 @@ static lookups proceedings[] = {
 	{ "language",     "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "howpublished", "",    HOWPUBLISHED, LEVEL_MAIN },
 	{ "location",     "LOCATION",     SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|PROCEEDINGS",    ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text",       ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|conference publication",   ALWAYS, LEVEL_MAIN }
+	{ "",         "INTERNAL_TYPE|PROCEEDINGS",    ALWAYS, LEVEL_MAIN },
+	{ "",         "RESOURCE|text",                ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|conference publication", ALWAYS, LEVEL_MAIN }
 };
 
 static lookups phds[] = {
@@ -377,17 +377,17 @@ static lookups phds[] = {
 	{ "howpublished", "" ,   HOWPUBLISHED, LEVEL_MAIN },
 	{ "language",     "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "location",     "LOCATION",     SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "type",         "GENRE",         SIMPLE, LEVEL_MAIN },
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|THESIS",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text", ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|thesis",  ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|Ph.D. thesis",  ALWAYS, LEVEL_MAIN }
+	{ "",         "INTERNAL_TYPE|THESIS", ALWAYS,  LEVEL_MAIN },
+	{ "",         "RESOURCE|text",        ALWAYS,  LEVEL_MAIN },
+	{ "",         "GENRE|thesis",         ALWAYS,  LEVEL_MAIN },
+	{ "",         "NGENRE|Ph.D. thesis",  DEFAULT, LEVEL_MAIN }
 };
 
 static lookups masters[] = {
@@ -409,7 +409,7 @@ static lookups masters[] = {
 	{ "file",         "FILEATTACH",LINKEDFILE,   LEVEL_MAIN },
 	{ "language",     "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "location",     "LOCATION",     SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "type",         "GENRE",         SIMPLE, LEVEL_MAIN },
@@ -417,10 +417,10 @@ static lookups masters[] = {
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|THESIS",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text", ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|thesis",  ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|Masters thesis",  ALWAYS, LEVEL_MAIN }
+	{ "",         "INTERNAL_TYPE|THESIS",  ALWAYS,  LEVEL_MAIN },
+	{ "",         "RESOURCE|text",         ALWAYS,  LEVEL_MAIN },
+	{ "",         "GENRE|thesis",          ALWAYS,  LEVEL_MAIN },
+	{ "",         "NGENRE|Masters thesis", DEFAULT, LEVEL_MAIN }
 };
 
 /* Unpublished */
@@ -447,15 +447,15 @@ static lookups unpublished[] = {
 	{ "language",     "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "howpublished", "",    HOWPUBLISHED, LEVEL_MAIN },
 	{ "location",     "LOCATION",     SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|BOOK",       ALWAYS, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|unpublished",      ALWAYS, LEVEL_MAIN }
+	{ "",         "INTERNAL_TYPE|BOOK", ALWAYS, LEVEL_MAIN },
+	{ "",         "RESOURCE|text",      ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|unpublished",  ALWAYS, LEVEL_MAIN }
 };
 
 /*
@@ -491,13 +491,13 @@ static lookups standard[] = {
 	{ "number",    "NUMBER",      TITLE,  LEVEL_MAIN },
 	{ "revision",  "REVISION",    TITLE,  LEVEL_MAIN },
 	{ "location",     "LOCATION",     SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",          "BIBKEY",          SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|STANDARD",    ALWAYS, LEVEL_MAIN }
+	{ "",         "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
+	{ "",         "INTERNAL_TYPE|STANDARD", ALWAYS, LEVEL_MAIN }
 };
 
 /*
@@ -527,13 +527,13 @@ static lookups periodical[] = {
 	{ "howpublished", "",         HOWPUBLISHED, LEVEL_MAIN },
 	{ "refnum",       "REFNUM",      SIMPLE, LEVEL_MAIN },
 	{ "language",     "LANGUAGE",    SIMPLE, LEVEL_MAIN },
-	{ "note",         "NOTES",       SIMPLE, LEVEL_MAIN },
+	{ "note",         "NOTES",       BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "organization", "ORGANIZER:CORP", BIBTEX_ORGANIZATION, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",            "RESOURCE|text",   ALWAYS, LEVEL_MAIN },
-	{ " ",            "GENRE|periodical",ALWAYS, LEVEL_MAIN }
+	{ "",            "RESOURCE|text",    ALWAYS, LEVEL_MAIN },
+	{ "",            "GENRE|periodical", ALWAYS, LEVEL_MAIN }
 };
 
 /*
@@ -558,7 +558,7 @@ static lookups patent[] = {
 	{ "language",  "LANGUAGE",  SIMPLE, LEVEL_MAIN },
 	{ "location",  "LOCATION",  SIMPLE, LEVEL_MAIN },
 	{ "nationality", "NATIONALITY", SIMPLE, LEVEL_MAIN },
-	{ "note",      "NOTES",     SIMPLE, LEVEL_MAIN },
+	{ "note",      "NOTES",     BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",       "BIBKEY",       SIMPLE, LEVEL_MAIN },
 	{ "doi",       "DOI",       SIMPLE, LEVEL_MAIN },
@@ -572,9 +572,9 @@ static lookups patent[] = {
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-	{ " ",         "RESOURCE|text",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|PATENT",    ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|patent",    ALWAYS, LEVEL_MAIN },
+	{ "",         "RESOURCE|text",        ALWAYS, LEVEL_MAIN },
+	{ "",         "INTERNAL_TYPE|PATENT", ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|patent",         ALWAYS, LEVEL_MAIN },
 };
 
 /*
@@ -605,13 +605,13 @@ static lookups electronic[] = {
 	{ "refnum",    "REFNUM",    SIMPLE, LEVEL_MAIN },
 	{ "crossref",     "CROSSREF",  SIMPLE, LEVEL_MAIN },
 	{ "location",  "LOCATION",  SIMPLE, LEVEL_MAIN },
-	{ "note",      "NOTES",     SIMPLE, LEVEL_MAIN },
+	{ "note",      "NOTES",     BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",       "ANNOTE",    SIMPLE, LEVEL_MAIN },
 	{ "key",       "BIBKEY",       SIMPLE, LEVEL_MAIN },
 	{ "language",  "LANGUAGE",  SIMPLE, LEVEL_MAIN },
 	{ "keywords",     "KEYWORD",   KEYWORD, LEVEL_MAIN },
-        { " ",  "RESOURCE|software, multimedia",    ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|electronic",       ALWAYS, LEVEL_MAIN },
+        { "",         "RESOURCE|software, multimedia", ALWAYS, LEVEL_MAIN },
+	{ "",         "GENRE|electronic",              ALWAYS, LEVEL_MAIN },
 };
 
 static lookups misc[] = {
@@ -639,12 +639,12 @@ static lookups misc[] = {
 	{ "refnum",    "REFNUM",       SIMPLE, LEVEL_MAIN },
 	{ "crossref",  "CROSSREF",     SIMPLE, LEVEL_MAIN },
 	{ "location",  "LOCATION",     SIMPLE, LEVEL_MAIN },
-	{ "note",      "NOTES",        SIMPLE, LEVEL_MAIN },
+	{ "note",      "NOTES",        BIBTEX_NOTE, LEVEL_MAIN },
 	{ "annote",    "ANNOTE",       SIMPLE, LEVEL_MAIN },
 	{ "key",       "BIBKEY",       SIMPLE, LEVEL_MAIN },
 	{ "language",  "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "keywords",  "KEYWORD",      KEYWORD, LEVEL_MAIN },
-	{ " ",         "INTERNAL_TYPE|MISC",       ALWAYS, LEVEL_MAIN },
+	{ "",          "INTERNAL_TYPE|MISC",       ALWAYS, LEVEL_MAIN },
 };
 
 #define ORIG(a) ( &(a[0]) )

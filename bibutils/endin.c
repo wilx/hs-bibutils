@@ -1,9 +1,9 @@
 /*
  * endin.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Program and source code released under the GPL
+ * Program and source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -61,8 +61,8 @@ endin_istag( char *buf )
 	const char others[]="!@#$^&*()+=?[~>";
 	if ( buf[0]!='%' ) return 0;
 	if ( buf[2]!=' ' ) return 0;
-	if ( isalpha( buf[1] ) ) return 1;
-	if ( isdigit( buf[1] ) ) return 1;
+	if ( isalpha( (unsigned char)buf[1] ) ) return 1;
+	if ( isdigit( (unsigned char)buf[1] ) ) return 1;
 	if ( strchr( others, buf[1] ) ) return 1;
 	return 0;
 }
@@ -177,8 +177,8 @@ endin_processf( fields *endin, char *p, char *filename, long nref )
 	return 1;
 }
 
-static void
-addtype( fields *info, char *data, int level )
+static int
+endin_addtype( fields *info, char *data, int level )
 {
 	lookups types[] = {
 		{ "GENERIC", "ARTICLE" },
@@ -208,56 +208,66 @@ addtype( fields *info, char *data, int level )
 		{ "WEB PAGE", "WEBPAGE" },
 	};
 	int  ntypes = sizeof( types ) / sizeof( lookups );
-	int  i, found=0;
+	int  i, ok, found=0;
 	for ( i=0; i<ntypes; ++i ) {
 		if ( !strcasecmp( types[i].oldstr, data ) ) {
 			found = 1;
-			fields_add( info, "INTERNAL_TYPE", types[i].newstr, level );
+			ok = fields_add( info, "INTERNAL_TYPE", types[i].newstr, level );
+			if ( !ok ) return 0;
 		}
 	}
 	if ( !found ) {
 		fprintf( stderr, "Did not identify reference type '%s'\n",
 			data );
 		fprintf( stderr, "Defaulting to journal article type\n");
-		fields_add( info, "INTERNAL_TYPE", types[0].newstr, level );
+		ok = fields_add( info, "INTERNAL_TYPE", types[0].newstr, level );
+		if ( !ok ) return 0;
 	}
+	return 1;
 }
 
-static void
-addpage( fields *info, char *p, int level )
+static int
+endin_addpage( fields *info, char *p, int level )
 {
 	newstr page;
+	int ok;
 	newstr_init( &page );
 	p = skip_ws( p );
 	while ( *p && !is_ws(*p) && *p!='-' && *p!='\r' && *p!='\n' ) 
 		newstr_addchar( &page, *p++ );
-	if ( page.len>0 ) fields_add( info, "PAGESTART", page.data, level );
+	if ( page.len>0 ) {
+		ok = fields_add( info, "PAGESTART", page.data, level );
+		if ( !ok ) return 0;
+	}
 	newstr_empty( &page );
 	while ( *p && (is_ws(*p) || *p=='-' ) ) p++;
 	while ( *p && !is_ws(*p) && *p!='-' && *p!='\r' && *p!='\n' ) 
 		newstr_addchar( &page, *p++ );
-	if ( page.len>0 ) fields_add( info, "PAGEEND", page.data, level );
+	if ( page.len>0 ) {
+		ok = fields_add( info, "PAGEEND", page.data, level );
+		if ( !ok ) return 0;
+	}
 	newstr_free( &page );
+	return 1;
 }
 
-static void
-adddate( fields *info, char *tag, char *newtag, char *p, int level )
+static int
+endin_adddate( fields *info, char *tag, char *newtag, char *p, int level )
 {
 	char *months[12]={ "January", "February", "March", "April",
 		"May", "June", "July", "August", "September",
 		"October", "November", "December" };
 	char month[10];
-	int found,i,part;
+	int found,i,part, ok;
 	newstr date;
 	newstr_init( &date );
 	part = (!strncasecmp(newtag,"PART",4));
 	if ( !strcasecmp( tag, "%D" ) ) {
 		while ( *p ) newstr_addchar( &date, *p++ );
 		if ( date.len>0 ) {
-			if ( part ) 
-				fields_add(info, "PARTYEAR", date.data, level);
-			else
-				fields_add( info, "YEAR", date.data, level );
+			if ( part ) ok = fields_add( info, "PARTYEAR", date.data, level );
+			else        ok = fields_add( info, "YEAR",     date.data, level );
+			if ( !ok ) return 0;
 		}
 	} else if ( !strcasecmp( tag, "%8" ) ) {
 		while ( *p && *p!=' ' && *p!=',' ) newstr_addchar( &date, *p++ );
@@ -269,27 +279,28 @@ adddate( fields *info, char *tag, char *newtag, char *p, int level )
 			if ( found!=-1 ) {
 				if (found>8) sprintf( month, "%d", found+1 );
 				else sprintf( month, "0%d", found+1 );
-				if ( part ) 
-					fields_add( info, "PARTMONTH", month, level );
-				else    fields_add( info, "MONTH", month, level );
+				if ( part ) ok = fields_add( info, "PARTMONTH", month, level );
+				else        ok = fields_add( info, "MONTH",     month, level );
+				if ( !ok ) return 0;
 			} else {
 				if ( part )
-					fields_add( info, "PARTMONTH", date.data, level );
+					ok = fields_add( info, "PARTMONTH", date.data, level );
 				else
-					fields_add( info, "MONTH", date.data, level );
+					ok = fields_add( info, "MONTH", date.data, level );
+				if ( !ok ) return 0;
 			}
 		}
 		newstr_empty( &date );
 		p = skip_ws( p );
 		while ( *p && *p!='\n' && *p!=',' ) newstr_addchar( &date, *p++ );
 		if ( date.len>0 && date.len<3 ) {
-			if ( part )
-				fields_add( info, "PARTDAY", date.data, level );
-			else
-				fields_add( info, "DAY", date.data, level );
+			if ( part ) ok = fields_add( info, "PARTDAY", date.data, level );
+			else        ok = fields_add( info, "DAY",     date.data, level );
+			if ( !ok ) return 0;
 		}
 	}
 	newstr_free( &date );
+	return 1;
 }
 
 /* Endnote defaults if no %0
@@ -413,29 +424,32 @@ endin_notag( param *p, char *tag, char *data )
 	}
 }
 
-/* Wiley EndNote download has DOI's in "%1" tag */
-static void
-addnotes( fields *info, char *tag, char *data, int level )
+/* Wiley's EndNote download has DOI's in "%1" tag */
+static int
+endin_addnotes( fields *info, char *tag, char *data, int level )
 {
 	int doi = is_doi( data );
 	if ( doi!=-1 )
-		fields_add( info, "DOI", &(data[doi]), level );
+		return fields_add( info, "DOI", &(data[doi]), level );
 	else
-		fields_add( info, tag, data, level );
+		return fields_add( info, tag, data, level );
 }
 
-void
+int
 endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *all, int nall )
 {
-	int  i, level, n, process, nfields;
+	int i, level, n, process, nfields, ok;
 	char *newtag, *t;
 	newstr *d;
 
 	nfields = fields_num( endin );
 	for ( i=0; i<nfields; ++i ) {
 		/* Ensure that data exists */
-		d = fields_value( endin, i, FIELDS_STRP );
-		if ( d->len==0 || !(d->data) ) continue;
+		d = fields_value( endin, i, FIELDS_STRP_NOUSE );
+		if ( d->len == 0 ) {
+			fields_setused( endin, i );
+			continue;
+		}
 		/*
 		 * All refer format tags start with '%'.  If we have one
 		 * that doesn't, assume that it comes from endx2xml
@@ -447,55 +461,58 @@ endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *al
 			continue;
 		}
 
-		n = process_findoldtag( t, reftype, all, nall );
+		n = translate_oldtag( t, reftype, all, nall, &process, &level, &newtag );
 		if ( n==-1 ) {
 			endin_notag( p, t, d->data );
 			continue;
 		}
-
-		process = ((all[reftype]).tags[n]).processingtype;
 		if ( process == ALWAYS ) continue; /* add these later */
-		level = ((all[reftype]).tags[n]).level;
-		newtag = ((all[reftype]).tags[n]).newstr;
+
+		fields_setused( endin, i );
 
 		switch ( process ) {
 
 		case SIMPLE:
-			fields_add( info, newtag, d->data, level );
+			ok = fields_add( info, newtag, d->data, level );
 			break;
 
 		case TYPE:
-			addtype( info, d->data, level );
+			ok = endin_addtype( info, d->data, level );
 			break;
 
 		case TITLE:
-			title_process( info, newtag, d->data, level, p->nosplittitle );
+			ok = title_process( info, newtag, d->data, level, p->nosplittitle );
 			break;
 
 		case PERSON:
-			name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
+			ok = name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
 			break;
 
 		case DATE:
-			adddate( info, t, newtag,d->data,level);
+			ok = endin_adddate( info, t, newtag,d->data,level);
 			break;
 
 		case PAGES:
-			addpage( info, d->data, level );
+			ok = endin_addpage( info, d->data, level );
 			break;
 
 		case SERIALNO:
-			addsn( info, d->data, level );
+			ok = addsn( info, d->data, level );
 			break;
 
 		case NOTES:
-			addnotes( info, newtag, d->data, level );
+			ok = endin_addnotes( info, newtag, d->data, level );
 			break;
 
 		default:
 			fprintf(stderr,"%s: internal error -- illegal process number %d\n", p->progname, process );
+			ok = 1;
 			break;
 		}
 
+		if ( !ok ) return BIBL_ERR_MEMERR;
+
 	}
+
+	return BIBL_OK;
 }

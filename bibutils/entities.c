@@ -1,9 +1,10 @@
 /*
  * entities.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
+ *
  */
 #include <stdio.h>
 #include <string.h>
@@ -316,7 +317,7 @@ decode_decimal_entity( char *s, unsigned int *pi, int *err )
 {
 	unsigned int c = 0, d;
 	int i = *pi, j = 2;
-	while ( isdigit( s[i+j] ) ) {
+	while ( isdigit( (unsigned char)s[i+j] ) ) {
 		d = s[i+j] - '0';
 		c = 10 * c + d;
 		j++;
@@ -337,9 +338,9 @@ decode_hex_entity( char *s, unsigned int *pi, int *err )
 {
 	unsigned int c = 0, d;
 	int i = *pi, j = 3;
-	while ( isxdigit( s[i+j] ) ) {
-		if ( isdigit( s[i+j] ) ) d = s[i+j]-'0';
-		else d = toupper(s[i+j])-'A' + 10;
+	while ( isxdigit( (unsigned char)s[i+j] ) ) {
+		if ( isdigit( (unsigned char)s[i+j] ) ) d = s[i+j]-'0';
+		else d = toupper((unsigned char)s[i+j])-'A' + 10;
 		c = 16 * c + d;
 		j++;
 	}

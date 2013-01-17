@@ -1,9 +1,10 @@
 /*
  * endxmlin.c
  *
- * Copyright (c) Chris Putnam 2006-2012
+ * Copyright (c) Chris Putnam 2006-2013
  *
- * Program and source code released under the GPL
+ * Program and source code released under the GPL version 2
+ *
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -171,6 +172,8 @@ endxmlin_titles( xml *node, fields *info )
 		if ( xml_tagexact( node, a[i].attrib ) && node->down ) {
 			newstr_empty( &title );
 			endxmlin_datar( node, &title );
+			newstr_trimstartingws( &title );
+			newstr_trimendingws( &title );
 			fields_add( info, a[i].internal, title.data, 0);
 		}
 	}

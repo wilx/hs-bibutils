@@ -1,10 +1,10 @@
 /*
  * adsout.c
  *
- * Copyright (c) Richard Mathar 2007-2012
- * Copyright (c) Chris Putnam 2007-2012
+ * Copyright (c) Richard Mathar 2007-2013
+ * Copyright (c) Chris Putnam 2007-2013
  *
- * Program and source code released under the GPL
+ * Program and source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -16,6 +16,7 @@
 #include "newstr.h"
 #include "strsearch.h"
 #include "fields.h"
+#include "name.h"
 #include "adsout.h"
 
 void
@@ -192,38 +193,24 @@ output_title( FILE *fp, fields *f, char *full, char *sub, char *adstag, int leve
 }
 
 static void
-output_person( FILE *fp, char *p )
-{
-	int nseps = 0, nch;
-	while ( *p ) {
-		nch = 0;
-		if ( nseps==1 ) fprintf( fp, "," );
-		if ( nseps ) fprintf( fp, " " );
-		while ( *p && *p!='|' ) {
-			fprintf( fp, "%c", *p++ );
-			nch++;
-		}
-		if ( *p=='|' ) p++;
-		if ( nseps!=0 && nch==1 ) fprintf( fp, "." );
-		nseps++;
-	}
-}
-
-static void
 output_people( FILE *fp, fields *f, char *tag1, char *tag2, char *tag3, char *adstag, int level )
 {
+	newstr oneperson;
 	vplist a;
 	int i;
+	newstr_init( &oneperson );
 	vplist_init( &a );
 	fields_findv_eachof( f, level, FIELDS_CHRP, &a, tag1, tag2, tag3, NULL );
 	extern void  fields_findv_eachof( fields *f, int level, int mode, vplist *a, ... );
 	for ( i=0; i<a.n; ++i ) {
 		if ( i==0 ) fprintf( fp, "%s ", adstag );
 		else fprintf( fp, "; " );
-		output_person( fp, (char *) vplist_get( &a, i) );
+		name_build_withcomma( &oneperson, (char *) vplist_get( &a, i) );
+		fprintf( fp, "%s", oneperson.data );
 	}
 	if ( a.n ) fprintf( fp, "\n" );
 	vplist_free( &a );
+	newstr_free( &oneperson );
 }
 
 static void
@@ -243,7 +230,7 @@ mont2mont( const char *m )
 	static char *monNames[]= { "jan", "feb", "mar", "apr", "may", 
 			"jun", "jul", "aug", "sep", "oct", "nov", "dec" };
 	int i;
-	if ( isdigit( m[0] ) ) return atoi( m );
+	if ( isdigit( (unsigned char)m[0] ) ) return atoi( m );
         else {
 		for ( i=0; i<12; i++ ) {
 			if ( !strncasecmp( m, monNames[i], 3 ) ) return i+1;
@@ -280,7 +267,11 @@ output_4digit_value( char *pos, long long n )
 {
 	char buf[6];
 	n = n % 10000; /* truncate to 0->9999, will fit in buf[6] */
+#ifdef WIN32
+	sprintf( buf, "%I64d", n );
+#else
 	sprintf( buf, "%lld", n );
+#endif
 	if ( n < 10 )        strncpy( pos+3, buf, 1 );
 	else if ( n < 100 )  strncpy( pos+2, buf, 2 );
 	else if ( n < 1000 ) strncpy( pos+1, buf, 3 );
@@ -303,26 +294,16 @@ get_firstinitial( fields *f )
 }
 
 static int
-min( int a, int b )
-{
-	if ( a < b ) return a;
-	else return b;
-}
-
-static int
 get_journalabbr( fields *f )
 {
 	char *jrnl;
-	int ljrnl, ltmp, len, n, j;
+	int n, j;
 
 	n = fields_find( f, "TITLE", LEVEL_HOST );
 	if ( n!=-1 ) {
 		jrnl = fields_value( f, n, FIELDS_CHRP );
-		ljrnl = strlen( jrnl );
 		for ( j=0; j<njournals; j++ ) {
-			ltmp = strlen( journals[j]+6 );
-			len = min( ljrnl, ltmp );
-			if ( !strncasecmp( jrnl, journals[j]+6, len ) )
+			if ( !strcasecmp( jrnl, journals[j]+6 ) )
 				return j;
 		}
 	}
@@ -333,7 +314,7 @@ static void
 output_Rtag( FILE *fp, fields *f, char *adstag, int type )
 {
 	char out[20], ch;
-	int n;
+	int n, i;
 	long long page;
 
 	strcpy( out, "..................." );
@@ -345,7 +326,13 @@ output_Rtag( FILE *fp, fields *f, char *adstag, int type )
 
 	/** JJJJ */
 	n = get_journalabbr( f );
-	if ( n!=-1 ) strncpy( out+4, journals[n], 5 );
+	if ( n!=-1 ) {
+		i = 0;
+		while ( i<5 && journals[n][i]!=' ' && journals[n][i]!='\t' ) {
+			out[4+i] = journals[n][i];
+			i++;
+		}
+	}
 
 	/** VVVV */
 	n = fields_find( f, "VOLUME", LEVEL_ANY );
@@ -364,7 +351,7 @@ output_Rtag( FILE *fp, fields *f, char *adstag, int type )
 	}
 
 	/** A */
-        ch = toupper( get_firstinitial( f ) );
+        ch = toupper( (unsigned char) get_firstinitial( f ) );
 	if ( ch!='\0' ) out[18] = ch;
 
 	fprintf( fp, "%s %s\n", adstag, out );

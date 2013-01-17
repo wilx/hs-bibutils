@@ -1,9 +1,9 @@
 /*
  * marc.h
  *
- * Copyright (c) Chris Putnam 2008-2012
+ * Copyright (c) Chris Putnam 2008-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #ifndef MARC_H

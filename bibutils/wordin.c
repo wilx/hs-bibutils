@@ -1,9 +1,9 @@
 /*
  * wordin.c
  *
- * Copyright (c) Chris Putnam 2010-2012
+ * Copyright (c) Chris Putnam 2010-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -35,7 +35,6 @@ wordin_initparams( param *p, const char *progname )
 	p->processf = wordin_processf;
 	p->cleanf   = NULL;
 	p->typef    = NULL;
-/*	p->convertf = wordin_convertf;*/
 	p->convertf = NULL;
 	p->all      = NULL;
 	p->nall     = 0;
@@ -584,20 +583,4 @@ wordin_processf( fields *wordin, char *data, char *filename, long nref )
 	wordin_assembleref( &top, wordin );
 	xml_free( &top );
 	return 1;
-}
-
-void
-wordin_convertf( fields *wordin, fields *info, int reftype, int verbose, 
-	variants *all, int nall )
-{
-	char *tag, *value;
-	int i, n, level;
-
-	n = fields_num( wordin );
-	for ( i=0; i<n; ++i ) {
-		tag = fields_tag( wordin, i, FIELDS_CHRP );
-		value = fields_value( wordin, i, FIELDS_CHRP );
-		level = fields_level( wordin, i );
-		fields_add( info, tag, value, level );
-	}
 }

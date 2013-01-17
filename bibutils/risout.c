@@ -1,9 +1,9 @@
 /*
  * risout.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -15,6 +15,7 @@
 #include "strsearch.h"
 #include "fields.h"
 #include "doi.h"
+#include "name.h"
 #include "risout.h"
 
 void
@@ -68,6 +69,7 @@ enum {
 	TYPE_DIPLOMATHESIS,      /* thesis */
 	TYPE_DOCTORALTHESIS,     /* thesis */
 	TYPE_HABILITATIONTHESIS, /* thesis */
+	TYPE_MAP,                /* map, cartographic data */
 	TYPE_UNPUBLISHED,        /* unpublished */
 };
 
@@ -103,6 +105,7 @@ get_type_genre( fields *f )
 		{ "abstract or summary",       TYPE_ABSTRACT },
 		{ "patent",                    TYPE_PATENT },
 		{ "unpublished",               TYPE_UNPUBLISHED },
+		{ "map",                       TYPE_MAP },
 	};
 	int nmatch_genres = sizeof( match_genres ) / sizeof( match_genres[0] );
 	int type, i, j;
@@ -146,6 +149,7 @@ get_type_resource( fields *f )
 {
 	match_type match_res[] = {
 		{ "software, multimedia",      TYPE_PROGRAM },
+		{ "cartographic",              TYPE_MAP     },
 	};
 	int nmatch_res = sizeof( match_res ) / sizeof( match_res[0] );
 	int type, i, j;
@@ -233,6 +237,7 @@ output_type( FILE *fp, int type, param *p )
 		{ "THES", TYPE_DIPLOMATHESIS },
 		{ "THES", TYPE_DOCTORALTHESIS },
 		{ "THES", TYPE_HABILITATIONTHESIS },
+		{ "MAP",  TYPE_MAP },
 		{ "UNPB", TYPE_UNPUBLISHED }
 	};
 	int ntyout = sizeof( tyout ) / sizeof( tyout[0] );
@@ -257,36 +262,20 @@ output_type( FILE *fp, int type, param *p )
 }
 
 static void
-output_person ( FILE *fp, char *p )
-{
-	int nseps = 0, nch;
-	while ( *p ) {
-		nch = 0;
-		if ( nseps==1 ) fprintf( fp, "," );
-		if ( nseps ) fprintf( fp, " " );
-		while ( *p && *p!='|' ) {
-			fprintf( fp, "%c", *p++ );
-			nch++;
-		}
-		if ( *p=='|' ) p++;
-		if ( nseps!=0 && nch==1 ) fprintf( fp, "." ); 
-		nseps++;
-	}
-}
-
-static void
 output_people( FILE *fp, fields *f, char *tag, char *ristag, int level )
 {
+	newstr oneperson;
 	vplist people;
 	int i;
+	newstr_init( &oneperson );
 	vplist_init( &people );
 	fields_findv_each( f, level, FIELDS_CHRP, &people, tag );
 	for ( i=0; i<people.n; ++i ) {
-		fprintf( fp, "%s  - ", ristag );
-		output_person( fp, ( char * ) vplist_get( &people, i ) );
-		fprintf( fp, "\n" );
+		name_build_withcomma( &oneperson, ( char * ) vplist_get( &people, i ) );
+		fprintf( fp, "%s  - %s\n", ristag, oneperson.data );
 	}
 	vplist_free( &people );
+	newstr_free( &oneperson );
 }
 
 static void
@@ -299,7 +288,7 @@ output_date( FILE *fp, fields *f )
 	char *day   = fields_findv_firstof( f, LEVEL_ANY, FIELDS_CHRP,
 			"DAY", "PARTDAY", NULL );
 	if ( year )
-		fprintf( fp, "PY  - " );
+		fprintf( fp, "PY  - %s\n", year );
 	if ( year || month || day ) {
 		fprintf( fp, "DA  - " );
 		if ( year ) fprintf( fp, "%s", year );
@@ -330,16 +319,38 @@ output_titlecore( FILE *fp, fields *f, char *ristag, int level,
 	fprintf( fp, "\n" );
 }
 
-static void
-output_title( FILE *fp, fields *f, char *ristag, int level )
+static int
+type_is_element( int type )
 {
-	output_titlecore( fp, f, ristag, level, "TITLE", "SUBTITLE" );
+	if ( type==TYPE_ARTICLE )    return 1;
+	if ( type==TYPE_INBOOK )     return 1;
+	if ( type==TYPE_MAGARTICLE ) return 1;
+	if ( type==TYPE_NEWS )       return 1;
+	if ( type==TYPE_ABSTRACT )   return 1;
+	return 0;
+}
+
+static int
+type_uses_journal( int type )
+{
+	if ( type==TYPE_ARTICLE )    return 1;
+	if ( type==TYPE_MAGARTICLE ) return 1;
+	return 0;
 }
 
 static void
-output_abbrtitle( FILE *fp, fields *f, char *ristag, int level )
+output_alltitles( FILE *fp, fields *f, int type )
 {
-	output_titlecore( fp, f, ristag, level, "SHORTTITLE", "SHORTSUBTITLE" );
+	output_titlecore( fp, f, "TI", 0, "TITLE", "SUBTITLE" );
+	output_titlecore( fp, f, "T2", -1, "SHORTTITLE", "SHORTSUBTITLE" );
+	if ( type_is_element( type ) ) {
+		if ( type_uses_journal( type ) )
+			output_titlecore( fp, f, "JO", 1, "TITLE", "SUBTITLE" );
+		else output_titlecore( fp, f, "BT", 1, "TITLE", "SUBTITLE" );
+		output_titlecore( fp, f, "T3", 2, "TITLE", "SUBTITLE" );
+	} else {
+		output_titlecore( fp, f, "T3", 1, "TITLE", "SUBTITLE" );
+	}
 }
 
 static void
@@ -480,12 +491,9 @@ output_easyall( FILE *fp, fields *f, char *tag, char *ristag, int level )
 	vplist_free( &a );
 }
 
-void
-risout_write( fields *f, FILE *fp, param *p, unsigned long refnum )
+static void
+output_allpeople( FILE *fp, fields *f, int type )
 {
-	int type;
-	type = get_type( f );
-	output_type( fp, type, p );
 	output_people(  fp, f, "AUTHOR",      "AU", LEVEL_MAIN   );
 	output_easyall( fp, f, "AUTHOR:CORP", "AU", LEVEL_MAIN   );
 	output_easyall( fp, f, "AUTHOR:ASIS", "AU", LEVEL_MAIN   );
@@ -495,17 +503,36 @@ risout_write( fields *f, FILE *fp, param *p, unsigned long refnum )
 	output_people(  fp, f, "AUTHOR",      "A3", LEVEL_SERIES );
 	output_easyall( fp, f, "AUTHOR:CORP", "A3", LEVEL_SERIES );
 	output_easyall( fp, f, "AUTHOR:ASIS", "A3", LEVEL_SERIES );
-	output_people(  fp, f, "EDITOR",      "ED", LEVEL_ANY    );
-	output_easyall( fp, f, "EDITOR:CORP", "ED", LEVEL_ANY    );
-	output_easyall( fp, f, "EDITOR:ASIS", "ED", LEVEL_ANY    );
-	output_date( fp, f );
-	output_title( fp, f, "TI", 0 );
-	output_abbrtitle( fp, f, "T2", -1 );
-	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE ) {
-		output_title( fp, f, "JO", 1 );
+	output_people(  fp, f, "EDITOR",      "ED", LEVEL_MAIN   );
+	output_easyall( fp, f, "EDITOR:CORP", "ED", LEVEL_MAIN   );
+	output_easyall( fp, f, "EDITOR:ASIS", "ED", LEVEL_MAIN   );
+	if ( type_is_element( type ) ) {
+		output_people(  fp, f, "EDITOR",      "ED", LEVEL_HOST   );
+		output_easyall( fp, f, "EDITOR:CORP", "ED", LEVEL_HOST   );
+		output_easyall( fp, f, "EDITOR:ASIS", "ED", LEVEL_HOST   );
+	} else {
+		output_people(  fp, f, "EDITOR",      "A3", LEVEL_HOST   );
+		output_easyall( fp, f, "EDITOR:CORP", "A3", LEVEL_HOST   );
+		output_easyall( fp, f, "EDITOR:ASIS", "A3", LEVEL_HOST   );
 	}
-	else output_title( fp, f, "BT", 1 );
-	output_title( fp, f, "T3", 2 );
+	output_people(  fp, f, "EDITOR",      "A3", LEVEL_SERIES );
+	output_easyall( fp, f, "EDITOR:CORP", "A3", LEVEL_SERIES );
+	output_easyall( fp, f, "EDITOR:ASIS", "A3", LEVEL_SERIES );
+}
+
+void
+risout_write( fields *f, FILE *fp, param *p, unsigned long refnum )
+{
+	int type;
+	type = get_type( f );
+	output_type( fp, type, p );
+
+	output_allpeople( fp, f, type );
+
+	output_date( fp, f );
+
+	output_alltitles( fp, f, type );
+
 	output_pages( fp, f );
 	output_easy( fp, f, "VOLUME",             "VL", LEVEL_ANY );
 	output_easy( fp, f, "ISSUE",              "IS", LEVEL_ANY );

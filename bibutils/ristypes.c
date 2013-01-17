@@ -1,12 +1,11 @@
 /*
  * ristypes.c
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,7 +15,7 @@
 static lookups generic[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author -- Series editors */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -91,7 +90,7 @@ static lookups generic[] = {
 static lookups article[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author -- Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -172,7 +171,7 @@ static lookups article[] = {
 static lookups magarticle[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editors */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -250,7 +249,7 @@ static lookups magarticle[] = {
 static lookups newsarticle[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -328,7 +327,7 @@ static lookups newsarticle[] = {
 static lookups book[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_HOST },   /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -384,8 +383,8 @@ static lookups book[] = {
 	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
-	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
-	{ "T3", "TITLE",        SIMPLE,  LEVEL_SERIES }, /* 'Tertiary' Title */
+	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title -- here abbreviated title for series*/
+	{ "T3", "TITLE",        SIMPLE,  LEVEL_HOST },   /* 'Tertiary' Title -- series title */
 	{ "TI", "TITLE",        TITLE,   LEVEL_MAIN },   /* Title */
 	{ "TT", "TRANSTITLE",   TITLE,   LEVEL_MAIN },   /* Translated Title */
 	{ "U1", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
@@ -406,7 +405,7 @@ static lookups book[] = {
 static lookups inbook[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -462,7 +461,7 @@ static lookups inbook[] = {
 	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
-	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
+	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_SERIES }, /* 'Secondary' Title -- here abbreviated title for series*/
 	{ "T3", "TITLE",        SIMPLE,  LEVEL_SERIES }, /* 'Tertiary' Title */
 	{ "TI", "TITLE",        TITLE,   LEVEL_MAIN },   /* Title */
 	{ "TT", "TRANSTITLE",   TITLE,   LEVEL_MAIN },   /* Translated Title */
@@ -484,13 +483,12 @@ static lookups inbook[] = {
 
 static lookups conference[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A2", "AUTHOR:ASIS",  SIMPLE,  LEVEL_HOST },   /* 'Secondary' Author - Name of conference */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
 	{ "AU", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Author */
-	{ "BT", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Book Title - Deprecated? */
 	{ "C1", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
 	{ "C2", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
 	{ "C3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
@@ -541,8 +539,9 @@ static lookups conference[] = {
 	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
-	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
-	{ "T3", "TITLE",        SIMPLE,  LEVEL_SERIES }, /* 'Tertiary' Title */
+	{ "BT", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Book Title */
+	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_SERIES },   /* 'Secondary' Title - Abbreviated series TItle*/
+	{ "T3", "TITLE",        SIMPLE,  LEVEL_SERIES }, /* 'Tertiary' Title  - Series Title*/
 	{ "TI", "TITLE",        TITLE,   LEVEL_MAIN },   /* Title */
 	{ "TT", "TRANSTITLE",   TITLE,   LEVEL_MAIN },   /* Translated Title */
 	{ "U1", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
@@ -563,7 +562,7 @@ static lookups conference[] = {
 static lookups statute[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -641,7 +640,7 @@ static lookups statute[] = {
 static lookups hearing[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -718,7 +717,7 @@ static lookups hearing[] = {
 static lookups cases[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -795,7 +794,7 @@ static lookups cases[] = {
 static lookups communication[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "RECIPIENT",    PERSON,  LEVEL_MAIN },   /* SPECIAL */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -872,7 +871,7 @@ static lookups communication[] = {
 static lookups thesis[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -950,7 +949,7 @@ static lookups thesis[] = {
 static lookups report[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -1028,7 +1027,7 @@ static lookups report[] = {
 static lookups abstract[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -1104,7 +1103,7 @@ static lookups abstract[] = {
 static lookups program[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -1180,7 +1179,7 @@ static lookups program[] = {
 static lookups patent[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -1257,7 +1256,7 @@ static lookups patent[] = {
 static lookups electric[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -1334,7 +1333,7 @@ static lookups electric[] = {
 static lookups pamphlet[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -1408,10 +1407,87 @@ static lookups pamphlet[] = {
 	{ " ",  "GENRE|pamphlet", ALWAYS, LEVEL_MAIN },
 };
 
+static lookups map[] = {
+	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
+	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
+	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
+	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
+	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
+	{ "AU", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Author */
+	{ "BT", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Deprecated? */
+	{ "C1", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
+	{ "C2", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
+	{ "C3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
+	{ "C4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
+	{ "C5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
+	{ "C6", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
+	{ "C7", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
+	{ "C8", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'Custom' - put in "notes" */
+	{ "CA", "CAPTION",      SIMPLE,  LEVEL_MAIN },   /* Caption */
+	{ "CN", "CALLNUMBER",   SIMPLE,  LEVEL_MAIN },   /* Call Number */
+	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
+	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
+	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
+	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Name of Database */
+	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
+	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
+	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
+	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
+	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
+	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
+	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
+	{ "JA", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Deprecated? */
+	{ "J1", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Deprecated? */
+	{ "J2", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Alternate Title, abbreviated book or journal */
+	{ "JF", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Deprecated? */
+	{ "JO", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Deprecated? */
+	{ "KW", "KEYWORD",      SIMPLE,  LEVEL_MAIN },   /* Keywords */
+	{ "L1", "FILEATTACH",   LINKEDFILE, LEVEL_MAIN },   /* File Attachments (local, not URL) */
+	{ "L4", "FIGATTACH",    LINKEDFILE,  LEVEL_MAIN },   /* Figure Attachment (local, not URL) */
+	{ "LA", "LANGUAGE",     SIMPLE,  LEVEL_MAIN },   /* Language */
+	{ "LB", "LABEL",        SIMPLE,  LEVEL_MAIN },   /* Label */
+	{ "M1", "NOTES",        NOTES,   LEVEL_MAIN },   /* Misc or Number? */
+	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },   /* Misc or Deprecated? */
+	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },   /* Misc or Type of Work? */
+	{ "N1", "NOTES",        NOTES,   LEVEL_MAIN },   /* Notes */
+	{ "N2", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
+	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
+	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
+	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
+	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
+	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Resarch Notes -> Notes */
+	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
+	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
+	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
+	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
+	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
+	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
+	{ "T3", "TITLE",        SIMPLE,  LEVEL_SERIES }, /* 'Tertiary' Title */
+	{ "TI", "TITLE",        TITLE,   LEVEL_MAIN },   /* Title */
+	{ "TT", "TRANSTITLE",   TITLE,   LEVEL_MAIN },   /* Translated Title */
+	{ "U1", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
+	{ "U2", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
+	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
+	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
+	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
+	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
+	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
+	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated? */
+	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ " ",  "RESOURCE|cartographic",   ALWAYS, LEVEL_MAIN },
+	{ " ",  "GENRE|map",               ALWAYS, LEVEL_MAIN }
+};
+
 static lookups unpublished[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
 	{ "A2", "AUTHOR",       PERSON,  LEVEL_HOST },   /* 'Secondary' Author */
-	{ "A3", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author */
+	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */
 	{ "AD", "AUTHORADDRESS",SIMPLE,  LEVEL_MAIN },   /* Author Address */
@@ -1510,6 +1586,7 @@ variants ris_all[] = {
 	REFTYPE( "ABST", abstract ),
 	REFTYPE( "COMP", program ),
 	REFTYPE( "PAT", patent ),
+	REFTYPE( "MAP", map ),
 	REFTYPE( "UNPB", unpublished ),
 };
 

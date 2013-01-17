@@ -1,12 +1,11 @@
 /*
  * newstr_conv.c
  *
- * Copyright (c) Chris Putnam 1999-2012
+ * Copyright (c) Chris Putnam 1999-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
- * newstring routines for dynamically allocated strings
- * conversions between character sets
+ * newstring routines for converting newstrings between character sets
  *
  */
 #include <stdio.h>
@@ -187,7 +186,7 @@ get_unicode( newstr *s, unsigned int *pi, int charsetin, int latexin, int utf8in
 	return ch;
 }
 
-static void
+static int
 write_unicode( newstr *s, unsigned int ch, int charsetout, int latexout,
 		int utf8out, int xmlout )
 {
@@ -203,25 +202,39 @@ write_unicode( newstr *s, unsigned int ch, int charsetout, int latexout,
 		if ( xmlout ) addxmlchar( s, c );
 		else newstr_addchar( s, c );
 	}
+	return 1;
 }
 
-void
-newstr_convert( newstr *s, 
+/*
+ * Returns 1 on memory error condition
+ */
+int
+newstr_convert( newstr *s,
 	int charsetin,  int latexin,  int utf8in,  int xmlin,
 	int charsetout, int latexout, int utf8out, int xmlout )
 {
+	unsigned int pos = 0;
 	unsigned int ch;
 	newstr ns;
-	unsigned int pos = 0;
-	if ( s->len==0 ) return;
+	int ok;
+
+	if ( !s || s->len==0 ) return 1;
+
 	newstr_init( &ns );
+
 	if ( charsetin==CHARSET_UNKNOWN ) charsetin = CHARSET_DEFAULT;
 	if ( charsetout==CHARSET_UNKNOWN ) charsetout = CHARSET_DEFAULT;
+
 	while ( s->data[pos] ) {
 		ch = get_unicode( s, &pos, charsetin, latexin, utf8in, xmlin );
-		write_unicode( &ns, ch, charsetout, latexout, utf8out, xmlout );
+		ok = write_unicode( &ns, ch, charsetout, latexout, utf8out, xmlout );
+		if ( !ok ) return 0;
 	}
+
 	newstr_swapstrings( s, &ns );
+
 	newstr_free( &ns );
+
+	return 1;
 }
 

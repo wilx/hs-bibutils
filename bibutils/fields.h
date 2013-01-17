@@ -1,9 +1,9 @@
 /*
  * fields.h
  *
- * Copyright (c) Chris Putnam 2003-2012
+ * Copyright (c) Chris Putnam 2003-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #ifndef FIELDS_H
@@ -40,7 +40,7 @@ extern int  fields_add_tagsuffix( fields *f, char *tag, char *suffix,
 extern int  fields_maxlevel( fields *f );
 extern void fields_clearused( fields *f );
 extern void fields_setused( fields *f, int n );
-extern void fields_replace_or_add( fields *f, char *tag, char *data, int level );
+extern int  fields_replace_or_add( fields *f, char *tag, char *data, int level );
 
 extern inline int fields_num( fields *f );
 extern inline int fields_used( fields *f, int n );

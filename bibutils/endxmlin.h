@@ -1,9 +1,9 @@
 /*
  * endxmlin.h
  *
- * Copyright (c) Chris Putnam 2006-2012
+ * Copyright (c) Chris Putnam 2006-2013
  *
- * Program and source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #ifndef ENDXMLIN_H

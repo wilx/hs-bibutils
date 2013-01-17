@@ -1,7 +1,9 @@
 /*
  * bibtexout.h
  *
- * Copyright (c) Chris Putnam 2005-2012
+ * Copyright (c) Chris Putnam 2005-2013
+ *
+ * Source code released under GPL version 2
  *
  */
 #ifndef BIBTEXOUT_H

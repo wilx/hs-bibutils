@@ -1,3 +1,11 @@
+/*
+ * marc.c
+ *
+ * Copyright (c) Chris Putnam 2004-2013
+ *
+ * Source code released under the GPL version 2
+ *
+ */
 #include "marc.h"
 #include <string.h>
 

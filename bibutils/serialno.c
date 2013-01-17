@@ -1,15 +1,15 @@
 /*
  * serialno.c
  *
- * Copyright (c) Chris Putnam 2005-2012
+ * Copyright (c) Chris Putnam 2005-2013
  *
- * Source code released under the GPL
+ * Source code released under the GPL version 2
  *
  */
 #include <string.h>
 #include "serialno.h"
 
-void
+int
 addsn( fields *info, char *buf, int level )
 {
 	int ndigits=0, issn=0, isbn=0;
@@ -30,7 +30,7 @@ addsn( fields *info, char *buf, int level )
 		else if ( ndigits==10 || ndigits==13 ) isbn = 1;
 	}
 	
-	if ( issn ) fields_add( info, "ISSN", buf, level );
-	else if ( isbn ) fields_add( info, "ISBN", buf, level );
-	else fields_add( info, "SERIALNUMBER", buf, level );
+	if ( issn ) return fields_add( info, "ISSN", buf, level );
+	else if ( isbn ) return fields_add( info, "ISBN", buf, level );
+	else return fields_add( info, "SERIALNUMBER", buf, level );
 }
