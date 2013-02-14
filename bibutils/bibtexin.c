@@ -996,19 +996,19 @@ bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 			ok = process_file( info, d, level );
 			break;
 
-		case BIBTEX_NOTE:
+		case BT_NOTE:
 			ok = process_note( info, d, level );
 			break;
 
-		case BIBTEX_SENTE:
+		case BT_SENTE:
 			ok = process_sente( info, d, level );
 			break;
 
-		case BIBTEX_URL:
+		case BT_URL:
 			ok = process_url( info, d, level );
 			break;
 
-		case BIBTEX_ORGANIZATION:
+		case BT_ORG:
 			ok = process_organization( bibin, info, d, level );
 			break;
 

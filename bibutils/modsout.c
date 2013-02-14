@@ -13,6 +13,7 @@
 #include "newstr.h"
 #include "newstr_conv.h"
 #include "fields.h"
+#include "iso639_2.h"
 #include "utf8.h"
 #include "modsout.h"
 #include "modstypes.h"
@@ -78,6 +79,15 @@ output_tab4( FILE *outptr, int level, char *tag, char *aname, char *avalue,
 {
 	output_tab0( outptr, level );
 	fprintf( outptr, "<%s %s=\"%s\">%s</%s>", tag,aname,avalue,data,tag);
+	if ( cr ) fprintf( outptr, "\n" );
+}
+
+static void
+output_tab6( FILE *outptr, int level, char *tag, char *aname, char *avalue,
+		char *bname, char *bvalue, char *data, int cr )
+{
+	output_tab0( outptr, level );
+	fprintf( outptr, "<%s %s=\"%s\" %s=\"%s\">%s</%s>", tag,aname,avalue,bname,bvalue,data,tag);
 	if ( cr ) fprintf( outptr, "\n" );
 }
 
@@ -229,39 +239,35 @@ output_names( fields *f, FILE *outptr, int level )
 {
 	convert   names[] = {
 	  { "author",                              "AUTHOR",          MARC_AUTHORITY },
-	  { "writer",                              "WRITER",          MARC_AUTHORITY },
-	  { "artist",                              "ARTIST",          MARC_AUTHORITY },
-	  { "cartographer",                        "CARTOGRAPHER",    MARC_AUTHORITY },
-	  { "commentator",                         "COMMENTATOR",     NO_AUTHORITY   },
-	  { "degree grantor",                      "DEGREEGRANTOR",   MARC_AUTHORITY },
-	  { "director",                            "DIRECTOR",        MARC_AUTHORITY },
 	  { "editor",                              "EDITOR",          MARC_AUTHORITY },
-	  { "inventor",                            "INVENTOR",        MARC_AUTHORITY },
-	  { "organizer of meeting",                "ORGANIZER",       MARC_AUTHORITY },
-	  { "patent holder",                       "ASSIGNEE",        MARC_AUTHORITY },
-	  { "performer",                           "PERFORMER",       MARC_AUTHORITY },
-	  { "recipient",                           "RECIPIENT",       MARC_AUTHORITY },
-	  { "redactor",                            "REDACTOR",        NO_AUTHORITY   },
-	  { "reporter",                            "REPORTER",        NO_AUTHORITY   },
-	  { "translator",                          "TRANSLATOR",      MARC_AUTHORITY },
-	  { "event",                               "EVENT",           NO_AUTHORITY   },
-	  { "sponsor",                             "SPONSOR",         MARC_AUTHORITY },
+	  { "annotator",                           "ANNOTATOR",       MARC_AUTHORITY },
+	  { "artist",                              "ARTIST",          MARC_AUTHORITY },
 	  { "author",                              "2ND_AUTHOR",      MARC_AUTHORITY },
 	  { "author",                              "3RD_AUTHOR",      MARC_AUTHORITY },
 	  { "author",                              "SUB_AUTHOR",      MARC_AUTHORITY },
 	  { "author",                              "COMMITTEE",       MARC_AUTHORITY },
 	  { "author",                              "COURT",           MARC_AUTHORITY },
 	  { "author",                              "LEGISLATIVEBODY", MARC_AUTHORITY },
-	  { "annotator",                           "ANNOTATOR",       MARC_AUTHORITY },
-	  { "commentator",                         "COMMENTATOR",     MARC_AUTHORITY },
-	  { "author of introduction, etc.",        "INTROAUTHOR",     MARC_AUTHORITY },
 	  { "author of afterword, colophon, etc.", "AFTERAUTHOR",     MARC_AUTHORITY },
-	  { "compiler",                            "COMPILER",        MARC_AUTHORITY },
+	  { "author of introduction, etc.",        "INTROAUTHOR",     MARC_AUTHORITY },
+	  { "cartographer",                        "CARTOGRAPHER",    MARC_AUTHORITY },
 	  { "collaborator",                        "COLLABORATOR",    MARC_AUTHORITY },
-	  { "redactor",                            "REDACTOR",        MARC_AUTHORITY },
+	  { "commentator",                         "COMMENTATOR",     MARC_AUTHORITY },
+	  { "compiler",                            "COMPILER",        MARC_AUTHORITY },
+	  { "degree grantor",                      "DEGREEGRANTOR",   MARC_AUTHORITY },
 	  { "director",                            "DIRECTOR",        MARC_AUTHORITY },
-	  { "producer",                            "PRODUCER",        MARC_AUTHORITY },
+	  { "event",                               "EVENT",           NO_AUTHORITY   },
+	  { "inventor",                            "INVENTOR",        MARC_AUTHORITY },
+	  { "organizer of meeting",                "ORGANIZER",       MARC_AUTHORITY },
+	  { "patent holder",                       "ASSIGNEE",        MARC_AUTHORITY },
 	  { "performer",                           "PERFORMER",       MARC_AUTHORITY },
+	  { "producer",                            "PRODUCER",        MARC_AUTHORITY },
+	  { "recipient",                           "RECIPIENT",       MARC_AUTHORITY },
+	  { "redactor",                            "REDACTOR",        MARC_AUTHORITY },
+	  { "reporter",                            "REPORTER",        MARC_AUTHORITY },
+	  { "sponsor",                             "SPONSOR",         MARC_AUTHORITY },
+	  { "translator",                          "TRANSLATOR",      MARC_AUTHORITY },
+	  { "writer",                              "WRITER",          MARC_AUTHORITY },
 	};
 	int i, n, nfields, ntypes = sizeof( names ) / sizeof( convert );
 	int f_asis, f_corp, f_conf;
@@ -416,17 +422,36 @@ output_origin( fields *f, FILE *outptr, int level )
 }
 
 static void
+output_language_core( fields *f, int n, FILE *outptr, int level )
+{
+	char *lang, *code;
+	lang = fields_value( f, n, FIELDS_CHRP );
+	code = iso639_2_from_language( lang );
+	output_tab1( outptr, level, "<language>\n" );
+	output_fill4( outptr, increment_level(level,1),
+		"languageTerm", "type", "text", f, n, 1 );
+	if ( code ) {
+		output_tab6( outptr, increment_level(level,1),
+			"languageTerm", "type", "code", "authority", "iso639-2b",
+			code, 1 );
+	}
+	output_tab1( outptr, level, "</language>\n" );
+}
+
+static void
 output_language( fields *f, FILE *outptr, int level )
 {
-	int n = fields_find( f, "LANGUAGE", level );
-	output_fill2( outptr, level, "language", f, n, 1 );
+	int n;
+	n = fields_find( f, "LANGUAGE", level );
+	if ( n!=-1 )
+		output_language_core( f, n, outptr, level );
 }
 
 static void
 output_description( fields *f, FILE *outptr, int level )
 {
 	int n = fields_find( f, "DESCRIPTION", level );
-	if (n != -1) {
+	if ( n!=-1 ) {
 		output_tab1( outptr, level, "<physicalDescription>\n" );
 		output_fill2( outptr, increment_level(level,1), "note", f, n, 1 );
 		output_tab1( outptr, level, "</physicalDescription>\n" );
@@ -613,6 +638,20 @@ output_part( fields *f, FILE *outptr, int level )
 }
 
 static void
+output_recordInfo( fields *f, FILE *outptr, int level )
+{
+	int n;
+	n = fields_find( f, "LANGCATALOG", level );
+	if ( n!=-1 ) {
+		output_tab1( outptr, level, "<recordInfo>\n" );
+		output_tab1( outptr, increment_level(level,1), "<languageOfCataloging>\n" );
+		output_language_core( f, n, outptr, increment_level(level,2) );
+		output_tab1( outptr, increment_level(level,1), "</languageOfCataloging>\n" );
+		output_tab1( outptr, level, "</recordInfo>\n" );
+	}
+}
+
+static void
 output_genre( fields *f, FILE *outptr, int level )
 {
 	int i, ismarc, n;
@@ -678,29 +717,31 @@ output_abs( fields *f, FILE *outptr, int level )
 }
 
 static void
+output_annotation( fields *f, FILE *outptr, int level )
+{
+	int n = fields_find( f, "ANNOTATION", level );
+	output_fill4( outptr, level, "note", "type", "annotation", f, n, 1 );
+}
+
+static void
+output_addendum( fields *f, FILE *outptr, int level )
+{
+	int n = fields_find( f, "ADDENDUM", level );
+	output_fill4( outptr, level, "note", "type", "addendum", f, n, 1 );
+}
+
+static void
 output_timescited( fields *f, FILE *outptr, int level )
 {
 	int n = fields_find( f, "TIMESCITED", level );
-	char *value;
-	if ( n!=-1 ) {
-		value = fields_value( f, n, FIELDS_CHRP );
-		output_tab0( outptr, level );
-		fprintf( outptr, "<note>Times Cited: %s</note>\n", value );
-		fields_setused( f, n );
-	}
+	output_fill4( outptr, level, "note", "type", "times cited", f, n, 1 );
 }
 
 static void
 output_indexkey( fields *f, FILE *outptr, int level )
 {
 	int n = fields_find( f, "BIBKEY", level );
-	char *value;
-	if ( n!=-1 ) {
-		value = fields_value( f, n, FIELDS_CHRP );
-		output_tab0( outptr, level );
-		fprintf( outptr, "<note>Key: %s</note>\n", value );
-		fields_setused( f, n );
-	}
+	output_fill4( outptr, level, "note", "type", "bibliography key", f, n, 1 );
 }
 
 static void
@@ -737,6 +778,7 @@ output_sn( fields *f, FILE *outptr, int level )
 		{ "isi",       "ISIREFNUM", 0 },
 		{ "accessnum", "ACCESSNUM", 0 },
 		{ "jstor",     "JSTOR",     0 },
+		{ "isrn",      "ISRN",      0 },
 	};
 	int n, ntypes = sizeof( sn_types ) / sizeof( sn_types[0] );
 	int found, i, nfields;
@@ -883,12 +925,16 @@ output_citeparts( fields *f, FILE *outptr, int level, int max )
 	}
 	output_abs(        f, outptr, level );
 	output_timescited( f, outptr, level );
+	output_annotation( f, outptr, level );
+	output_addendum  ( f, outptr, level );
 	output_indexkey(   f, outptr, level );
 	output_toc(        f, outptr, level );
 	output_key(        f, outptr, level );
 	output_sn(         f, outptr, level );
 	output_url(        f, outptr, level );
 	output_part(       f, outptr, level );
+
+	output_recordInfo( f, outptr, level );
 }
 
 static void

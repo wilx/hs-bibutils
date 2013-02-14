@@ -10,32 +10,33 @@
 #define REFTYPES_H
 
 /* Reftypes handled by core code */
-#define ALWAYS              (0)
-#define DEFAULT             (1)
+#define ALWAYS          (0)
+#define DEFAULT         (1)
 
 /* Reftypes to be handled by converters */
-#define SIMPLE              (2)
-#define TYPE                (3)
-#define PERSON              (4)
-#define DATE                (5)
-#define PAGES               (6)
-#define SERIALNO            (7)
-#define TITLE               (8)
-#define NOTES               (9)
-#define DOI                 (10)
-#define HOWPUBLISHED        (11)
-#define LINKEDFILE          (12)
-#define KEYWORD             (13)
-#define BIBTEX_URL          (14)
-#define BIBTEX_NOTE         (15)
-#define BIBTEX_SENTE        (16)
-#define BIBTEX_GENRE        (17)
-#define BIBTEX_EPRINT       (18)
-#define BIBTEX_ORGANIZATION (19)
-#define BLT_THESIS_TYPE     (20)
-#define BLT_SCHOOL          (21)
-#define BLT_EDITOR          (22)
-#define BLT_SKIP            (23)
+#define SIMPLE          (2)
+#define TYPE            (3)
+#define PERSON          (4)
+#define DATE            (5)
+#define PAGES           (6)
+#define SERIALNO        (7)
+#define TITLE           (8)
+#define NOTES           (9)
+#define DOI             (10)
+#define HOWPUBLISHED    (11)
+#define LINKEDFILE      (12)
+#define KEYWORD         (13)
+#define BT_URL          (14) /* Bibtex URL */
+#define BT_NOTE         (15) /* Bibtex Note */
+#define BT_SENTE        (16) /* Bibtex 'Sente' */
+#define BT_GENRE        (17) /* Bibtex Genre */
+#define BT_EPRINT       (18) /* Bibtex 'Eprint' */
+#define BT_ORG          (19) /* Bibtex Organization */
+#define BLT_THESIS_TYPE (20) /* Biblatex Thesis Type */
+#define BLT_SCHOOL      (21) /* Biblatex School */
+#define BLT_EDITOR      (22) /* Biblatex Editor */
+#define BLT_SUBTYPE     (23) /* Biblatex entrysubtype */
+#define BLT_SKIP        (24) /* Biblatex Skip Entry */
 
 typedef struct {
 	char *oldstr;

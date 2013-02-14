@@ -373,6 +373,8 @@ is_name_tag( newstr *tag )
 	if ( tag->len ) {
 		if ( !strcasecmp( tag->data, "author" ) ) return 1;
 		if ( !strcasecmp( tag->data, "editor" ) ) return 1;
+		if ( !strcasecmp( tag->data, "editorb" ) ) return 1;
+		if ( !strcasecmp( tag->data, "editorc" ) ) return 1;
 		if ( !strcasecmp( tag->data, "director" ) ) return 1;
 		if ( !strcasecmp( tag->data, "producer" ) ) return 1;
 		if ( !strcasecmp( tag->data, "execproducer" ) ) return 1;
@@ -381,6 +383,9 @@ is_name_tag( newstr *tag )
 		if ( !strcasecmp( tag->data, "annotator" ) ) return 1;
 		if ( !strcasecmp( tag->data, "commentator" ) ) return 1;
 		if ( !strcasecmp( tag->data, "translator" ) ) return 1;
+		if ( !strcasecmp( tag->data, "foreword" ) ) return 1;
+		if ( !strcasecmp( tag->data, "afterword" ) ) return 1;
+		if ( !strcasecmp( tag->data, "introduction" ) ) return 1;
 	}
 	return 0;
 }
@@ -511,20 +516,6 @@ biblatexin_cleanf( bibl *bin, param *p )
         for ( i=0; i<bin->nrefs; ++i )
 		biblatexin_cleanref( bin->ref[i], p );
 	biblatexin_crossref( bin, p );
-}
-
-/*
- * process_names( info, newtag, field, level);
- *
- * split names in author list separated by and's (use '|' character)
- * and add names
- */
-static int
-process_names( fields *info, char *tag, newstr *data, int level, list *asis,
-	list *corps )
-{
-	newstr_findreplace( data, " and ", "|" );
-	return name_add( info, tag, data->data, level, asis, corps );
 }
 
 /* is_utf8_emdash()
@@ -660,49 +651,21 @@ process_school( fields *bibin, fields *info, char *tag, char *value, int level )
 		return fields_add( info, tag, value, level );
 }
 
-
-/*
- * biblatex has multiple editor fields "editor", "editora", "editorb", "editorc",
- * each of which can be modified from a type of "EDITOR" via "editortype",
- * "editoratype", "editorbtype", "editorctype".
- *
- * Defined types:
- *     "editor"
- *     "collaborator"
- *     "compiler"
- *     "redactor"
- *
- *     "reviser" ?
- *     "founder" ?
- *     "continuator" ?
- *
- *  bibtex-chicago
- *
- *     "director"
- *     "producer"
- *     "conductor"
- *     "none" (for performer)
- */
+/* biblatex drops school field if institution is present */
 static int
-process_editor( fields *bibin, fields *info, newstr *tag, newstr *value, int level, list *asis, list *corps )
+process_subtype( fields *bibin, fields *info, char *tag, char *value, int level )
 {
-	char *editor_fields[] = { "editor", "editora", "editorb", "editorc" };
-	char *editor_types[]  = { "editortype", "editoratype", "editorbtype", "editorctype" };
-	int i, n = 0, ntype, neditors = sizeof( editor_fields ) / sizeof( editor_fields[0] );
-	char *type, *outtag = "EDITOR";
-	for ( i=1; i<neditors; ++i )
-		if ( !strcasecmp( tag->data, editor_fields[i] ) ) n = i;
-	ntype = fields_find( bibin, editor_types[n], LEVEL_ANY );
-	if ( ntype!=-1 ) {
-		type = fields_value( bibin, ntype, FIELDS_CHRP_NOUSE );
-		if ( !strcasecmp( type, "collaborator" ) )  outtag = "COLLABORATOR";
-		else if ( !strcasecmp( type, "compiler" ) ) outtag = "COMPILER";
-		else if ( !strcasecmp( type, "redactor" ) ) outtag = "REDACTOR";
-		else if ( !strcasecmp( type, "director" ) ) outtag = "DIRECTOR";
-		else if ( !strcasecmp( type, "producer" ) ) outtag = "PRODUCER";
-		else if ( !strcasecmp( type, "none" ) )     outtag = "PERFORMER";
+	int ok = 1;
+	if ( !strcasecmp( value, "magazine" ) ) {
+		ok = fields_add( info, "NGENRE", "magazine article", LEVEL_MAIN );
+		if ( !ok ) return 0;
+		ok = fields_add( info, "NGENRE", "magazine", LEVEL_HOST );
+	} else if ( !strcasecmp( value, "newspaper" ) ) {
+		ok = fields_add( info, "NGENRE", "newspaper article", LEVEL_MAIN );
+		if ( !ok ) return 0;
+		ok = fields_add( info, "GENRE", "newspaper", LEVEL_HOST );
 	}
-	return process_names( info, outtag, value, level, asis, corps );
+	return ok;
 }
 
 static int
@@ -967,6 +930,50 @@ out:
 	return ret;
 }
 
+/*
+ * biblatex has multiple editor fields "editor", "editora", "editorb", "editorc",
+ * each of which can be modified from a type of "EDITOR" via "editortype",
+ * "editoratype", "editorbtype", "editorctype".
+ *
+ * Defined types:
+ *     "editor"
+ *     "collaborator"
+ *     "compiler"
+ *     "redactor"
+ *
+ *     "reviser" ?
+ *     "founder" ?
+ *     "continuator" ?
+ *
+ *  bibtex-chicago
+ *
+ *     "director"
+ *     "producer"
+ *     "conductor"
+ *     "none" (for performer)
+ */
+static int
+process_editor( fields *bibin, fields *info, newstr *tag, newstr *value, int level, list *asis, list *corps )
+{
+	char *editor_fields[] = { "editor", "editora", "editorb", "editorc" };
+	char *editor_types[]  = { "editortype", "editoratype", "editorbtype", "editorctype" };
+	int i, n = 0, ntype, neditors = sizeof( editor_fields ) / sizeof( editor_fields[0] );
+	char *type, *outtag = "EDITOR";
+	for ( i=1; i<neditors; ++i )
+		if ( !strcasecmp( tag->data, editor_fields[i] ) ) n = i;
+	ntype = fields_find( bibin, editor_types[n], LEVEL_ANY );
+	if ( ntype!=-1 ) {
+		type = fields_value( bibin, ntype, FIELDS_CHRP_NOUSE );
+		if ( !strcasecmp( type, "collaborator" ) )  outtag = "COLLABORATOR";
+		else if ( !strcasecmp( type, "compiler" ) ) outtag = "COMPILER";
+		else if ( !strcasecmp( type, "redactor" ) ) outtag = "REDACTOR";
+		else if ( !strcasecmp( type, "director" ) ) outtag = "DIRECTOR";
+		else if ( !strcasecmp( type, "producer" ) ) outtag = "PRODUCER";
+		else if ( !strcasecmp( type, "none" ) )     outtag = "PERFORMER";
+	}
+	return biblatex_names( info, outtag, value, level, asis, corps );
+}
+
 int
 biblatexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 		variants *all, int nall )
@@ -1019,17 +1026,17 @@ biblatexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 			fields_setused( bibin, i );
 			break;
 
-		case BIBTEX_URL:
+		case BT_URL:
 			ok = process_url( info, d->data, level );
 			fields_setused( bibin, i );
 			break;
 
-		case BIBTEX_GENRE:
+		case BT_GENRE:
 			ok = fields_add( info, "NGENRE", d->data, level );
 			fields_setused( bibin, i );
 			break;
 
-		case BIBTEX_EPRINT:
+		case BT_EPRINT:
 			ok = process_eprint( bibin, info, level );
 			fields_setused( bibin, i );
 			break;
@@ -1041,6 +1048,11 @@ biblatexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 
 		case BLT_SCHOOL:
 			ok = process_school( bibin, info, newtag, d->data, level );
+			fields_setused( bibin, i );
+			break;
+
+		case BLT_SUBTYPE:
+			ok = process_subtype( bibin, info, newtag, d->data, level );
 			fields_setused( bibin, i );
 			break;
 

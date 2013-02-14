@@ -15,6 +15,7 @@
 #include "xml.h"
 #include "xml_encoding.h"
 #include "medin.h"
+#include "iso639_2.h"
 #include "bibutils.h"
 
 void
@@ -206,7 +207,20 @@ medin_medlinedate( fields *info, char *string, int level )
 	newstr_free( &tmp );
 }
 
-
+/* <Langauge>eng</Language>
+ */
+static int
+medin_language( xml *node, fields *info, int level )
+{
+	char *code, *language;
+	int ok;
+	code = xml_data( node );
+	if ( !code ) return 1;
+	language = iso639_2_from_code( code );
+	if ( language ) ok = fields_add( info, "LANGUAGE", language, level );
+	else ok = fields_add( info, "LANGUAGE", code, level );
+	return ok;
+}
 
 /* <Journal>
  *    <ISSN>0027-8424</ISSN>
@@ -248,12 +262,13 @@ medin_journal1( xml *node, fields *info )
 		{ "Year",            NULL, NULL, "PARTYEAR",   1 },
 		{ "Month",           NULL, NULL, "PARTMONTH",  1 },
 		{ "Day",             NULL, NULL, "PARTDAY",    1 },
-		{ "Language",        NULL, NULL, "LANGUAGE",   1 },
 	};
 	int nc = sizeof( c ) / sizeof( c[0] );;
 	if ( xml_hasdata( node ) && !medin_doconvert( node, info, c, nc ) ) {
 		if ( xml_tagexact( node, "MedlineDate" ) )
 			medin_medlinedate( info, xml_data( node ), 1 );
+		if ( xml_tagexact( node, "Language" ) )
+			medin_language( node, info, 1 );
 	}
 	if ( node->down ) medin_journal1( node->down, info );
 	if ( node->next ) medin_journal1( node->next, info );
@@ -463,6 +478,8 @@ medin_article( xml *node, fields *info )
 		medin_abstract( node->down, info );
 	else if ( xml_tagexact( node, "AuthorList" ) )
 		medin_authorlist( node, info );
+	else if ( xml_tagexact( node, "Language" ) )
+		medin_language( node, info, 0 );
 	else if ( xml_tagexact( node, "Affiliation" ) )
 		fields_add( info, "ADDRESS", xml_data( node ), 0 );
 	if ( node->next ) medin_article( node->next, info );

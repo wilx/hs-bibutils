@@ -309,10 +309,10 @@ extract_tag_value( newstr *tag, newstr *value, char *p )
  * unless a tag/value pair with the same tag has already
  * been adding during reference processing.
  */
-static void
+static int
 process_defaultadd( fields *f, int reftype, param *r )
 {
-	int i, n, process, level;
+	int i, n, process, level, ok = 1;
 	newstr tag, value;
 	char *p;
 
@@ -322,14 +322,20 @@ process_defaultadd( fields *f, int reftype, param *r )
 		process = ((r->all[reftype]).tags[i]).processingtype;
 		if ( process!=DEFAULT ) continue;
 		level   = ((r->all[reftype]).tags[i]).level;
-		p = ((r->all[reftype]).tags[i]).newstr;
+		p       = ((r->all[reftype]).tags[i]).newstr;
 		extract_tag_value( &tag, &value, p );
 		n = fields_find( f, tag.data, level );
-		if ( n==-1 )
-			fields_add( f, tag.data, value.data, level );
+fprintf(stderr,"%s: n=%d tag.data='%s' level=%d\n", __FUNCTION__, n, tag.data, level );
+		if ( n==-1 ) {
+			ok = fields_add( f, tag.data, value.data, level );
+			if ( !ok ) goto out;
+		}
 	}
-
+out:
 	newstrs_free( &tag, &value, NULL );
+
+	if ( ok ) return BIBL_OK;
+	else return BIBL_ERR_MEMERR;
 }
 
 /* process_alwaysadd()
@@ -338,10 +344,10 @@ process_defaultadd( fields *f, int reftype, param *r )
  * processing type without exception (the difference from
  * DEFAULT processing).
  */
-static void
+static int
 process_alwaysadd( fields *f, int reftype, param *r )
 {
-	int i, process, level;
+	int i, process, level, ok = 1;
 	newstr tag, value;
 	char *p;
 
@@ -353,10 +359,15 @@ process_alwaysadd( fields *f, int reftype, param *r )
 		level   = ((r->all[reftype]).tags[i]).level;
 		p = ((r->all[reftype]).tags[i]).newstr;
 		extract_tag_value( &tag, &value, p );
-		fields_add( f, tag.data, value.data, level );
+		ok = fields_add( f, tag.data, value.data, level );
+		if ( !ok ) goto out;
 	}
 
+out:
 	newstrs_free( &tag, &value, NULL );
+
+	if ( ok ) return BIBL_OK;
+	else return BIBL_ERR_MEMERR;
 }
 
 static int
@@ -648,12 +659,14 @@ convert_ref( bibl *bin, char *fname, bibl *bout, param *p )
 		if ( !rout ) return BIBL_ERR_MEMERR;
 		if ( p->typef ) 
 			reftype = p->typef( rin, fname, i+1, p, p->all, p->nall );
-		if ( p->all ) {
-			process_alwaysadd( rout, reftype, p );
-			process_defaultadd( rout, reftype, p );
-		}
 		ok = p->convertf( rin, rout, reftype, p, p->all, p->nall );
 		if ( ok!=BIBL_OK ) return ok;
+		if ( p->all ) {
+			ok = process_alwaysadd( rout, reftype, p );
+			if ( ok!=BIBL_OK ) return ok;
+			ok = process_defaultadd( rout, reftype, p );
+			if ( ok!=BIBL_OK ) return ok;
+		}
 		bibl_addref( bout, rout );
 	}
 	uniqueify_citekeys( bout );

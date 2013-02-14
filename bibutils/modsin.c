@@ -472,10 +472,24 @@ modsin_resource( xml *node, fields *info, int level )
 }
 
 static void
+modsin_languager( xml *node, fields *info, int level )
+{
+	if ( xml_tag_attrib( node, "languageTerm", "type", "text" ) ) {
+		if ( node->value && node->value->len )
+			fields_add( info, "LANGUAGE", node->value->data, level );
+	}
+	if ( node->next ) modsin_languager( node->next, info, level );
+}
+
+static void
 modsin_language( xml *node, fields *info, int level )
 {
+	/* Old versions of MODS had <language>English</language> */
 	if ( node->value && node->value->len )
 		fields_add( info, "LANGUAGE", node->value->data, level );
+
+	/* New versions of MODS have <language><languageTerm>English</languageTerm></language> */
+	if ( node->down ) modsin_languager( node->down, info, level );
 }
 
 static void
