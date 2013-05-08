@@ -325,7 +325,6 @@ process_defaultadd( fields *f, int reftype, param *r )
 		p       = ((r->all[reftype]).tags[i]).newstr;
 		extract_tag_value( &tag, &value, p );
 		n = fields_find( f, tag.data, level );
-fprintf(stderr,"%s: n=%d tag.data='%s' level=%d\n", __FUNCTION__, n, tag.data, level );
 		if ( n==-1 ) {
 			ok = fields_add( f, tag.data, value.data, level );
 			if ( !ok ) goto out;
