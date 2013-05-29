@@ -197,20 +197,55 @@ add_given_split( newstr *name, newstr *s )
 	return 1;
 }
 
+static unsigned char
+token_has_no_upper( list *tokens, int n )
+{
+	unsigned short m;
+	newstr *s;
+	s = list_get( tokens, n );
+	m = unicode_utf8_classify_newstr( s );
+	if ( m & UNICODE_UPPER ) return 0;
+	else return 1;
+}
+
+static unsigned char
+token_has_upper( list *tokens, int n )
+{
+	if ( token_has_no_upper( tokens, n ) ) return 0;
+	else return 1;
+}
+
 static int
 name_multielement_nocomma( intlist *given, intlist *family, list *tokens, int begin, int end, int suffixpos )
 {
-	int i;
+	int family_start, family_end;
+	int i, n;
 
-	/* ...family name */
-	if ( end-1 != suffixpos )
-		intlist_add( family, end-1 );
-	else
-		intlist_add( family, end-2 );
+	/* ...family name(s) */
+	family_start = family_end = end - 1;
+	if ( family_start == suffixpos ) family_start = family_end = end - 2;
+
+	/* ...if family name is capitalized, then look for first non-capitalized
+	 * ...token and combine range to family name, e.g. single quoted parts of
+	 * ..."Ludwig 'von Beethoven'"
+	 * ..."Johannes Diderik 'van der Waals'"
+	 * ..."Charles Louis Xavier Joseph 'de la Valla Poussin' */
+	if ( token_has_upper( tokens, family_start ) ) {
+		i = family_start - 1;
+		n = -1;
+		while ( i >= begin && ( n==-1 || token_has_no_upper( tokens, i ) ) ) {
+			if ( token_has_no_upper( tokens, i ) ) n = i;
+			i--;
+		}
+		if ( n != -1 ) family_start = n;
+	}
+	for ( i=family_start; i<family_end+1; i++ )
+		intlist_add( family, i );
 
 	/* ...given names */
-	for ( i=begin; i<end-1; ++i ) {
-		if ( i==suffixpos || i==suffixpos-1 ) continue;
+	for ( i=begin; i<end-1; i++ ) {
+		if ( i>=family_start && i<=family_end ) continue;
+		if ( i==suffixpos ) continue;
 		intlist_add( given, i );
 	}
 

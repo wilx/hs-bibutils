@@ -881,12 +881,42 @@ out:
 	return ret;
 }
 
+static int
+biblatex_matches_asis_corps( fields *info, char *tag, newstr *data, int level,
+	list *asis, list *corps )
+{
+	newstr newtag;
+	int i;
+	for ( i=0; i<asis->n; ++i ) {
+		if ( !strcmp( data->data, list_getc( asis, i ) ) ) {
+			newstr_initstr( &newtag, tag );
+			newstr_strcat( &newtag, ":ASIS" );
+			fields_add( info, newtag.data, data->data, level );
+			newstr_free( &newtag );
+			return 1;
+		}
+	}
+	for ( i=0; i<corps->n; ++i ) {
+		if ( !strcmp( data->data, list_getc( corps, i ) ) ) {
+			newstr_initstr( &newtag, tag );
+			newstr_strcat( &newtag, ":CORP" );
+			fields_add( info, newtag.data, data->data, level );
+			newstr_free( &newtag );
+			return 1;
+		}
+	}
+	return 0;
+}
 
 static int
 biblatex_names( fields *info, char *tag, newstr *data, int level, list *asis, list *corps )
 {
 	int begin, end, ok, n, etal, i, ret = 1;
 	list tokens;
+
+	/* If we match the asis or corps list add and bail. */
+	if ( biblatex_matches_asis_corps( info, tag, data, level, asis, corps ) )
+		return 1;
 
 	list_init( &tokens );
 

@@ -26,8 +26,8 @@ risout_initparams( param *p, const char *progname )
 	p->charsetout       = BIBL_CHARSET_DEFAULT;
 	p->charsetout_src   = BIBL_SRC_DEFAULT;
 	p->latexout         = 0;
-	p->utf8out          = 0;
-	p->utf8bom          = 0;
+	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
+	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
 	p->xmlout           = 0;
 	p->nosplittitle     = 0;
 	p->verbose          = 0;
@@ -327,6 +327,7 @@ type_is_element( int type )
 	if ( type==TYPE_MAGARTICLE ) return 1;
 	if ( type==TYPE_NEWS )       return 1;
 	if ( type==TYPE_ABSTRACT )   return 1;
+	if ( type==TYPE_CONF )       return 1;
 	return 0;
 }
 

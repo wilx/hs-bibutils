@@ -1,7 +1,7 @@
 /*
  * vplist.c
  *
- * Version: 9/20/2012
+ * Version: 4/08/2013
  *
  * Copyright (c) Chris Putnam 2011-2013
  *
@@ -22,11 +22,13 @@ vplist_init( vplist *vpl )
 	vpl->n = vpl->max = 0;
 }
 
-void
-vplist_empty( vplist *vpl )
+vplist *
+vplist_new( void )
 {
-	assert( vpl );
-	vpl->n = 0;
+	vplist *vpl;
+	vpl = ( vplist * ) malloc( sizeof( vplist ) );
+	if ( vpl ) vplist_init( vpl );
+	return vpl;
 }
 
 int
@@ -45,7 +47,7 @@ vplist_copy( vplist *to, vplist *from )
 	int i;
 	assert( to );
 	assert( from );
-	if ( to->max >= from->n ) {
+	if ( from->n > to->max ) {
 		if ( to->max ) free( to->data );
 		to->data = ( void ** ) malloc( sizeof( void * ) * from->n );
 		if ( !to->data ) return 0;
@@ -157,18 +159,58 @@ vplist_removevp( vplist *vpl, void *v )
 	} while ( n!=-1 );
 }
 
+static void
+vplist_freemembers( vplist *vpl, vplist_ptrfree vpf )
+{
+	int i;
+	for ( i=0; i<vpl->n; ++i )
+		(*vpf)( vplist_get( vpl, i ) );
+}
+
+void
+vplist_empty( vplist *vpl )
+{
+	assert( vpl );
+	vpl->n = 0;
+}
+
+void
+vplist_emptyfn( vplist *vpl, vplist_ptrfree vpf )
+{
+	assert( vpl );
+	vplist_freemembers( vpl, vpf );
+	vplist_empty( vpl );
+}
+
 void
 vplist_free( vplist *vpl )
 {
-	free( vpl->data );
+	assert( vpl );
+	if ( vpl->data ) free( vpl->data );
 	vplist_init( vpl );
+}
+
+void
+vplist_freefn( vplist *vpl, vplist_ptrfree vpf )
+{
+	assert( vpl );
+	vplist_freemembers( vpl, vpf );
+	vplist_free( vpl );
 }
 
 void
 vplist_destroy( vplist **vpl )
 {
+	assert( *vpl );
 	vplist_free( *vpl );
 	free( *vpl );
 	*vpl = NULL;
 }
 
+void
+vplist_destroyfn( vplist **vpl, vplist_ptrfree vpf )
+{
+	assert( *vpl );
+	vplist_freemembers( *vpl, vpf );
+	vplist_destroy( vpl );
+}

@@ -11,6 +11,7 @@
 #include <string.h>
 #include "is_ws.h"
 #include "newstr.h"
+#include "charsets.h"
 #include "newstr_conv.h"
 #include "fields.h"
 #include "iso639_2.h"
@@ -139,10 +140,12 @@ output_title( fields *f, FILE *outptr, int level )
 	int ttl    = fields_find( f, "TITLE", level );
 	int subttl = fields_find( f, "SUBTITLE", level );
 	int shrttl = fields_find( f, "SHORTTITLE", level );
+	int parttl = fields_find( f, "PARTTITLE", level );
 
 	output_tab1( outptr, level, "<titleInfo>\n" );
-	output_fill2( outptr, increment_level(level,1), "title", f, ttl, 1);
+	output_fill2( outptr, increment_level(level,1), "title", f, ttl, 1 );
 	output_fill2( outptr, increment_level(level,1), "subTitle", f, subttl, 1 );
+	output_fill2( outptr, increment_level(level,1), "partName", f, parttl, 1 );
 	if ( ttl==-1 && subttl==-1 )
 		output_tab1( outptr, increment_level(level,1), "<title/>\n" );
 	output_tab1( outptr, level, "</titleInfo>\n" );
@@ -422,12 +425,17 @@ output_origin( fields *f, FILE *outptr, int level )
 }
 
 static void
-output_language_core( fields *f, int n, FILE *outptr, int level )
+output_language_core( fields *f, int n, FILE *outptr, char *tag, int level )
 {
+	newstr usetag;
 	char *lang, *code;
 	lang = fields_value( f, n, FIELDS_CHRP );
 	code = iso639_2_from_language( lang );
-	output_tab1( outptr, level, "<language>\n" );
+	newstr_init( &usetag );
+	newstr_addchar( &usetag, '<' );
+	newstr_strcat( &usetag, tag );
+	newstr_strcat( &usetag, ">\n" );
+	output_tab1( outptr, level, usetag.data );
 	output_fill4( outptr, increment_level(level,1),
 		"languageTerm", "type", "text", f, n, 1 );
 	if ( code ) {
@@ -435,7 +443,11 @@ output_language_core( fields *f, int n, FILE *outptr, int level )
 			"languageTerm", "type", "code", "authority", "iso639-2b",
 			code, 1 );
 	}
-	output_tab1( outptr, level, "</language>\n" );
+	newstr_strcpy( &usetag, "</" );
+	newstr_strcat( &usetag, tag );
+	newstr_strcat( &usetag, ">\n" );
+	output_tab1( outptr, level, usetag.data );
+	newstr_free( &usetag );
 }
 
 static void
@@ -444,7 +456,7 @@ output_language( fields *f, FILE *outptr, int level )
 	int n;
 	n = fields_find( f, "LANGUAGE", level );
 	if ( n!=-1 )
-		output_language_core( f, n, outptr, level );
+		output_language_core( f, n, outptr, "language", level );
 }
 
 static void
@@ -644,9 +656,7 @@ output_recordInfo( fields *f, FILE *outptr, int level )
 	n = fields_find( f, "LANGCATALOG", level );
 	if ( n!=-1 ) {
 		output_tab1( outptr, level, "<recordInfo>\n" );
-		output_tab1( outptr, increment_level(level,1), "<languageOfCataloging>\n" );
-		output_language_core( f, n, outptr, increment_level(level,2) );
-		output_tab1( outptr, increment_level(level,1), "</languageOfCataloging>\n" );
+		output_language_core( f, n, outptr, "languageOfCataloging", increment_level(level,1) );
 		output_tab1( outptr, level, "</recordInfo>\n" );
 	}
 }
@@ -703,45 +713,34 @@ output_type( fields *f, FILE *outptr, int level )
 static void
 output_abs( fields *f, FILE *outptr, int level )
 {
-	int i, n;
 	int nabs = fields_find( f, "ABSTRACT", level );
 	output_fill2( outptr, level, "abstract", f, nabs, 1 );
+}
+
+static void
+output_notes( fields *f, FILE *outptr, int level )
+{
+	int i, n;
+	char *t;
 	n = fields_num( f );
 	for ( i=0; i<n; ++i ) {
 		if ( fields_level( f, i ) != level ) continue;
-		if ( !strcasecmp( f->tag[i].data, "NOTES" ) )
+		t = fields_tag( f, i, FIELDS_CHRP_NOUSE );
+		if ( !strcasecmp( t, "NOTES" ) )
 			output_fill2( outptr, level, "note", f, i, 1 );
-		if ( !strcasecmp( f->tag[i].data, "ANNOTE" ) )
+		else if ( !strcasecmp( t, "PUBSTATE" ) )
+			output_fill4( outptr, level, "note", "type", "publication status", f, i, 1 );
+		else if ( !strcasecmp( t, "ANNOTE" ) )
 			output_fill2( outptr, level, "bibtex-annote", f, i, 1 );
+		else if ( !strcasecmp( t, "TIMESCITED" ) )
+			output_fill4( outptr, level, "note", "type", "times cited", f, i, 1 );
+		else if ( !strcasecmp( t, "ANNOTATION" ) )
+			output_fill4( outptr, level, "note", "type", "annotation", f, i, 1 );
+		else if ( !strcasecmp( t, "ADDENDUM" ) )
+			output_fill4( outptr, level, "note", "type", "addendum", f, i, 1 );
+		else if ( !strcasecmp( t, "BIBKEY" ) )
+			output_fill4( outptr, level, "note", "type", "bibliography key", f, i, 1 );
 	}
-}
-
-static void
-output_annotation( fields *f, FILE *outptr, int level )
-{
-	int n = fields_find( f, "ANNOTATION", level );
-	output_fill4( outptr, level, "note", "type", "annotation", f, n, 1 );
-}
-
-static void
-output_addendum( fields *f, FILE *outptr, int level )
-{
-	int n = fields_find( f, "ADDENDUM", level );
-	output_fill4( outptr, level, "note", "type", "addendum", f, n, 1 );
-}
-
-static void
-output_timescited( fields *f, FILE *outptr, int level )
-{
-	int n = fields_find( f, "TIMESCITED", level );
-	output_fill4( outptr, level, "note", "type", "times cited", f, n, 1 );
-}
-
-static void
-output_indexkey( fields *f, FILE *outptr, int level )
-{
-	int n = fields_find( f, "BIBKEY", level );
-	output_fill4( outptr, level, "note", "type", "bibliography key", f, n, 1 );
 }
 
 static void
@@ -924,10 +923,7 @@ output_citeparts( fields *f, FILE *outptr, int level, int max )
 		fprintf( outptr, "</relatedItem>\n" );
 	}
 	output_abs(        f, outptr, level );
-	output_timescited( f, outptr, level );
-	output_annotation( f, outptr, level );
-	output_addendum  ( f, outptr, level );
-	output_indexkey(   f, outptr, level );
+	output_notes(      f, outptr, level );
 	output_toc(        f, outptr, level );
 	output_key(        f, outptr, level );
 	output_sn(         f, outptr, level );
@@ -1013,7 +1009,8 @@ void
 modsout_writeheader( FILE *outptr, param *p )
 {
 	if ( p->utf8bom ) utf8_writebom( outptr );
-	fprintf(outptr,"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+	fprintf(outptr,"<?xml version=\"1.0\" encoding=\"%s\"?>\n",
+			charset_get_xmlname( p->charsetout ) );
 	fprintf(outptr,"<modsCollection xmlns=\"http://www.loc.gov/mods/v3\">\n");
 }
 

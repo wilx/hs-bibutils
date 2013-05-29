@@ -1,7 +1,7 @@
 /*
  * list.h
  *
- * version: 2012-12-19
+ * version: 2013-04-02
  *
  * Copyright (c) Chris Putnam 2004-2013
  *
@@ -17,6 +17,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include "newstr.h"
+
+#define LIST_CHR (0)
+#define LIST_STR (1)
 
 typedef struct list {
 	int n, max;
@@ -40,11 +43,16 @@ extern void    list_delete( list * );
 extern list*   list_dup( list *a );
 extern void    list_copy( list *to, list *from );
 
-extern int     list_add( list *a, char *value );
-extern int     list_adds( list *a, ... );
-extern int     list_add_unique( list *a, char *value );
-extern int     list_add_newstr( list *a, newstr *value );
-extern int     list_add_newstr_unique( list *a, newstr *value );
+extern newstr * list_add( list *a, char *value );
+extern newstr * list_addstr( list *a, newstr *value );
+extern newstr * list_addvp( list *a, void *vp, unsigned char mode );
+
+extern int      list_adds( list *a, ... );
+
+extern newstr * list_add_unique( list *a, char *value );
+extern newstr * list_addstr_unique( list *a, newstr *value );
+extern newstr * list_addvp_unique( list *a, void *vp, unsigned char mode );
+
 extern void    list_append( list *a, list *toadd );
 extern void    list_append_unique( list *a, list *toadd );
 

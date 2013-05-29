@@ -18,33 +18,8 @@
 #include "entities.h"
 #include "utf8.h"
 #include "gb18030.h"
-#include "newstr_conv.h"
-
 #include "charsets.h"
-
-int
-get_charset( char *name )
-{
-	int i;
-	if ( name==NULL ) return CHARSET_UNKNOWN;
-	for ( i=0; i<nallcharconvert; ++i ){
-		if ( !strcasecmp( name, allcharconvert[i].name ) ) return i;
-		else if ( allcharconvert[i].name2[0]!='\0' &&
-			!strcasecmp( name, allcharconvert[i].name2 ) ) return i;
-	}
-	return CHARSET_UNKNOWN;
-}
-
-void
-list_charsets( FILE *fp )
-{
-	int i;
-	for ( i=0; i<nallcharconvert; ++i ){
-		fprintf( fp, " %s", allcharconvert[i].name );
-		if ( (i>0 && i%5==0) || (i==nallcharconvert-1) )
-			fprintf( fp, "\n");
-	}
-}
+#include "newstr_conv.h"
 
 static void
 addentity( newstr *s, unsigned int ch )
@@ -120,24 +95,6 @@ addlatexchar( newstr *s, unsigned int ch, int xmlout, int utf8out )
 	}
 }
 
-static unsigned int
-lookupchar( int charsetin, char c )
-{
-	return allcharconvert[charsetin].table[(int)c];
-}
-
-static unsigned int
-lookupuni( int charsetout, unsigned int unicode )
-{
-	int i;
-	if ( charsetout==CHARSET_UNICODE ) return unicode;
-	for ( i=0; i<256; ++i ) {
-		if ( unicode == allcharconvert[charsetout].table[i] )
-			return i;
-	}
-	return '?';
-}
-
 /*
  * get_unicode()
  * 
@@ -182,7 +139,7 @@ get_unicode( newstr *s, unsigned int *pi, int charsetin, int latexin, int utf8in
 		*pi = *pi + 1;
 	}
 	if ( !unicode && charsetin!=CHARSET_UNICODE )
-		ch = lookupchar( charsetin, ch );
+		ch = charset_lookupchar( charsetin, ch );
 	return ch;
 }
 
@@ -198,7 +155,7 @@ write_unicode( newstr *s, unsigned int ch, int charsetout, int latexout,
 	} else if ( charsetout==CHARSET_GB18030 ) {
 		addgb18030char( s, ch, xmlout, utf8out );
 	} else {
-		c = lookupuni( charsetout, ch );
+		c = charset_lookupuni( charsetout, ch );
 		if ( xmlout ) addxmlchar( s, c );
 		else newstr_addchar( s, c );
 	}

@@ -1,3 +1,12 @@
+/*
+ * unicode.h
+ *
+ * Copyright (c) Chris Putnam 2004-2013
+ *
+ * Program and source code released under the GPL version 2
+ */
+#ifndef UNICODE_H
+#define UNICODE_H
 
 #include "newstr.h"
 
@@ -10,3 +19,4 @@
 extern unsigned short unicode_utf8_classify( char *p );
 extern unsigned short unicode_utf8_classify_newstr( newstr *s );
 
+#endif

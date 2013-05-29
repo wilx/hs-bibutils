@@ -24,8 +24,8 @@ wordout_initparams( param *p, const char *progname )
 	p->charsetout       = BIBL_CHARSET_UNICODE;
 	p->charsetout_src   = BIBL_SRC_DEFAULT;
 	p->latexout         = 0;
-	p->utf8out          = 0;
-	p->utf8bom          = 0;
+	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
+	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
 	if ( !p->utf8out ) p->xmlout = 3;
 	else p->xmlout = 1;
 	p->nosplittitle     = 0;

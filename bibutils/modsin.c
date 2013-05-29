@@ -283,7 +283,8 @@ modsin_personr( xml *node, newstr *name, newstr *suffix, newstr *roles )
 		if ( xml_tag_attrib( node, "namePart", "type", "family" ) ) {
 			if ( name->len ) newstr_prepend( name, "|" );
 			newstr_prepend( name, node->value->data );
-		} else if (xml_tag_attrib( node, "namePart", "type", "suffix")) {
+		} else if (xml_tag_attrib( node, "namePart", "type", "suffix") ||
+		           xml_tag_attrib( node, "namePart", "type", "termsOfAddress" )) {
 			if ( suffix->len ) newstr_addchar( suffix, ' ' );
 			newstr_strcat( suffix, node->value->data );
 		} else if (xml_tag_attrib( node, "namePart", "type", "date")){

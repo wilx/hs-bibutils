@@ -11,7 +11,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
-#include "strsearch.h"
 #include "fields.h"
 
 fields*

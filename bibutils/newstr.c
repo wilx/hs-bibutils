@@ -1,7 +1,7 @@
 /*
  * newstr.c
  *
- * Version: 12/24/12
+ * Version: 04/21/13
  *
  * Copyright (c) Chris Putnam 1999-2013
  *
@@ -756,4 +756,26 @@ newstr_fgetline( newstr *s, FILE *fp )
 		}
 	}
 	return 1;
+}
+
+/*
+ * s = "Hi!\0", s.len = 3
+ *
+ * newstr_char( s, 0 ) = 'H'  newstr_revchar( s, 0 ) = '\0'
+ * newstr_char( s, 1 ) = 'i'  newstr_revchar( s, 1 ) = '!'
+ * newstr_char( s, 2 ) = '!'  newstr_revchar( s, 2 ) = 'i'
+ * newstr_char( s, 3 ) = '\0' newstr_revchar( s, 3 ) = 'H'
+ */
+char
+newstr_char( newstr *s, unsigned long n )
+{
+	if ( s->len==0 || n >= s->len ) return '\0';
+	return s->data[ n ];
+}
+
+char
+newstr_revchar( newstr *s, unsigned long n )
+{
+	if ( s->len==0 || n >= s->len ) return '\0';
+	return s->data[ s->len - n ];
 }

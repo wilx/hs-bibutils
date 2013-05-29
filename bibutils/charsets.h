@@ -9,19 +9,17 @@
 #ifndef CHARSETS_H
 #define CHARSETS_H
 
-#define CHARSET_UNKNOWN (-1)
-#define CHARSET_UNICODE (-2)
-#define CHARSET_GB18030 (-3)
+#define CHARSET_UNKNOWN      (-1)
+#define CHARSET_UNICODE      (-2)
+#define CHARSET_GB18030      (-3)
+#define CHARSET_DEFAULT      CHARSET_UNICODE
+#define CHARSET_UTF8_DEFAULT (1)
+#define CHARSET_BOM_DEFAULT  (1)
 
-typedef unsigned int charconvert;
-
-typedef struct allcharconvert_t {
-	char name[15];
-	char name2[25];
-	charconvert *table;
-	int ntable;
-} allcharconvert_t;
-extern allcharconvert_t allcharconvert[];
-extern int nallcharconvert;
+extern char * charset_get_xmlname( int n );
+extern int charset_find( char *name );
+extern void charset_list_all( FILE *fp );
+extern unsigned int charset_lookupchar( int charsetin, char c );
+extern unsigned int charset_lookupuni( int charsetout, unsigned int unicode );
 
 #endif

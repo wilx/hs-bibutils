@@ -1,7 +1,7 @@
 /*
  * list.c
  *
- * version: 2012-12-19
+ * version: 2013-04-02
  *
  * Copyright (c) Chris Putnam 2004-2013
  *
@@ -155,61 +155,82 @@ list_ensure_space( list *a )
 	return ok;
 }
 
-int
-list_add( list *a, char *s )
+newstr *
+list_addvp( list *a, void *vp, unsigned char mode )
 {
-	int ok = list_ensure_space( a );
+	newstr *s = NULL;
+	int ok;
+	ok = list_ensure_space( a );
 	if ( ok ) {
-		newstr_strcpy( &(a->str[a->n]), s );
+		s = &( a->str[a->n] );
+		if ( mode==LIST_CHR )
+			newstr_strcpy( s, (char*) vp );
+		else if ( mode==LIST_STR )
+			newstr_newstrcpy( s, (newstr*) vp );
+		else
+			return NULL;
 		a->sorted = 0;
 		a->n++;
 	}
-	return ok;
+	return s;
+}
+newstr *
+list_add( list *a, char *s )
+{
+	return list_addvp( a, (void*)s, LIST_CHR );
+}
+newstr *
+list_addstr( list *a, newstr *s )
+{
+	return list_addvp( a, (void*)s, LIST_STR );
+}
+
+newstr *
+list_addvp_unique( list *a, void *vp, unsigned char mode )
+{
+	newstr *s;
+	int n;
+	if ( mode==LIST_CHR )
+		n = list_find( a, (char*) vp );
+	else if ( mode==LIST_STR )
+		n = list_find( a, ( (newstr*) vp )->data );
+	else
+		return NULL;
+	if ( n!=-1 )
+		s = &( a->str[n] );
+	else
+		s = list_addvp( a, vp, mode );
+	return s;
+}
+newstr *
+list_add_unique( list *a, char *s )
+{
+	return list_addvp_unique( a, (void*) s, LIST_CHR );
+}
+newstr *
+list_addstr_unique( list *a, newstr *s )
+{
+	return list_addvp_unique( a, (void*) s, LIST_STR );
 }
 
 int
 list_adds( list *a, ... )
 {
-	int ok, ret = 1;
+	int ret = 1;
 	va_list ap;
+	newstr *s;
 	char *v;
 	va_start( ap, a );
 	do {
 		v = va_arg( ap, char * );
 		if ( v ) {
-			ok = list_add( a, v );
-			if ( !ok ) { ret=0; goto out; }
+			s = list_addvp( a, (void*) v, LIST_CHR );
+			if ( s==NULL ) { ret = 0; goto out; }
 		}
-	} while( v );
+	} while ( v );
 out:
 	va_end( ap );
 	return ret;
-}
-
-int
-list_add_unique( list *a, char *s )
-{
-	if ( list_find( a, s )==-1 ) return list_add( a, s );
-	else return 1;
-}
-
-int
-list_add_newstr( list *a, newstr *s )
-{
-	int ok = list_ensure_space( a );
-	if ( ok ) {
-		newstr_newstrcpy( &(a->str[a->n]), s );
-		a->sorted = 0;
-		a->n++;
-	}
-	return ok;
-}
-
-int
-list_add_newstr_unique( list *a, newstr *s )
-{
-	if ( list_find( a, s->data )==-1 ) return list_add_newstr( a, s );
-	else return 1;
 }
 
 void
@@ -217,7 +238,7 @@ list_append( list *a, list *toadd )
 {
 	int i;
 	for ( i=0; i<toadd->n; ++i ) {
-		list_add_newstr( a, &(toadd->str[i]) );
+		list_addstr( a, &(toadd->str[i]) );
 	}
 }
 
@@ -226,7 +247,7 @@ list_append_unique( list *a, list *toadd )
 {
 	int i;
 	for ( i=0; i<toadd->n; ++i ) {
-		list_add_newstr_unique( a, &(toadd->str[i]) );
+		list_addstr_unique( a, &(toadd->str[i]) );
 	}
 }
 
@@ -319,8 +340,10 @@ int
 list_find_or_add( list *a, char *searchstr )
 {
 	int n = list_find( a, searchstr );
-	if ( n==-1 )
-		n = list_add( a, searchstr );
+	if ( n==-1 ) {
+		list_add( a, searchstr );
+		n = a->n - 1;
+	}
 	return n;
 }
 

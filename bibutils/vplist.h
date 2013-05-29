@@ -1,13 +1,14 @@
 /*
  * vplist.h
  *
- * Version: 9/20/2012
+ * Version: 4/08/2013
  *
  * Copyright (c) Chris Putnam 2011-2013
  *
  * Source code released under the GPL version 2
  *
  */
+
 #ifndef VPLIST_H
 #define VPLIST_H
 
@@ -18,46 +19,50 @@ typedef struct vplist {
 	void **data;
 } vplist;
 
-extern void   vplist_init( vplist *vpl );
-extern int    vplist_add( vplist *vpl, void *v );
+typedef void (*vplist_ptrfree)(void*);
+
+extern void     vplist_init( vplist *vpl );
+extern vplist * vplist_new( void );
+extern int      vplist_add( vplist *vpl, void *v );
+extern int      vplist_copy( vplist *to, vplist *from );
+extern int      vplist_append( vplist *to, vplist *from );
+extern void *   vplist_get( vplist *vpl, int n );
+extern void     vplist_set( vplist *vpl, int n, void *v );
+extern void     vplist_remove( vplist *vpl, int n );
+extern void     vplist_removevp( vplist *vpl, void *v );
+extern int      vplist_find( vplist *vpl, void *v );
+/*
+ * vplist_empty does not free space
+ *
+ * if members require their own free calls, then call vplist_emptyfn()
+ *
+ * void
+ * member_free( void *v )
+ * {
+ *     member *m = ( member * ) v;
+ *     member_free( m );
+ *     free( m );
+ * }
+ * vplist_emptyfn( &vpl, member_free );
+ *
+ * if members are simply allocated with malloc(), then use free()
+ *
+ * vplist_emptyfn( &vpl, free );
+ */
 extern void   vplist_empty( vplist *vpl );
-extern int    vplist_copy( vplist *to, vplist *from );
-extern int    vplist_append( vplist *to, vplist *from );
-extern void * vplist_get( vplist *vpl, int n );
-extern void   vplist_set( vplist *vpl, int n, void *v );
-extern void   vplist_remove( vplist *vpl, int n );
-extern void   vplist_removevp( vplist *vpl, void *v );
-extern int    vplist_find( vplist *vpl, void *v );
+extern void   vplist_emptyfn( vplist *vpl, vplist_ptrfree fn );
 /*
  * vplist_free frees the space for the data array of void * elements.
  *
- * if members require their own free calls, then, vplist_free()
- * should be wrapped in another deallocater:
- *
- * void foolist_free( vplist *vpl )
- * {
- *     int i;
- *     for ( i=0; i<vpl->n; ++i )
- *          if ( vpl->data[i] ) foo_free( (struct foo *) vpl->data[i] );
- *     vplist_free( vpl );
- * }
- *
- * vplist_free also does not deallocate any space corresponding
- * to vplist.
+ * if members require their own free calls, then call vplist_freefn()
  */
 extern void vplist_free( vplist *vpl );
+extern void vplist_freefn( vplist *vpl, vplist_ptrfree fn );
 /*
  * vplist_destroy does vplist_free and deallocates the struct
  * vplist * and replaces with NULL.
- *
- * void foolist_destroy( vplist **vpl )
- * {
- *     int i;
- *     for ( i=0; i<(*vpl)->n; ++i )
- *         if ( (*vpl)->data[i] ) foo_free( (struct foo *) (*vpl)->data[i] );
- *     vplist_destroy( vpl );
- * }
  */
 extern void vplist_destroy( vplist **vpl );
+extern void vplist_destroyfn( vplist **vpl, vplist_ptrfree fn );
 
 #endif

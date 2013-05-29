@@ -1,7 +1,7 @@
 /*
- * newstring.h
+ * newstr.h
  *
- * Version: 12/24/12
+ * Version: 04/21/13
  *
  * Copyright (c) Chris Putnam 1999-2013
  *
@@ -48,6 +48,8 @@ void newstr_indxcat     ( newstr *s, char *p, int start, int stop );
 void newstr_fprintf     ( FILE *fp, newstr *s );
 int  newstr_fget        ( FILE *fp, char *buf, int bufsize, int *pbufpos,
                           newstr *outs );
+char newstr_char        ( newstr *s, unsigned long n );
+char newstr_revchar     ( newstr *s, unsigned long n );
 int  newstr_fgetline    ( newstr *s, FILE *fp );
 int  newstr_findreplace ( newstr *s, char *find, char *replace );
 void newstr_toupper     ( newstr *s );
