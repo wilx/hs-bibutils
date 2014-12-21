@@ -1,9 +1,9 @@
 /*
  * newstr.c
  *
- * Version: 04/21/13
+ * Version: 04/27/14
  *
- * Copyright (c) Chris Putnam 1999-2013
+ * Copyright (c) Chris Putnam 1999-2014
  *
  * Source code released under the GPL version 2
  *
@@ -20,9 +20,16 @@
 #include "newstr.h"
 #include "is_ws.h"
 
+/* Do not use asserts in NEWSTR_NOASSERT defined */
+#ifdef NEWSTR_NOASSERT
+#define NDEBUG
+#endif
 #include <assert.h>
 
 #define newstr_initlen (64)
+
+
+/* Clear memory in resize/free if NEWSTR_PARANOIA defined */
 
 #ifndef NEWSTR_PARANOIA
 
@@ -43,11 +50,8 @@ newstr_realloc( newstr *s, unsigned long minsize )
 	s->dim = size;
 }
 
-/* define as no-op */
-static inline void
-newstr_nullify( newstr *s )
-{
-}
+/* define as a no-op */
+#define newstr_nullify( s )
 
 #else
 
@@ -91,7 +95,7 @@ newstr_init( newstr *s )
 }
 
 void
-newstr_initstr( newstr *s, char *initstr )
+newstr_initstr( newstr *s, const char *initstr )
 {
 	assert( s );
 	assert( initstr );
@@ -113,15 +117,27 @@ newstrs_init( newstr *s, ... )
 	va_end( ap );
 }
 
+/*
+ * This is currently a stub. Later it will
+ * report whether or not a newstr function
+ * could not be performed due to a memory
+ * error.
+ */
+int
+newstr_memerr( newstr *s )
+{
+	return 0;
+}
+
 void
 newstr_mergestrs( newstr *s, ... )
 {
 	va_list ap;
-	char *cp;
+	const char *cp;
 	newstr_empty( s );
 	va_start( ap, s );
 	do {
-		cp = va_arg( ap, char * );
+		cp = va_arg( ap, const char * );
 		if ( cp ) newstr_strcat( s, cp );
 	} while ( cp );
 	va_end( ap );
@@ -180,6 +196,14 @@ newstrs_free( newstr *s, ... )
 }
 
 void
+newstr_delete( newstr *s )
+{
+	assert( s );
+	newstr_free( s );
+	free( s );
+}
+
+void
 newstr_empty( newstr *s )
 {
 	assert( s );
@@ -208,10 +232,11 @@ void
 newstr_addchar( newstr *s, char newchar )
 {
 	assert( s );
+	if ( newchar=='\0' ) return; /* appending '\0' is a null operation */
 	if ( !s->data || s->dim==0 ) 
 		newstr_initalloc( s, newstr_initlen );
 	if ( s->len + 2 > s->dim ) 
-		newstr_realloc( s, s->len+2 );
+		newstr_realloc( s, s->len*2 );
 	s->data[s->len++] = newchar;
 	s->data[s->len] = '\0';
 }
@@ -224,8 +249,8 @@ newstr_addchar( newstr *s, char newchar )
  * Since we can progress more than one byte at p, return the
  * properly updated pointer p.
  */
-char *
-newstr_addutf8( newstr *s, char *p )
+const char *
+newstr_addutf8( newstr *s, const char *p )
 {
 	if ( ! ((*p) & 128 ) ) {
 		newstr_addchar( s, *p );
@@ -247,11 +272,12 @@ newstr_fprintf( FILE *fp, newstr *s )
 }
 
 void
-newstr_prepend( newstr *s, char *addstr )
+newstr_prepend( newstr *s, const char *addstr )
 {
 	unsigned long lenaddstr, i;
 	assert( s && addstr );
 	lenaddstr = strlen( addstr );
+	if ( lenaddstr==0 ) return;
 	if ( !s->data || !s->dim )
 		newstr_initalloc( s, lenaddstr+1 );
 	else {
@@ -276,7 +302,7 @@ newstr_strcat_ensurespace( newstr *s, unsigned long n )
 }
 
 static inline void 
-newstr_strcat_internal( newstr *s, char *addstr, unsigned long n )
+newstr_strcat_internal( newstr *s, const char *addstr, unsigned long n )
 {
 	newstr_strcat_ensurespace( s, n );
 	strncat( &(s->data[s->len]), addstr, n );
@@ -293,7 +319,7 @@ newstr_newstrcat( newstr *s, newstr *old )
 }
 
 void
-newstr_strcat( newstr *s, char *addstr )
+newstr_strcat( newstr *s, const char *addstr )
 {
 	unsigned long n;
 	assert( s && addstr );
@@ -304,24 +330,60 @@ newstr_strcat( newstr *s, char *addstr )
 void
 newstr_segcat( newstr *s, char *startat, char *endat )
 {
-	size_t seglength;
-	char *p, *q;
+	unsigned long n;
+	char *p;
 
 	assert( s && startat && endat );
 	assert( (size_t) startat < (size_t) endat );
 
-	seglength=(size_t) endat - (size_t) startat;
-	if ( !s->data || !s->dim )
-		newstr_initalloc( s, seglength+1 );
-	else {
-		if ( s->len + seglength + 1 > s->dim )
-			newstr_realloc( s, s->len + seglength+1 );
-	}
-	q = &(s->data[s->len]);
+	if ( startat==endat ) return;
+
+	n = 0;
 	p = startat;
-	while ( *p && p!=endat ) *q++ = *p++;
-	*q = '\0';
-	s->len += seglength;
+	while ( p!=endat ) {
+		n++;
+		p++;
+	}
+
+	newstr_strcat_internal( s, startat, n );
+}
+
+void
+newstr_indxcat( newstr *s, char *p, unsigned long start, unsigned long stop )
+{
+	unsigned long i;
+	assert( s && p );
+	assert( start <= stop );
+	for ( i=start; i<stop; ++i )
+		newstr_addchar( s, p[i] );
+}
+
+/* newstr_cpytodelim()
+ *     term      = string of characters to be used as terminators
+ *     finalstep = set to non-zero to position return value past the
+ *                 terminating character
+ */
+char *
+newstr_cpytodelim( newstr *s, char *p, const char *delim, unsigned char finalstep )
+{
+	newstr_empty( s );
+	return newstr_cattodelim( s, p, delim, finalstep );
+}
+
+/* newstr_cpytodelim()
+ *     term      = string of characters to be used as terminators
+ *     finalstep = set to non-zero to position return value past the
+ *                 terminating character
+ */
+char *
+newstr_cattodelim( newstr *s, char *p, const char *delim, unsigned char finalstep )
+{
+	while ( p && *p && !strchr( delim, *p ) ) {
+		newstr_addchar( s, *p );
+		p++;
+	}
+	if ( *p && finalstep ) p++;
+	return p;
 }
 
 static inline void
@@ -330,15 +392,16 @@ newstr_strcpy_ensurespace( newstr *s, unsigned long n )
 	unsigned long m = n + 1;
 	if ( !s->data || !s->dim )
 		newstr_initalloc( s, m );
-	else if ( n+1 > s->dim ) 
+	else if ( m > s->dim )
 		newstr_realloc( s, m );
 }
 
 static inline void
-newstr_strcpy_internal( newstr *s, char *p, unsigned long n )
+newstr_strcpy_internal( newstr *s, const char *p, unsigned long n )
 {
 	newstr_strcpy_ensurespace( s, n );
-	strcpy( s->data, p );
+	strncpy( s->data, p, n );
+	s->data[n] = '\0';
 	s->len = n;
 }
 
@@ -352,51 +415,12 @@ newstr_newstrcpy( newstr *s, newstr *old )
 }
 
 void 
-newstr_strcpy( newstr *s, char *addstr )
+newstr_strcpy( newstr *s, const char *addstr )
 {
 	unsigned long n;
 	assert( s && addstr );
 	n = strlen( addstr );
 	newstr_strcpy_internal( s, addstr, n );
-}
-
-newstr *
-newstr_strdup( char *s1 )
-{
-	newstr *s2 = newstr_new();
-	if ( s2 )
-		newstr_strcpy( s2, s1 );
-	return s2;
-}
-
-/*
- * newstr_indxcpy( s, in, start, stop );
- *
- * copies in[start] to in[stop] (includes stop) into s
- */
-void
-newstr_indxcpy( newstr *s, char *p, int start, int stop )
-{
-	int i;
-	assert( s );
-	assert( p );
-	assert( start <= stop );
-	newstr_strcpy_ensurespace( s, stop-start+1 );
-	for ( i=start; i<=stop; ++i )
-		s->data[i-start] = p[i];
-	s->data[i] = '\0';
-	s->len = stop-start+1;
-}
-
-void
-newstr_indxcat( newstr *s, char *p, int start, int stop )
-{
-	int i;
-	assert( s );
-	assert( p );
-	assert( start <= stop );
-	for ( i=start; i<=stop; ++i )
-		newstr_addchar( s, p[i] );
 }
 
 /* newstr_segcpy( s, start, end );
@@ -406,19 +430,56 @@ newstr_indxcat( newstr *s, char *p, int start, int stop )
 void
 newstr_segcpy( newstr *s, char *startat, char *endat )
 {
-	size_t n;
-	char *p, *q;
+	unsigned long n;
+	char *p;
 
 	assert( s && startat && endat );
 	assert( ((size_t) startat) <= ((size_t) endat) );
 
-	n = (size_t) endat - (size_t) startat;
-	newstr_strcpy_ensurespace( s, n );
-	q = s->data;
+	if ( startat==endat ) {
+		newstr_empty( s );
+		return;
+	}
+
+	n = 0;
 	p = startat;
-	while ( *p && p!=endat ) *q++ = *p++;
-	*q = '\0';
-	s->len = n;
+	while ( p!=endat ) {
+		p++;
+		n++;
+	}
+
+	newstr_strcpy_internal( s, startat, n );
+}
+
+/*
+ * newstr_indxcpy( s, in, start, stop );
+ *
+ * copies in[start,stop) (excludes stop) into s
+ */
+void
+newstr_indxcpy( newstr *s, char *p, unsigned long start, unsigned long stop )
+{
+	unsigned long i;
+	assert( s && p );
+	assert( start <= stop );
+	if ( start == stop ) {
+		newstr_empty( s );
+		return;
+	}
+	newstr_strcpy_ensurespace( s, stop-start+1 );
+	for ( i=start; i<stop; ++i )
+		s->data[i-start] = p[i];
+	s->len = stop-start;
+	s->data[s->len] = '\0';
+}
+
+newstr *
+newstr_strdup( const char *s1 )
+{
+	newstr *s2 = newstr_new();
+	if ( s2 )
+		newstr_strcpy( s2, s1 );
+	return s2;
 }
 
 void
@@ -446,7 +507,7 @@ newstr_segdel( newstr *s, char *p, char *q )
  */
 
 int
-newstr_findreplace( newstr *s, char *find, char *replace )
+newstr_findreplace( newstr *s, const char *find, const char *replace )
 {
 	long diff;
 	size_t findstart, searchstart;
@@ -503,6 +564,7 @@ newstr_fget( FILE *fp, char *buf, int bufsize, int *pbufpos, newstr *outs )
 {
 	int  bufpos = *pbufpos, done = 0;
 	char *ok;
+	assert( fp && outs );
 	newstr_empty( outs );
 	while ( !done ) {
 		while ( buf[bufpos] && buf[bufpos]!='\r' && buf[bufpos]!='\n' )
@@ -573,29 +635,26 @@ newstr_swapstrings( newstr *s1, newstr *s2 )
 void
 newstr_trimstartingws( newstr *s )
 {
-	unsigned char still_ws;
-	unsigned long n, m;
+	char *p, *q;
+	int n;
 
 	assert( s );
 
 	if ( s->len==0 || !is_ws( s->data[0] ) ) return;
 
-	m = n = 0;
-	still_ws = 1;
-	while ( m <= s->len ) {
-		if ( still_ws && !is_ws( s->data[ m ] ) ) {
-			still_ws = 0;
-		}
-		if ( !still_ws ) {
-			s->data[ n ] = s->data[ m ];
-			n++;
-		}
-		m++;
+	n = 0;
+	p = s->data;
+	while ( is_ws( *p ) ) p++;
+
+	q = s->data;
+	while ( *p ) {
+		*q++ = *p++;
+		n++;
 	}
+	*q = '\0';
 
 	s->len = n;
 }
-	
 
 void
 newstr_trimendingws( newstr *s )
@@ -610,6 +669,7 @@ newstr_trimendingws( newstr *s )
 int
 newstr_match_first( newstr *s, char ch )
 {
+	assert( s );
 	if ( !s->len ) return 0;
 	if ( s->data[0] == ch ) return 1;
 	return 0;
@@ -618,37 +678,81 @@ newstr_match_first( newstr *s, char ch )
 int
 newstr_match_end( newstr *s, char ch )
 {
+	assert( s );
 	if ( !s->len ) return 0;
 	if ( s->data[ s->len - 1 ] == ch ) return 1;
 	return 0;
 }
 
 void
-newstr_trimbegin( newstr *s, int n )
+newstr_trimbegin( newstr *s, unsigned long n )
 {
-	int i;
+	char *p, *q;
+
 	assert( s );
-	if ( s->len - n < 1 ) newstr_empty( s );
-	for ( i=1; i<=s->len; ++i ) /* pick up '\0' with '<=' */
-		s->data[i-1] = s->data[i];
-	s->len -= n;
+
+	if ( n==0 ) return;
+	if ( s->len==0 ) return;
+	if ( n >= s->len ) {
+		newstr_empty( s );
+		return;
+	}
+
+	p = s->data;
+	while ( n-- > 0 ) p++;
+
+	n = 0;
+	q = s->data;
+	while ( *p ) {
+		*q++ = *p++;
+		n++;
+	}
+	*q = '\0';
+
+	s->len = n;
 }
 
 void
-newstr_trimend( newstr *s, int n )
+newstr_trimend( newstr *s, unsigned long n )
 {
 	assert( s );
-	if ( s->len - n < 1 ) newstr_empty( s );
-	else {
-		s->len -= n;
-		s->data[ s->len ] = '\0';
+
+	if ( n==0 ) return;
+	if ( n >= s->len ) {
+		newstr_empty( s );
+		return;
 	}
+
+	s->len -= n;
+	s->data[ s->len ] = '\0';
+}
+
+void
+newstr_pad( newstr *s, unsigned long len, char ch )
+{
+	unsigned long i;
+	assert( s );
+	for ( i=s->len; i<len; i++ )
+		newstr_addchar( s, ch );
+}
+
+void
+newstr_copyposlen( newstr *s, newstr *in, unsigned long pos, unsigned long len )
+{
+	unsigned long i, max;
+	assert( s );
+	newstr_empty( s );
+	max = pos+len;
+	if ( max > in->len ) max = in->len;
+	for ( i=pos; i<max; ++i )
+		newstr_addchar( s, in->data[i] );
 }
 
 static void
 newstr_check_case( newstr *s, int *lowercase, int *uppercase )
 {
 	int i;
+	assert( s );
 	*lowercase = 0;
 	*uppercase = 0;
 	if ( s->len < 1 ) return;
@@ -709,31 +813,28 @@ newstr_stripws( newstr *s )
 }
 
 int
-newstr_newstrcmp( newstr *s, newstr *t )
+newstr_newstrcmp( const newstr *s, const newstr *t )
 {
 	assert( s );
 	assert( t );
 	if ( s->len == 0 && t->len == 0 ) return 0;
+	if ( s->len == 0 ) return strcmp( "", t->data );
+	if ( t->len == 0 ) return strcmp( s->data, "" );
 	return strcmp( s->data, t->data );
 }
 
 void
 newstr_reverse( newstr *s )
 {
-	newstr ns;
-	unsigned long i;
-
+	unsigned long i, max;
+	char tmp;
 	assert( s );
-
-	if ( s->len==0 ) return;
-	newstr_init( &ns );
-	i = s->len;
-	do {
-		i--;
-		newstr_addchar( &ns, s->data[i] );
-	} while ( i>0 );
-	newstr_swapstrings( s, &ns );
-	newstr_free( &ns );
+	max = s->len / 2;
+	for ( i=0; i<max; ++i ) {
+		tmp = s->data[ i ];
+		s->data[ i ] = s->data[ s->len - 1 - i ];
+		s->data[ s->len - 1 - i ] = tmp;
+	}
 }
 
 int
@@ -741,11 +842,15 @@ newstr_fgetline( newstr *s, FILE *fp )
 {
 	int ch, eol = 0;
 	assert( s );
+	assert( fp );
 	newstr_empty( s );
 	if ( feof( fp ) ) return 0;
 	while ( !feof( fp ) && !eol ) {
 		ch = fgetc( fp );
-		if ( ch == EOF ) eol = 1;
+		if ( ch == EOF ) {
+			if ( s->len ) return 1;
+			else return 0;
+		}
 		else if ( ch == '\n' ) eol = 1;
 		else if ( ch == '\r' ) {
 			ch = fgetc( fp );
@@ -761,14 +866,15 @@ newstr_fgetline( newstr *s, FILE *fp )
 /*
  * s = "Hi!\0", s.len = 3
  *
- * newstr_char( s, 0 ) = 'H'  newstr_revchar( s, 0 ) = '\0'
- * newstr_char( s, 1 ) = 'i'  newstr_revchar( s, 1 ) = '!'
- * newstr_char( s, 2 ) = '!'  newstr_revchar( s, 2 ) = 'i'
- * newstr_char( s, 3 ) = '\0' newstr_revchar( s, 3 ) = 'H'
+ * newstr_char( s, 0 ) = 'H'  newstr_revchar( s, 0 ) = '!'
+ * newstr_char( s, 1 ) = 'i'  newstr_revchar( s, 1 ) = 'i'
+ * newstr_char( s, 2 ) = '!'  newstr_revchar( s, 2 ) = 'H'
+ * newstr_char( s, 3 ) = '\0' newstr_revchar( s, 3 ) = '\0'
  */
 char
 newstr_char( newstr *s, unsigned long n )
 {
+	assert( s );
 	if ( s->len==0 || n >= s->len ) return '\0';
 	return s->data[ n ];
 }
@@ -776,6 +882,20 @@ newstr_char( newstr *s, unsigned long n )
 char
 newstr_revchar( newstr *s, unsigned long n )
 {
+	assert( s );
 	if ( s->len==0 || n >= s->len ) return '\0';
-	return s->data[ s->len - n ];
+	return s->data[ s->len - n - 1];
+}
+
+void
+newstr_makepath( newstr *path, const char *dirname, const char *filename, char sep )
+{
+	assert( path );
+	if ( dirname ) newstr_strcpy( path, dirname );
+	else newstr_empty( path );
+
+	if ( path->len && path->data[path->len-1]!=sep )
+		newstr_addchar( path, sep );
+
+	if ( filename ) newstr_strcat( path, filename );
 }

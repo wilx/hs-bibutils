@@ -63,14 +63,14 @@ static struct latex_chars latex_chars[] = {
    { 230, "{\\ae}",  "\\ae",    ""      }, /* Latin Small ae */
 
                                            /* Latin Capital C */
-   { 199, "{\\c{C}}","\\c{C}",  ""      }, /*               with cedilla */
+   { 199, "{\\c{C}}","\\c{C}",  "\\c c" }, /*               with cedilla */
    { 262, "{\\'{C}}","\\'{C}",  "\\'C"  }, /*               with acute */
    { 264, "{\\^{C}}","\\^{C}",  "\\^C"  }, /*               with circumflex */
    { 266, "{\\.{C}}","\\.{C}",  "\\.C"  }, /*               with dot above */
    { 268, "{\\v{C}}","\\v{C}",  "\\v C" }, /*               with caron (hacek) */
 
                                            /* Latin Small c */
-   { 231, "{\\c{c}}","\\c{c}",  ""      }, /*               with cedilla*/
+   { 231, "{\\c{c}}","\\c{c}",  "\\c C" }, /*               with cedilla*/
    { 263, "{\\'{c}}","\\'{c}",  "\\'c"  }, /*               with acute */
    { 265, "{\\^{c}}","\\^{c}",  "\\^c"  }, /*               with circumflex */
    { 267, "{\\.{c}}","\\.{c}",  "\\.c"  }, /*               with dot above */
@@ -512,6 +512,8 @@ latex2char( char *s, unsigned int *pos, int *unicode )
 	if ( value=='{' || value=='\\' || value=='~' || 
 	     value=='$' || value=='\'' || value=='`' || 
 	     value=='-' || value=='^' ) {
+		if ( *p=='\\' && ( *p=='{' || *p=='}' ) ) {
+		} else {
 		for ( i=0; i<nlatex_chars; ++i ) {
 			q[0] = latex_chars[i].bib1;
 			l[0] = strlen( q[0] );
@@ -526,6 +528,7 @@ latex2char( char *s, unsigned int *pos, int *unicode )
 					return latex_chars[i].unicode;
 				}
 			}
+		}
 		}
 	}
 	*unicode = 0;

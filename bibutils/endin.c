@@ -1,7 +1,7 @@
 /*
  * endin.c
  *
- * Copyright (c) Chris Putnam 2003-2013
+ * Copyright (c) Chris Putnam 2003-2014
  *
  * Program and source code released under the GPL version 2
  *
@@ -21,6 +21,9 @@
 #include "reftypes.h"
 #include "endin.h"
 
+/*****************************************************
+ PUBLIC: void endin_initparams()
+*****************************************************/
 void
 endin_initparams( param *p, const char *progname )
 {
@@ -49,6 +52,11 @@ endin_initparams( param *p, const char *progname )
 	if ( !progname ) p->progname = NULL;
 	else p->progname = strdup( progname );
 }
+
+
+/*****************************************************
+ PUBLIC: int endin_readf()
+*****************************************************/
 
 /* Endnote tag definition:
     character 1 = '%'
@@ -113,6 +121,9 @@ endin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, newstr
 	return haveref;
 }
 
+/*****************************************************
+ PUBLIC: int endin_processf()
+*****************************************************/
 static char*
 process_endline( newstr *tag, newstr *data, char *p )
 {
@@ -149,159 +160,37 @@ int
 endin_processf( fields *endin, char *p, char *filename, long nref )
 {
 	newstr tag, data;
-	int n;
+	int status, n;
 	newstrs_init( &tag, &data, NULL );
 	while ( *p ) {
+		newstrs_empty( &tag, &data, NULL );
 		if ( endin_istag( p ) ) {
 			p = process_endline( &tag, &data, p );
-			/* no empty fields allowed */
-			if ( data.len ) {
-				fields_add( endin, tag.data, data.data, 0 );
-			}
+			if ( data.len==0 ) continue;
+			status = fields_add( endin, tag.data, data.data, 0 );
+			if ( status!=FIELDS_OK ) return 0;
 		} else {
 			p = process_endline2( &tag, &data, p );
 			/* endnote puts %K only on 1st line of keywords */
 			n = fields_num( endin );
 			if ( n>0 && data.len ) {
 			if ( !strncmp( endin->tag[n-1].data, "%K", 2 ) ) {
-				fields_add( endin, "%K", data.data, 0 );
+				status = fields_add( endin, "%K", data.data, 0 );
+				if ( status!=FIELDS_OK ) return 0;
 			} else {
 				newstr_addchar( &(endin->data[n-1]), ' ' );
 				newstr_strcat( &(endin->data[n-1]), data.data );
 			}
 			}
 		}
-		newstrs_empty( &tag, &data, NULL );
 	}
 	newstrs_free( &tag, &data, NULL );
 	return 1;
 }
 
-static int
-endin_addtype( fields *info, char *data, int level )
-{
-	lookups types[] = {
-		{ "GENERIC", "ARTICLE" },
-		{ "BOOK", "BOOK" }, 
-		{ "MANUSCRIPT", "MANUSCRIPT" },
-		{ "CONFERENCE PROCEEDINGS", "INPROCEEDINGS"},
-		{ "REPORT", "REPORT" },
-		{ "COMPUTER PROGRAM", "BOOK" },
-		{ "AUDIOVISUAL MATERIAL", "AUDIOVISUAL" },
-		{ "ARTWORK", "BOOK" },
-		{ "PATENT", "BOOK" },
-		{ "BILL", "BILL" },
-		{ "CASE", "CASE" },
-		{ "JOURNAL ARTICLE", "ARTICLE" }, 
-		{ "MAGAZINE ARTICLE", "ARTICLE" }, 
-		{ "BOOK SECTION", "INBOOK" },
-		{ "EDITED BOOK", "BOOK" },
-       		{ "NEWSPAPER ARTICLE",  "NEWSARTICLE" },
-		{ "THESIS", "PHDTHESIS" },
-		{ "PERSONAL COMMUNICATION", "COMMUNICATION" },
-		{ "ELECTRONIC SOURCE", "TEXT" },
-		{ "FILM OR BROADCAST", "AUDIOVISUAL" },
-		{ "MAP", "MAP" },
-		{ "HEARING", "HEARING" },
-		{ "STATUTE", "STATUTE" },
-		{ "CHART OR TABLE", "CHART" },
-		{ "WEB PAGE", "WEBPAGE" },
-	};
-	int  ntypes = sizeof( types ) / sizeof( lookups );
-	int  i, ok, found=0;
-	for ( i=0; i<ntypes; ++i ) {
-		if ( !strcasecmp( types[i].oldstr, data ) ) {
-			found = 1;
-			ok = fields_add( info, "INTERNAL_TYPE", types[i].newstr, level );
-			if ( !ok ) return 0;
-		}
-	}
-	if ( !found ) {
-		fprintf( stderr, "Did not identify reference type '%s'\n",
-			data );
-		fprintf( stderr, "Defaulting to journal article type\n");
-		ok = fields_add( info, "INTERNAL_TYPE", types[0].newstr, level );
-		if ( !ok ) return 0;
-	}
-	return 1;
-}
-
-static int
-endin_addpage( fields *info, char *p, int level )
-{
-	newstr page;
-	int ok;
-	newstr_init( &page );
-	p = skip_ws( p );
-	while ( *p && !is_ws(*p) && *p!='-' && *p!='\r' && *p!='\n' ) 
-		newstr_addchar( &page, *p++ );
-	if ( page.len>0 ) {
-		ok = fields_add( info, "PAGESTART", page.data, level );
-		if ( !ok ) return 0;
-	}
-	newstr_empty( &page );
-	while ( *p && (is_ws(*p) || *p=='-' ) ) p++;
-	while ( *p && !is_ws(*p) && *p!='-' && *p!='\r' && *p!='\n' ) 
-		newstr_addchar( &page, *p++ );
-	if ( page.len>0 ) {
-		ok = fields_add( info, "PAGEEND", page.data, level );
-		if ( !ok ) return 0;
-	}
-	newstr_free( &page );
-	return 1;
-}
-
-static int
-endin_adddate( fields *info, char *tag, char *newtag, char *p, int level )
-{
-	char *months[12]={ "January", "February", "March", "April",
-		"May", "June", "July", "August", "September",
-		"October", "November", "December" };
-	char month[10];
-	int found,i,part, ok;
-	newstr date;
-	newstr_init( &date );
-	part = (!strncasecmp(newtag,"PART",4));
-	if ( !strcasecmp( tag, "%D" ) ) {
-		while ( *p ) newstr_addchar( &date, *p++ );
-		if ( date.len>0 ) {
-			if ( part ) ok = fields_add( info, "PARTYEAR", date.data, level );
-			else        ok = fields_add( info, "YEAR",     date.data, level );
-			if ( !ok ) return 0;
-		}
-	} else if ( !strcasecmp( tag, "%8" ) ) {
-		while ( *p && *p!=' ' && *p!=',' ) newstr_addchar( &date, *p++ );
-		if ( date.len>0 ) {
-			found = -1;
-			for ( i=0; i<12 && found==-1; ++i )
-				if ( !strncasecmp( date.data, months[i], 3 ) )
-					found = i;
-			if ( found!=-1 ) {
-				if (found>8) sprintf( month, "%d", found+1 );
-				else sprintf( month, "0%d", found+1 );
-				if ( part ) ok = fields_add( info, "PARTMONTH", month, level );
-				else        ok = fields_add( info, "MONTH",     month, level );
-				if ( !ok ) return 0;
-			} else {
-				if ( part )
-					ok = fields_add( info, "PARTMONTH", date.data, level );
-				else
-					ok = fields_add( info, "MONTH", date.data, level );
-				if ( !ok ) return 0;
-			}
-		}
-		newstr_empty( &date );
-		p = skip_ws( p );
-		while ( *p && *p!='\n' && *p!=',' ) newstr_addchar( &date, *p++ );
-		if ( date.len>0 && date.len<3 ) {
-			if ( part ) ok = fields_add( info, "PARTDAY", date.data, level );
-			else        ok = fields_add( info, "DAY",     date.data, level );
-			if ( !ok ) return 0;
-		}
-	}
-	newstr_free( &date );
-	return 1;
-}
+/*****************************************************
+ PUBLIC: int endin_typef()
+*****************************************************/
 
 /* Endnote defaults if no %0
  *
@@ -353,6 +242,10 @@ endin_typef( fields *endin, char *filename, int nrefs, param *p,
 	return reftype;
 }
 
+/*****************************************************
+ PUBLIC: void endin_cleanf()
+*****************************************************/
+
 /* Wiley puts multiple authors separated by commas on the %A lines.
  * We can detect this by finding the terminal comma in the data.
  *
@@ -370,49 +263,263 @@ is_wiley_author( fields *endin, int n )
 	return 1;
 }
 
-static void
+static int
 cleanup_wiley_author( fields *endin, int n )
 {	
-	newstr tmp, tmppart;
-	int i, nauthor = 0;
-	newstrs_init( &tmp, &tmppart, NULL );
-	newstr_newstrcpy( &tmp, &( endin->data[n] ) );
-	i = 0;
-	while ( i<tmp.len ) {
-		if ( tmp.data[i]==',' ) {
-			if ( nauthor==0 )
-				newstr_newstrcpy( &(endin->data[n]), &tmppart );
-			else
-				fields_add( endin, endin->tag[n].data,
-					tmppart.data, endin->level[n] );
-			newstr_empty( &tmppart );
+	newstr *instring, copy, name;
+	int status, nauthor = 0;
+	char *p;
+
+	newstrs_init( &copy, &name, NULL );
+
+	instring = &( endin->data[n] );
+	newstr_newstrcpy( &copy, instring );
+
+	p = copy.data;
+	while ( *p ) {
+		if ( *p==',' ) {
+			if ( newstr_memerr( &name ) )
+				return BIBL_ERR_MEMERR;
+			if ( nauthor==0 ) {
+				/* ...replace the first author in the field */
+				newstr_newstrcpy( instring, &name );
+				if ( newstr_memerr( instring ) )
+					return BIBL_ERR_MEMERR;
+			} else {
+				status = fields_add( endin, endin->tag[n].data,
+					name.data, endin->level[n] );
+				if ( status!=FIELDS_OK )
+					return BIBL_ERR_MEMERR;
+			}
+			newstr_empty( &name );
 			nauthor++;
-			while ( i<tmp.len && is_ws( tmp.data[i] ) ) i++;
+			p++;
+			while ( is_ws( *p ) ) p++;
 		} else {
-			newstr_addchar( &tmppart, tmp.data[i] );
+			newstr_addchar( &name, *p );
+			p++;
 		}
-		i++;
 	}
-	newstrs_free( &tmp, &tmppart, NULL );
+
+	newstrs_free( &copy, &name, NULL );
+	return BIBL_OK;
 }
 
-static void
+static int
 endin_cleanref( fields *endin )
 {
-	int i, n;
+	int i, n, status;
 	n = fields_num( endin );
 	for ( i=0; i<n; ++i ) {
-		if ( is_wiley_author( endin, i ) )
-			cleanup_wiley_author( endin, i );
+		if ( is_wiley_author( endin, i ) ) {
+			status = cleanup_wiley_author( endin, i );
+			if ( status!=BIBL_OK ) return status;
+		}
 	}
+	return BIBL_OK;
 }
 
-void
+int
 endin_cleanf( bibl *bin, param *p )
 {
         long i;
         for ( i=0; i<bin->nrefs; ++i )
                 endin_cleanref( bin->ref[i] );
+	return BIBL_OK;
+}
+
+/*****************************************************
+ PUBLIC: int endin_convertf(), returns BIBL_OK or BIBL_ERR_MEMERR
+*****************************************************/
+
+static int
+endin_addpage( fields *info, char *p, int level )
+{
+	newstr page;
+	int status;
+
+	newstr_init( &page );
+
+	p = newstr_cpytodelim( &page, skip_ws( p ), "- \t\r\n", 0 );
+	if ( newstr_memerr( &page ) ) return BIBL_ERR_MEMERR;
+	if ( page.len>0 ) {
+		status = fields_add( info, "PAGESTART", page.data, level );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
+
+	while ( *p && (is_ws(*p) || *p=='-' ) ) p++;
+
+	p = newstr_cpytodelim( &page, p, "- \t\r\n", 0 );
+	if ( newstr_memerr( &page ) ) return BIBL_ERR_MEMERR;
+	if ( page.len>0 ) {
+		status = fields_add( info, "PAGEEND", page.data, level );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
+
+	newstr_free( &page );
+
+	return BIBL_OK;
+}
+
+/* month_convert()
+ * convert month name to number in format MM, e.g. "January" -> "01"
+ * if converted, return 1
+ * otherwise return 0
+ */
+static int
+month_convert( char *in, char *out )
+{
+	char *month1[12]={
+		"January",   "February",
+		"March",     "April",
+		"May",       "June",
+		"July",      "August",
+		"September", "October",
+		"November",  "December"
+	};
+	char *month2[12]={
+		"Jan", "Feb",
+		"Mar", "Apr",
+		"May", "Jun",
+		"Jul", "Aug",
+		"Sep", "Oct",
+		"Nov", "Dec"
+	};
+	int i, found = -1;
+
+	for ( i=0; i<12 && found==-1; ++i ) {
+		if ( !strcasecmp( in, month1[i] ) ) found = i;
+		if ( !strcasecmp( in, month2[i] ) ) found = i;
+	}
+
+	if ( found==-1 ) return 0;
+
+	if ( found > 8 )
+		sprintf( out, "%d", found+1 );
+	else
+		sprintf( out, "0%d", found+1 );
+
+	return 1;
+}
+
+static int
+endin_adddate( fields *info, char *tag, char *newtag, char *p, int level )
+{
+	char *tags[3][2] = {
+		{ "YEAR",  "PARTYEAR" },
+		{ "MONTH", "PARTMONTH" },
+		{ "DAY",   "PARTDAY" }
+	};
+	char month[10], *m;
+	int part, status;
+	newstr date;
+
+	newstr_init( &date );
+
+	if ( !strncasecmp( newtag, "PART", 4 ) ) part = 1;
+	else part = 0;
+
+	/* %D YEAR */
+	if ( !strcasecmp( tag, "%D" ) ) {
+		newstr_cpytodelim( &date, skip_ws( p ), "", 0 );
+		if ( newstr_memerr( &date ) ) return BIBL_ERR_MEMERR;
+		if ( date.len>0 ) {
+			status = fields_add( info, tags[0][part], date.data, level );
+			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		}
+	}
+
+	/* %8 MONTH DAY, YEAR */
+	/* %8 MONTH, YEAR */
+	/* %8 MONTH YEAR */
+	else if ( !strcasecmp( tag, "%8" ) ) {
+
+		/* ...get month */
+		p = newstr_cpytodelim( &date, skip_ws( p ), " ,\n", 0 );
+		if ( newstr_memerr( &date ) ) return BIBL_ERR_MEMERR;
+		if ( date.len>0 ) {
+			if ( month_convert( date.data, month ) ) m = month;
+			else m = date.data;
+			status = fields_add( info, tags[1][part], m, level );
+			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		}
+
+		p = skip_ws( p );
+		if ( *p==',' ) p++;
+
+		/* ...get days */
+		p = newstr_cpytodelim( &date, skip_ws( p ), ",\n", 0 );
+		if ( newstr_memerr( &date ) ) return BIBL_ERR_MEMERR;
+		if ( date.len>0 && date.len<3 ) {
+			status = fields_add( info, tags[2][part], date.data, level );
+			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		} else if ( date.len==4 ) {
+			status = fields_add( info, tags[0][part], date.data, level );
+			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		}
+
+		p = skip_ws( p );
+		if ( *p==',' ) p++;
+
+		/* ...get year */
+		p = newstr_cpytodelim( &date, skip_ws( p ), " \t\n\r", 0 );
+		if ( newstr_memerr( &date ) ) return BIBL_ERR_MEMERR;
+		if ( date.len > 0 ) {
+			status = fields_add( info, tags[0][part], date.data, level );
+			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		}
+	}
+	newstr_free( &date );
+	return BIBL_OK;
+}
+
+static int
+endin_addtype( fields *info, char *data, int level )
+{
+	lookups types[] = {
+		{ "GENERIC",                "ARTICLE" },
+		{ "BOOK",                   "BOOK" },
+		{ "MANUSCRIPT",             "MANUSCRIPT" },
+		{ "CONFERENCE PROCEEDINGS", "INPROCEEDINGS"},
+		{ "REPORT",                 "REPORT" },
+		{ "COMPUTER PROGRAM",       "BOOK" },
+		{ "AUDIOVISUAL MATERIAL",   "AUDIOVISUAL" },
+		{ "ARTWORK",                "BOOK" },
+		{ "PATENT",                 "BOOK" },
+		{ "BILL",                   "BILL" },
+		{ "CASE",                   "CASE" },
+		{ "JOURNAL ARTICLE",        "ARTICLE" },
+		{ "MAGAZINE ARTICLE",       "ARTICLE" },
+		{ "BOOK SECTION",           "INBOOK" },
+		{ "EDITED BOOK",            "BOOK" },
+		{ "NEWSPAPER ARTICLE",      "NEWSARTICLE" },
+		{ "THESIS",                 "PHDTHESIS" },
+		{ "PERSONAL COMMUNICATION", "COMMUNICATION" },
+		{ "ELECTRONIC SOURCE",      "TEXT" },
+		{ "FILM OR BROADCAST",      "AUDIOVISUAL" },
+		{ "MAP",                    "MAP" },
+		{ "HEARING",                "HEARING" },
+		{ "STATUTE",                "STATUTE" },
+		{ "CHART OR TABLE",         "CHART" },
+		{ "WEB PAGE",               "WEBPAGE" },
+	};
+	int  ntypes = sizeof( types ) / sizeof( lookups );
+	int  i, status, found=0;
+	for ( i=0; i<ntypes; ++i ) {
+		if ( !strcasecmp( types[i].oldstr, data ) ) {
+			found = 1;
+			status = fields_add( info, "INTERNAL_TYPE", types[i].newstr, level );
+			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		}
+	}
+	if ( !found ) {
+		fprintf( stderr, "Did not identify reference type '%s'\n",
+			data );
+		fprintf( stderr, "Defaulting to journal article type\n");
+		status = fields_add( info, "INTERNAL_TYPE", types[0].newstr, level );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
+	return BIBL_OK;
 }
 
 static void
@@ -426,19 +533,30 @@ endin_notag( param *p, char *tag, char *data )
 
 /* Wiley's EndNote download has DOI's in "%1" tag */
 static int
-endin_addnotes( fields *info, char *tag, char *data, int level )
+endin_addnotes( fields *info, char *tag, char *value, int level )
 {
-	int doi = is_doi( data );
+	int fstatus, doi;
+	doi = is_doi( value );
 	if ( doi!=-1 )
-		return fields_add( info, "DOI", &(data[doi]), level );
+		fstatus = fields_add( info, "DOI", &(value[doi]), level );
 	else
-		return fields_add( info, tag, data, level );
+		fstatus = fields_add( info, tag, value, level );
+	if ( fstatus==FIELDS_OK ) return BIBL_OK;
+	else return BIBL_ERR_MEMERR;
+}
+
+static int
+endin_simple( fields *info, char *tag, char *value, int level )
+{
+	int fstatus = fields_add( info, tag, value, level );
+	if ( fstatus==FIELDS_OK ) return BIBL_OK;
+	else return BIBL_ERR_MEMERR;
 }
 
 int
 endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *all, int nall )
 {
-	int i, level, n, process, nfields, ok;
+	int i, level, n, process, nfields, ok, fstatus, status = BIBL_OK;
 	char *newtag, *t;
 	newstr *d;
 
@@ -457,7 +575,8 @@ endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *al
 		 */
 		t = fields_tag( endin, i, FIELDS_CHRP );
 		if ( t[0]!='%' ) {
-			fields_add( info, t, d->data, endin->level[i] );
+			fstatus = fields_add( info, t, d->data, endin->level[i] );
+			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 			continue;
 		}
 
@@ -473,46 +592,52 @@ endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *al
 		switch ( process ) {
 
 		case SIMPLE:
-			ok = fields_add( info, newtag, d->data, level );
+			status = endin_simple( info, newtag, d->data, level );
 			break;
 
 		case TYPE:
-			ok = endin_addtype( info, d->data, level );
+			status = endin_addtype( info, d->data, level );
 			break;
 
 		case TITLE:
 			ok = title_process( info, newtag, d->data, level, p->nosplittitle );
+			if ( !ok ) status = BIBL_ERR_MEMERR;
+			status = BIBL_OK;
 			break;
 
 		case PERSON:
 			ok = name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
+			if ( !ok ) status = BIBL_ERR_MEMERR;
+			status = BIBL_OK;
 			break;
 
 		case DATE:
-			ok = endin_adddate( info, t, newtag,d->data,level);
+			status = endin_adddate( info, t, newtag,d->data,level);
 			break;
 
 		case PAGES:
-			ok = endin_addpage( info, d->data, level );
+			status = endin_addpage( info, d->data, level );
 			break;
 
 		case SERIALNO:
 			ok = addsn( info, d->data, level );
+			if ( !ok ) status = BIBL_ERR_MEMERR;
+			status = BIBL_OK;
 			break;
 
 		case NOTES:
-			ok = endin_addnotes( info, newtag, d->data, level );
+			status = endin_addnotes( info, newtag, d->data, level );
 			break;
 
 		default:
 			fprintf(stderr,"%s: internal error -- illegal process number %d\n", p->progname, process );
-			ok = 1;
+			status = BIBL_OK;
 			break;
 		}
 
-		if ( !ok ) return BIBL_ERR_MEMERR;
+		if ( status!=BIBL_OK ) return status;
 
 	}
 
-	return BIBL_OK;
+	return status;
 }

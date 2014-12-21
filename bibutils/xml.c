@@ -30,10 +30,10 @@ xmlattrib_new( void )
 static void
 xmlattrib_add( xml_attrib *a, char *attrib, char *value  )
 {
-	if ( attrib ) list_add( &(a->attrib), attrib );
-	else list_add( &(a->attrib), "" );
-	if ( value ) list_add( &(a->value), value );
-	else list_add( &(a->value), "" );
+	if ( attrib ) list_addc( &(a->attrib), attrib );
+	else list_addc( &(a->attrib), "" );
+	if ( value ) list_addc( &(a->value), value );
+	else list_addc( &(a->value), "" );
 }
 
 static void
@@ -238,10 +238,11 @@ xml_tree( char *p, xml *onode )
 					p = xml_tree( p, nnode );
 			} else if ( type==XML_CLOSE ) {
 				/*check to see if it's closing for this one*/
-				return p; /* assume it's right for now*/
+				goto out; /* assume it's right for now */
 			}
 		}
 	}
+out:
 	newstr_free( &tag );
 	return p;
 }
@@ -335,22 +336,31 @@ xml_tagexact( xml *node, char *s )
 }
 
 int
-xml_tag_attrib( xml *node, char *s, char *attrib, char *value )
+xml_hasattrib( xml *node, char *attrib, char *value )
 {
 	xml_attrib *na = node->a;
 	int i;
 
-	if ( !na || !xml_tagexact( node, s ) ) return 0;
+	if ( na ) {
 
-	for ( i=0; i<na->attrib.n; ++i ) {
-		if ( !na->attrib.str[i].data || !na->value.str[i].data )
-			continue;
-		if ( !strcasecmp( na->attrib.str[i].data, attrib ) &&
-		     !strcasecmp( na->value.str[i].data, value ) )
-			return 1;
+		for ( i=0; i<na->attrib.n; ++i ) {
+			if ( !na->attrib.str[i].data || !na->value.str[i].data )
+				continue;
+			if ( !strcasecmp( na->attrib.str[i].data, attrib ) &&
+			     !strcasecmp( na->value.str[i].data, value ) )
+				return 1;
+		}
+
 	}
 
 	return 0;
+}
+
+int
+xml_tag_attrib( xml *node, char *s, char *attrib, char *value )
+{
+	if ( !xml_tagexact( node, s ) ) return 0;
+	return xml_hasattrib( node, attrib, value );
 }
 
 newstr *
@@ -366,5 +376,25 @@ xml_getattrib( xml *node, char *attrib )
 				ns = &(na->value.str[i]);
 	}
 	return ns;
+}
+
+int
+xml_hasdata( xml *node )
+{
+	if ( node && node->value && node->value->data ) return 1;
+	return 0;
+}
+
+char *
+xml_data( xml *node )
+{
+	return node->value->data;
+}
+
+int
+xml_tagwithdata( xml *node, char *tag )
+{
+	if ( !xml_hasdata( node ) ) return 0;
+	return xml_tagexact( node, tag );
 }
 

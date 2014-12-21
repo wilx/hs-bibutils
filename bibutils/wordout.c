@@ -3,7 +3,7 @@
  * 
  * (Word 2007 format)
  *
- * Copyright (c) Chris Putnam 2007-2013
+ * Copyright (c) Chris Putnam 2007-2014
  *
  * Source code released under the GPL version 2
  *
@@ -26,8 +26,10 @@ wordout_initparams( param *p, const char *progname )
 	p->latexout         = 0;
 	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
 	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
-	if ( !p->utf8out ) p->xmlout = 3;
-	else p->xmlout = 1;
+	if ( !p->utf8out )
+		p->xmlout   = BIBL_XMLOUT_ENTITIES;
+	else
+		p->xmlout   = BIBL_XMLOUT_TRUE;
 	p->nosplittitle     = 0;
 	p->verbose          = 0;
 	p->addcount         = 0;
@@ -575,6 +577,7 @@ output_citeparts( fields *info, FILE *outptr, int level, int max, int type )
 		{ "NUMBER",          "b:Issue",   LEVEL_ANY },
 		{ "PUBLICLAWNUMBER", "b:Volume",  LEVEL_ANY },
 		{ "SESSION",         "b:Issue",   LEVEL_ANY },
+		{ "URL",             "b:Url",     LEVEL_ANY },
 	};
 	int nparts=sizeof(parts)/sizeof(convert);
 	

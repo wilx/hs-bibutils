@@ -19,6 +19,9 @@
 #include "reftypes.h"
 #include "isiin.h"
 
+/*****************************************************
+ PUBLIC: void isiin_initparams()
+*****************************************************/
 void
 isiin_initparams( param *p, const char *progname )
 {
@@ -47,6 +50,10 @@ isiin_initparams( param *p, const char *progname )
 	if ( !progname ) p->progname = NULL;
 	else p->progname = strdup( progname );
 }
+
+/*****************************************************
+ PUBLIC: int isiin_readf()
+*****************************************************/
 
 /* ISI definition of a tag is strict:
  *   char 1 = uppercase alphabetic character
@@ -116,6 +123,10 @@ isiin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, newstr
 	return haveref;
 }
 
+/*****************************************************
+ PUBLIC: int isiin_processf()
+*****************************************************/
+
 static char *
 process_isiline( newstr *tag, newstr *data, char *p )
 {
@@ -138,56 +149,48 @@ process_isiline( newstr *tag, newstr *data, char *p )
 int
 isiin_processf( fields *isiin, char *p, char *filename, long nref )
 {
+	int status, n, ret = 1;
 	newstr tag, data;
-	int n;
 	newstrs_init( &tag, &data, NULL );
 	while ( *p ) {
 		newstrs_empty( &tag, &data, NULL );
 		p = process_isiline( &tag, &data, p );
 		if ( !data.len ) continue;
 		if ( (tag.len>1) && isiin_istag( tag.data ) ) {
-			fields_add( isiin, tag.data, data.data, 0 );
+			status = fields_add( isiin, tag.data, data.data, 0 );
+			if ( status!=FIELDS_OK ) {
+				ret = 0;
+				goto out;
+			}
 		} else {
 			n = fields_num( isiin );
 			if ( n>0 ) {
 				/* only one AU or AF for list of authors */
 				if ( !strcmp( isiin->tag[n-1].data,"AU") ){
-					fields_add( isiin, "AU", data.data, 0);
+					status = fields_add( isiin, "AU", data.data, 0);
+					if ( status!=FIELDS_OK ) ret = 0;
 				} else if ( !strcmp( isiin->tag[n-1].data,"AF") ){
-					fields_add( isiin, "AF", data.data, 0);
+					status = fields_add( isiin, "AF", data.data, 0);
+					if ( status!=FIELDS_OK ) ret = 0;
 				}
 				/* otherwise append multiline data */
 				else {
 					newstr_addchar( &(isiin->data[n-1]),' ');
 					newstr_strcat( &(isiin->data[n-1]), data.data );
+					if ( newstr_memerr( &(isiin->data[n-1]) ) ) ret = 0;
 				}
+				if ( ret==0 ) goto out;
 			}
 		}
 	}
+out:
 	newstrs_free( &data, &tag, NULL );
-	return 1;
+	return ret;
 }
 
-static int
-keyword_process( fields *info, char *newtag, char *p, int level )
-{
-	newstr keyword;
-	int ok;
-	newstr_init( &keyword );
-	while ( *p ) {
-		p = skip_ws( p );
-		while ( *p && *p!=';' ) newstr_addchar( &keyword, *p++ );
-		if ( keyword.len ) {
-			ok = fields_add( info, newtag, keyword.data, level );
-			if ( !ok ) return 0;
-			newstr_empty( &keyword );
-		}
-		if ( *p==';' ) p++;
-	}
-	newstr_free( &keyword );
-	return 1;
-}
-
+/*****************************************************
+ PUBLIC: int isiin_typef()
+*****************************************************/
 int
 isiin_typef( fields *isiin, char *filename, int nref, param *p, variants *all, int nall )
 {
@@ -201,6 +204,29 @@ isiin_typef( fields *isiin, char *filename, int nref, param *p, variants *all, i
 	else
 		reftype = get_reftype( "", nref, p->progname, all, nall, refnum ); /* default */
 	return reftype;
+}
+
+/*****************************************************
+ PUBLIC: int isiin_convertf(), returns BIBL_OK or BIBL_ERR_MEMERR
+*****************************************************/
+
+static int
+isiin_keyword_process( fields *info, char *newtag, char *p, int level )
+{
+	int fstatus, status = BIBL_OK;
+	newstr keyword;
+	newstr_init( &keyword );
+	while ( *p ) {
+		p = newstr_cpytodelim( &keyword, skip_ws( p ), ";", 1 );
+		if ( newstr_memerr( &keyword ) ) { status = BIBL_ERR_MEMERR; goto out; }
+		if ( keyword.len ) {
+			fstatus = fields_add( info, newtag, keyword.data, level );
+			if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
+		}
+	}
+out:
+	newstr_free( &keyword );
+	return status;
 }
 
 /* pull off authors first--use AF before AU */
@@ -228,9 +254,9 @@ isiin_addauthors( fields *isiin, fields *info, int reftype, variants *all, int n
 		level = ((all[reftype]).tags[n]).level;
 		newtag = all[reftype].tags[n].newstr;
 		ok = name_add( info, newtag, d->data, level, asis, corps );
-		if ( !ok ) return 0;
+		if ( !ok ) return BIBL_ERR_MEMERR;
 	}
-	return 1;
+	return BIBL_OK;
 }
 
 static void
@@ -242,15 +268,23 @@ isiin_report_notag( param *p, char *tag )
 	}
 }
 
+static int
+isiin_simple( fields *info, char *tag, char *value, int level )
+{
+	int fstatus = fields_add( info, tag, value, level );
+	if ( fstatus==FIELDS_OK ) return BIBL_OK;
+	else return BIBL_ERR_MEMERR;
+}
+
 int
 isiin_convertf( fields *isiin, fields *info, int reftype, param *p, variants *all, int nall )
 {
-	int process, level, i, n, nfields, ok;
+	int process, level, i, n, nfields, ok, status;
 	newstr *t, *d;
 	char *newtag;
 
-	ok = isiin_addauthors( isiin, info, reftype, all, nall, &(p->asis), &(p->corps) );
-	if ( !ok ) return BIBL_ERR_MEMERR;
+	status = isiin_addauthors( isiin, info, reftype, all, nall, &(p->asis), &(p->corps) );
+	if ( status!=BIBL_OK ) return status;
 
 	nfields = fields_num( isiin );
 	for ( i=0; i<nfields; ++i ) {
@@ -268,42 +302,46 @@ isiin_convertf( fields *isiin, fields *info, int reftype, param *p, variants *al
 
 		d = fields_value( isiin, i, FIELDS_STRP );
 
+		ok = 1;
+
 		switch ( process ) {
 
 		case SIMPLE:
-			ok = fields_add( info, newtag, d->data, level );
-			break;
-
 		case DATE:
-			ok = fields_add( info, newtag, d->data, level );
+			status = isiin_simple( info, newtag, d->data, level );
 			break;
 
 		case PERSON:
 			ok = name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
+			if ( ok ) status = BIBL_OK;
+			else status = BIBL_ERR_MEMERR;
 			break;
 
 		case TITLE:
 			ok = title_process( info, newtag, d->data, level, p->nosplittitle );
+			if ( ok ) status = BIBL_OK;
+			else status = BIBL_ERR_MEMERR;
 			break;
 
 		case KEYWORD:
-			ok = keyword_process( info, newtag, d->data, level );
+			status = isiin_keyword_process( info, newtag, d->data, level );
 			break;
 
 		case SERIALNO:
 			ok = addsn( info, d->data, level );
+			if ( ok ) status = BIBL_OK;
+			else status = BIBL_ERR_MEMERR;
 			break;
 
+		/* do nothing if process==TYPE || process==ALWAYS */
 		default:
-			ok = 1;
+			status = BIBL_OK;
 			break;
 
 		}
 
-		/* do nothing if process==TYPE || process==ALWAYS */
-
-		if ( !ok ) return BIBL_ERR_MEMERR;
+		if ( status!=BIBL_OK ) return status;
 	}
 
-	return BIBL_OK;
+	return status;
 }

@@ -9,3 +9,5 @@ FILE *c_stdin()
 {
     return stdin;
 }
+
+const char progname[] = "hs-bibutils";

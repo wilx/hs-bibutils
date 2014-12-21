@@ -1,9 +1,9 @@
 /*
  * newstr.h
  *
- * Version: 04/21/13
+ * Version: 04/27/14
  *
- * Copyright (c) Chris Putnam 1999-2013
+ * Copyright (c) Chris Putnam 1999-2014
  *
  * Source code released under the GPL version 2
  *
@@ -20,9 +20,10 @@ typedef struct newstr {
 }  newstr;
 
 newstr *newstr_new         ( void ); 
+void    newstr_delete      ( newstr *s );
 
 void    newstr_init        ( newstr *s );
-void    newstr_initstr     ( newstr *s, char *initstr );
+void    newstr_initstr     ( newstr *s, const char *initstr );
 void    newstr_empty       ( newstr *s );
 void    newstr_free        ( newstr *s );
 
@@ -31,52 +32,70 @@ void    newstrs_empty      ( newstr *s, ... );
 void    newstrs_free       ( newstr *s, ... );
 
 void newstr_mergestrs   ( newstr *s, ... );
-newstr *newstr_strdup   ( char *buf );
+newstr *newstr_strdup   ( const char *p );
 void newstr_addchar     ( newstr *s, char newchar );
 void newstr_reverse     ( newstr *s );
-char *newstr_addutf8    ( newstr *s, char *p );
-void newstr_strcat      ( newstr *s, char *addstr );
+const char *newstr_addutf8    ( newstr *s, const char *p );
+void newstr_strcat      ( newstr *s, const char *addstr );
 void newstr_newstrcat   ( newstr *s, newstr *old );
 void newstr_segcat      ( newstr *s, char *startat, char *endat );
-void newstr_prepend     ( newstr *s, char *addstr );
-void newstr_strcpy      ( newstr *s, char *addstr );
+char *newstr_cpytodelim  ( newstr *s, char *p, const char *delim, unsigned char finalstep );
+char *newstr_cattodelim  ( newstr *s, char *p, const char *delim, unsigned char finalstep );
+void newstr_prepend     ( newstr *s, const char *addstr );
+void newstr_strcpy      ( newstr *s, const char *addstr );
 void newstr_newstrcpy   ( newstr *s, newstr *old );
 void newstr_segcpy      ( newstr *s, char *startat, char *endat );
 void newstr_segdel      ( newstr *s, char *startat, char *endat );
-void newstr_indxcpy     ( newstr *s, char *p, int start, int stop );
-void newstr_indxcat     ( newstr *s, char *p, int start, int stop );
+void newstr_indxcpy     ( newstr *s, char *p, unsigned long start, unsigned long stop );
+void newstr_indxcat     ( newstr *s, char *p, unsigned long start, unsigned long stop );
 void newstr_fprintf     ( FILE *fp, newstr *s );
 int  newstr_fget        ( FILE *fp, char *buf, int bufsize, int *pbufpos,
                           newstr *outs );
 char newstr_char        ( newstr *s, unsigned long n );
 char newstr_revchar     ( newstr *s, unsigned long n );
 int  newstr_fgetline    ( newstr *s, FILE *fp );
-int  newstr_findreplace ( newstr *s, char *find, char *replace );
+int  newstr_findreplace ( newstr *s, const char *find, const char *replace );
 void newstr_toupper     ( newstr *s );
 void newstr_tolower     ( newstr *s );
 void newstr_trimstartingws( newstr *s );
 void newstr_trimendingws( newstr *s );
 void newstr_swapstrings ( newstr *s1, newstr *s2 );
+void newstr_stripws     ( newstr *s );
 
 int  newstr_match_first ( newstr *s, char ch );
 int  newstr_match_end   ( newstr *s, char ch );
-void newstr_trimbegin   ( newstr *s, int n );
-void newstr_trimend     ( newstr *s, int n );
+void newstr_trimbegin   ( newstr *s, unsigned long n );
+void newstr_trimend     ( newstr *s, unsigned long n );
+
+void newstr_pad         ( newstr *s, unsigned long len, char ch );
+void newstr_copyposlen  ( newstr *s, newstr *in, unsigned long pos, unsigned long len );
+
+void newstr_makepath    ( newstr *path, const char *dirname, const char *filename, char sep );
+
 
 int  newstr_is_mixedcase( newstr *s );
 int  newstr_is_lowercase( newstr *s );
 int  newstr_is_uppercase( newstr *s );
 
-int newstr_newstrcmp    ( newstr *s, newstr *t );
+int  newstr_newstrcmp    ( const newstr *s, const newstr *t );
 
-/* NEWSTR_PARANOIA
+int  newstr_memerr( newstr *s );
+
+
+/* #define NEWSTR_PARANOIA
  *
  * set to clear memory before it is freed or reallocated
  * note that this is slower...may be important if string
  * contains sensitive information
  */
 
-#undef NEWSTR_PARANOIA
+/* #define NEWSTR_NOASSERT
+ *
+ * set to turn off the use of asserts (and associated call to exit)
+ * in newstr functions...useful for library construction for
+ * Linux distributions that don't want libraries calling exit, but
+ * not useful during code development
+ */
 
 #endif
 

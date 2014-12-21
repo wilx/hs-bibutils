@@ -1,7 +1,7 @@
 /*
  * endxmlin.c
  *
- * Copyright (c) Chris Putnam 2006-2013
+ * Copyright (c) Chris Putnam 2006-2014
  *
  * Program and source code released under the GPL version 2
  *
@@ -23,6 +23,9 @@ typedef struct {
 	char *internal;
 } attribs;
 
+/*****************************************************
+ PUBLIC: void endxmlin_initparams()
+*****************************************************/
 void
 endxmlin_initparams( param *p, const char *progname )
 {
@@ -51,6 +54,10 @@ endxmlin_initparams( param *p, const char *progname )
 	if ( !progname ) p->progname = NULL;
 	else p->progname = strdup( progname );
 }
+
+/*****************************************************
+ PUBLIC: int endxmlin_readf()
+*****************************************************/
 
 static int
 xml_readmore( FILE *fp, char *buf, int bufsize, int *bufpos )
@@ -110,6 +117,10 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line,
 	return haveref;
 }
 
+/*****************************************************
+ PUBLIC: int endxmlin_processf()
+*****************************************************/
+
 /*
  * add data to fields
  */
@@ -127,26 +138,39 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line,
  *          <style>aaa</style><style>aaaa</style>
  *   </datatype>
  */
-void
+static int
 endxmlin_datar( xml *node, newstr *s )
 {
-	if ( node->value && node->value->len )
+	int status;
+	if ( node->value && node->value->len ) {
 		newstr_strcat( s, node->value->data );
-	if ( node->down && xml_tagexact( node->down, "style" ) )
-		endxmlin_datar( node->down, s );
-	if ( xml_tagexact( node, "style" ) && node->next )
-		endxmlin_datar( node->next, s );
+		if ( newstr_memerr( s ) ) return BIBL_ERR_MEMERR;
+	}
+	if ( node->down && xml_tagexact( node->down, "style" ) ) {
+		status = endxmlin_datar( node->down, s );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( xml_tagexact( node, "style" ) && node->next ) {
+		status = endxmlin_datar( node->next, s );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
-void
+static int
 endxmlin_data( xml *node, char *inttag, fields *info, int level )
 {
+	int status;
 	newstr s;
 	newstr_init( &s );
-	endxmlin_datar( node, &s );
-	if ( s.len )
-		fields_add( info, inttag, s.data, level );
+	status = endxmlin_datar( node, &s );
+	if ( status!=BIBL_OK ) return status;
+	if ( s.len ) {
+		status = fields_add( info, inttag, s.data, level );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
 	newstr_free( &s );
+	return BIBL_OK;
 }
 
 /* <titles>
@@ -155,7 +179,7 @@ endxmlin_data( xml *node, char *inttag, fields *info, int level )
  *    </title>
  * </titles>
  */
-void
+static int
 endxmlin_titles( xml *node, fields *info )
 {
 	attribs a[] = {
@@ -165,20 +189,26 @@ endxmlin_titles( xml *node, fields *info )
 		{ "alt-title", "%!" },
 		{ "short-title", "SHORTTITLE" },
 	};
-	int i, n = sizeof( a ) / sizeof ( a[0] );
+	int i, status, n = sizeof( a ) / sizeof ( a[0] );
 	newstr title;
 	newstr_init( &title );
 	for ( i=0; i<n; ++i ) {
 		if ( xml_tagexact( node, a[i].attrib ) && node->down ) {
 			newstr_empty( &title );
-			endxmlin_datar( node, &title );
+			status = endxmlin_datar( node, &title );
+			if ( status!=BIBL_OK ) return BIBL_ERR_MEMERR;
 			newstr_trimstartingws( &title );
 			newstr_trimendingws( &title );
-			fields_add( info, a[i].internal, title.data, 0);
+			status = fields_add( info, a[i].internal, title.data, 0);
+			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
 	}
-	if ( node->next ) endxmlin_titles( node->next, info );
+	if ( node->next ) {
+		status = endxmlin_titles( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
 	newstr_free( &title );
+	return BIBL_OK;
 }
 
 /* <contributors>
@@ -202,65 +232,84 @@ endxmlin_titles( xml *node, fields *info )
  * >
  *
  */
-void
+static int
 endxmlin_contributor( xml *node, fields *info, char *int_tag, int level )
 {
-	endxmlin_data( node, int_tag, info, level );
-	if ( node->next )
-		endxmlin_contributor( node->next, info, int_tag, level );
+	int status;
+	status = endxmlin_data( node, int_tag, info, level );
+	if ( status!=BIBL_OK ) return status;
+	if ( node->next ) {
+		status = endxmlin_contributor( node->next, info, int_tag, level );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_contributors( xml *node, fields *info )
 {
-	attribs contrib[] = {
+	attribs a[] = {
 		{ "authors", "%A" },
 		{ "secondary-authors", "%E" },
 		{ "tertiary-authors", "%Y" },
 		{ "subsidiary-authors", "%?" },
 		{ "translated-authors", "%?" },
 	};
-	int i, n = sizeof( contrib ) / sizeof ( contrib[0] );
+	int i, status, n = sizeof( a ) / sizeof ( a[0] );
 	for ( i=0; i<n; ++i ) {
-		if ( xml_tagexact( node, contrib[i].attrib ) && node->down )
-			endxmlin_contributor( node->down, info, contrib[i].internal, 0 );
+		if ( xml_tagexact( node, a[i].attrib ) && node->down ) {
+			status = endxmlin_contributor( node->down, info, a[i].internal, 0 );
+			if ( status!=BIBL_OK ) return status;
+		}
 	}
-	if ( node->next )
-		endxmlin_contributors( node->next, info );
+	if ( node->next ) {
+		status = endxmlin_contributors( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_keyword( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "keyword" ) )
-		endxmlin_data( node, "%K", info, 0 );
-	if ( node->next )
-		endxmlin_keyword( node->next, info );
+	int status;
+	if ( xml_tagexact( node, "keyword" ) ) {
+		status = endxmlin_data( node, "%K", info, 0 );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->next ) {
+		status = endxmlin_keyword( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_keywords( xml *node, fields *info )
 {
 	if ( node->down && xml_tagexact( node->down, "keyword" ) )
-		endxmlin_keyword( node->down, info );
+		return endxmlin_keyword( node->down, info );
+	return BIBL_OK;
 }
 
 /*
  *<electronic-resource-num><style face="normal" font="default" 
  * size="100%">10.1007/BF00356334</style></electronic-resource-num>
  */
-static void
+static int
 endxmlin_ern( xml *node, fields *info )
 {
 	if ( xml_tagexact( node, "electronic-resource-num" ) )
-		endxmlin_data( node, "DOI", info, 0 );
+		return endxmlin_data( node, "DOI", info, 0 );
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_language( xml *node, fields *info )
 {
 	if ( xml_tagexact( node, "language" ) )
-		endxmlin_data( node, "%G", info, 0 );
+		return endxmlin_data( node, "%G", info, 0 );
+	return BIBL_OK;
 }
 
 /*
@@ -270,77 +319,108 @@ endxmlin_language( xml *node, fields *info )
  *    </pdf-urls>
  * </urls>
  */
-static void
+static int
 endxmlin_fileattach( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "url" ) )
-		endxmlin_data( node, "FILEATTACH", info, 0 );
-	if ( node->down ) endxmlin_fileattach( node->down, info );
-	if ( node->next ) endxmlin_fileattach( node->next, info );
+	int status;
+	if ( xml_tagexact( node, "url" ) ) {
+		status = endxmlin_data( node, "FILEATTACH", info, 0 );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->down ) {
+		status = endxmlin_fileattach( node->down, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->next ) {
+		status = endxmlin_fileattach( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_urls( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "pdf-urls" ) && node->down )
-		endxmlin_fileattach( node->down, info );
-	else if ( xml_tagexact( node, "url" ) )
-		endxmlin_data( node, "%U", info, 0 );
-	else {
+	int status;
+	if ( xml_tagexact( node, "pdf-urls" ) && node->down ) {
+		status = endxmlin_fileattach( node->down, info );
+		if ( status!=BIBL_OK ) return status;
+	} else if ( xml_tagexact( node, "url" ) ) {
+		status = endxmlin_data( node, "%U", info, 0 );
+		if ( status!=BIBL_OK ) return status;
+	} else {
 		if ( node->down ) {
 			if ( xml_tagexact( node->down, "related-urls" ) ||
 			     xml_tagexact( node->down, "pdf-urls" ) ||
-			     xml_tagexact( node->down, "url" ) )
-				endxmlin_urls( node->down, info );
+			     xml_tagexact( node->down, "url" ) ) {
+				status = endxmlin_urls( node->down, info );
+				if ( status!=BIBL_OK ) return status;
+			}
 		}
 	}
-	if ( node->next )
-		endxmlin_urls( node->next, info );
+	if ( node->next ) {
+		status = endxmlin_urls( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_pubdates( xml *node, fields *info )
 {
 	if ( xml_tagexact( node, "date" ) )
-		endxmlin_data( node, "%8", info, 0 );
+		return endxmlin_data( node, "%8", info, 0 );
 	else {
 		if ( node->down && xml_tagexact( node->down, "date" ) )
-			endxmlin_pubdates( node->down, info );
+			return endxmlin_pubdates( node->down, info );
 	}
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_dates( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "year" ) )
-		endxmlin_data( node, "%D", info, 0 );
-	else {
+	int status;
+	if ( xml_tagexact( node, "year" ) ) {
+		status = endxmlin_data( node, "%D", info, 0 );
+		if ( status!=BIBL_OK ) return status;
+	} else {
 		if ( node->down ) {
-			if ( xml_tagexact( node->down, "year" ) )
-				endxmlin_dates( node->down, info );
-			if ( xml_tagexact( node->down, "pub-dates" ) )
-				endxmlin_pubdates( node->down, info );
+			if ( xml_tagexact( node->down, "year" ) ) {
+				status = endxmlin_dates( node->down, info );
+				if ( status!=BIBL_OK ) return status;
+			}
+			if ( xml_tagexact( node->down, "pub-dates" ) ) {
+				status = endxmlin_pubdates( node->down, info );
+				if ( status!=BIBL_OK );
+			}
 		}
 	}
-	if ( node->next )
-		endxmlin_dates( node->next, info );
+	if ( node->next ) {
+		status = endxmlin_dates( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
 /*
  * <ref-type name="Journal Article">17</ref-type>
  */
-static void
+static int
 endxmlin_reftype( xml *node, fields *info )
 {
+	int status;
 	newstr *s;
 	s = xml_getattrib( node, "name" );
-	if ( s && s->dim ) {
-		fields_add( info, "%0", s->data, 0 );
+	if ( s && s->len ) {
+		status = fields_add( info, "%0", s->data, 0 );
 		newstr_free( s );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_record( xml *node, fields *info )
 {
 	attribs a[] = {
@@ -369,28 +449,35 @@ endxmlin_record( xml *node, fields *info )
 		{ "custom5", "%#" },
 		{ "custom6", "%$" },
 	};
-	int i, n = sizeof ( a ) / sizeof( a[0] );
+	int i, status, n = sizeof ( a ) / sizeof( a[0] );
 	if ( xml_tagexact( node, "DATABASE" ) ) {
-/*		endxmlin_database( node, info );*/
 	} else if ( xml_tagexact( node, "SOURCE-APP" ) ) {
-/*		endxmlin_sourceapp( node, info );*/
 	} else if ( xml_tagexact( node, "REC-NUMBER" ) ) {
 	} else if ( xml_tagexact( node, "ref-type" ) ) {
-		endxmlin_reftype( node, info );
+		status = endxmlin_reftype( node, info );
+		if ( status!=BIBL_OK ) return status;
 	} else if ( xml_tagexact( node, "contributors" ) ) {
-		if ( node->down ) endxmlin_contributors( node->down, info );
+		if ( node->down ) {
+			status = endxmlin_contributors( node->down, info );
+			if ( status!=BIBL_OK ) return status;
+		}
 	} else if ( xml_tagexact( node, "titles" ) ) {
 		if ( node->down ) endxmlin_titles( node->down, info );
 	} else if ( xml_tagexact( node, "keywords" ) ) {
-		endxmlin_keywords( node, info );
+		status = endxmlin_keywords( node, info );
+		if ( status!=BIBL_OK ) return status;
 	} else if ( xml_tagexact( node, "urls" ) ) {
-		endxmlin_urls( node, info );
+		status = endxmlin_urls( node, info );
+		if ( status!=BIBL_OK ) return status;
 	} else if ( xml_tagexact( node, "electronic-resource-num" ) ) {
-		endxmlin_ern( node, info );
+		status = endxmlin_ern( node, info );
+		if ( status!=BIBL_OK ) return status;
 	} else if ( xml_tagexact( node, "dates" ) ) {
-		endxmlin_dates( node, info );
+		status = endxmlin_dates( node, info );
+		if ( status!=BIBL_OK ) return status;
 	} else if ( xml_tagexact( node, "language" ) ) {
-		endxmlin_language( node, info );
+		status = endxmlin_language( node, info );
+		if ( status!=BIBL_OK ) return status;
 	} else if ( xml_tagexact( node, "periodical" ) ) {
 	} else if ( xml_tagexact( node, "secondary-volume" ) ) {
 	} else if ( xml_tagexact( node, "secondary-issue" ) ) {
@@ -419,22 +506,33 @@ endxmlin_record( xml *node, fields *info )
 	} else if ( xml_tagexact( node, "misc3" ) ) {
 	} else {
 		for ( i=0; i<n; ++i ) {
-			if ( xml_tagexact( node, a[i].attrib ) ) 
-				endxmlin_data( node, a[i].internal, info, 0 );
+			if ( xml_tagexact( node, a[i].attrib ) ) {
+				status = endxmlin_data( node, a[i].internal, info, 0 );
+				if ( status!=BIBL_OK ) return status;
+			}
 		}
 	}
-	if ( node->next ) endxmlin_record( node->next, info );
+	if ( node->next ) {
+		status = endxmlin_record( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
-static void
+static int
 endxmlin_assembleref( xml *node, fields *info )
 {
+	int status;
 	if ( node->tag->len==0 ) {
-		if ( node->down ) endxmlin_assembleref( node->down, info );
-		return;
+		if ( node->down )
+			return endxmlin_assembleref( node->down, info );
 	} else if ( xml_tagexact( node, "RECORD" ) ) {
-		if ( node->down ) endxmlin_record( node->down, info );
+		if ( node->down ) {
+			status = endxmlin_record( node->down, info );
+			if ( status!=BIBL_OK ) return status;
+		}
 	}
+	return BIBL_OK;
 }
 
 /* endxmlin_processf first operates by converting to endnote input
@@ -446,10 +544,14 @@ endxmlin_assembleref( xml *node, fields *info )
 int
 endxmlin_processf( fields *fin, char *data, char *filename, long nref )
 {
+	int status;
 	xml top;
+
 	xml_init( &top );
 	xml_tree( data, &top );
-	endxmlin_assembleref( &top, fin );
+	status = endxmlin_assembleref( &top, fin );
 	xml_free( &top );
-	return 1;
+
+	if ( status==BIBL_OK ) return 1;
+	return 0;
 }

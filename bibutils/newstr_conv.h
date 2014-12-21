@@ -1,13 +1,17 @@
 /*
  * newstring_conv.h
  *
- * Copyright (c) Chris Putnam 1999-2013
+ * Copyright (c) Chris Putnam 1999-2014
  *
  * Source code released under the GPL version 2
  *
  */
 #ifndef NEWSTR_CONV_H
 #define NEWSTR_CONV_H
+
+#define NEWSTR_CONV_XMLOUT_FALSE    (0)
+#define NEWSTR_CONV_XMLOUT_TRUE     (1)
+#define NEWSTR_CONV_XMLOUT_ENTITIES (3)
 
 #include "newstr.h"
 

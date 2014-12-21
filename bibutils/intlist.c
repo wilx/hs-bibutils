@@ -3,6 +3,8 @@
  *
  * Copyright (c) Chris Putnam 2007-2013
  *
+ * Version 9/5/2013
+ *
  * Source code released under the GPL version 2
  *
  * Implements a simple managed array of ints
@@ -10,55 +12,75 @@
  */
 #include "intlist.h"
 
-static void
-memerr( const char *f )
-{
-	fprintf( stderr, "Memory error in %s\n", f );
-	exit( EXIT_FAILURE );
-}
-
-static void
+static int
 intlist_alloc( intlist *il )
 {
 	int alloc = 20, i;
 	il->data = ( int * ) malloc( sizeof( int ) * alloc );
-	if ( !(il->data) ) memerr( __FUNCTION__ );
+	if ( !(il->data) ) return 0;
 	for ( i=0; i<alloc; ++i )
 		il->data[i] = 0;
 	il->max = alloc;
 	il->n = 0;
+	return 1;
 }
 
-static void
+static int
 intlist_realloc( intlist *il )
 {
 	int *more;
 	int alloc = il->max * 2, i;
 	more = ( int * ) realloc( il->data, sizeof( int ) * alloc );
-	if ( !more ) memerr( __FUNCTION__ );
+	if ( !more ) return 0;
 	il->data = more;
 	for ( i=il->max; i<alloc; ++i )
 		il->data[i] = 0;
 	il->max = alloc;
+	return 1;
 }
 
+/* intlist_add()
+ *
+ * Returns position of newly added value in range [0,n), -1 on error
+ */
 int
 intlist_add( intlist *il, int value )
 {
-	if ( il->max==0 ) intlist_alloc( il );
-	else if ( il->n >= il->max ) intlist_realloc( il );
+	if ( il->max==0 ) {
+		if ( !intlist_alloc( il ) ) return -1;
+	} else if ( il->n >= il->max ) {
+		if ( !intlist_realloc( il ) ) return -1;
+	}
 	il->data[ il->n ] = value;
 	il->n++;
 	return il->n - 1;
 }
 
+/* intlist_add_unique()
+ *
+ * Returns position of newly added (or previously added) value
+ * Returns -1 on (memory) error
+ */
 int
 intlist_add_unique( intlist *il, int value )
 {
-	if ( intlist_find( il, value )!=-1 ) return il->n - 1;
-	else return intlist_add( il, value );
+	int n;
+	n = intlist_find( il, value );
+	if ( n==-1 )
+		n = intlist_add( il, value );
+	return n;
+}
+int
+intlist_find_or_add( intlist *il, int value )
+{
+	return intlist_add_unique( il, value );
 }
 
+/* intlist_find()
+ *
+ * Returns position of value in range [0,n), or -1 if
+ * value cannot be found
+ */
 int
 intlist_find( intlist *il, int value )
 {
@@ -68,7 +90,6 @@ intlist_find( intlist *il, int value )
 	return -1;
 }
 
-/* Here we know that pos is valid */
 static void
 intlist_remove_pos_core( intlist *il, int pos )
 {
@@ -78,32 +99,30 @@ intlist_remove_pos_core( intlist *il, int pos )
 	il->n -= 1;
 }
 
-void
+/* intlist_remove_pos()
+ *
+ * Returns 1 on success, 0 on failure.
+ */
+int
 intlist_remove_pos( intlist *il, int pos )
 {
-	if ( pos < 0 || pos >= il->n ) return;
+	if ( pos < 0 || pos >= il->n ) return 0;
 	intlist_remove_pos_core( il, pos );
+	return 1;
 }
 
-void
+/* intlist_remove()
+ *
+ * Removes first instance of value from the intlist.
+ * Returns 1 on success, 0 on error.
+ */
+int
 intlist_remove( intlist *il, int value )
 {
 	int pos = intlist_find( il, value );
-	if ( pos==-1 ) return;
+	if ( pos==-1 ) return 0;
 	intlist_remove_pos_core( il, pos );
-}
-
-/* Return the index of searched-for string.
- * If cannot find string, add to list and then
- * return the index
- */
-int
-intlist_find_or_add( intlist *il, int value )
-{
-	int n = intlist_find( il, value );
-	if ( n==-1 )
-		n = intlist_add( il, value );
-	return n;
+	return 1;
 }
 
 /* don't actually free space, just reset counter */
@@ -121,6 +140,13 @@ intlist_free( intlist *il )
 }
 
 void
+intlist_delete( intlist *il )
+{
+	intlist_free( il );
+	free( il );
+}
+
+void
 intlist_init( intlist *il  )
 {
 	il->data = NULL;
@@ -128,15 +154,28 @@ intlist_init( intlist *il  )
 	il->n = 0;
 }
 
-void
+/* intlist_init_range()
+ *
+ * Initializes intlist to values from [low,high) with step step.
+ * Returns -1 on failure, number of elements on success.
+ */
+int
 intlist_init_range( intlist *il, int low, int high, int step )
 {
-	int i;
+	int i, n;
 	intlist_init( il );
-	for ( i=low; i<high; i+= step )
-		intlist_add( il, i );
+	for ( i=low; i<high; i+= step ) {
+		n = intlist_add( il, i );
+		if ( n==-1 ) return -1;
+	}
+	return il->n;
 }
 
+/* intlist_new()
+ *
+ * Allocates an empty intlist.
+ * Returns pointer to intlist on success, NULL on memory error.
+ */
 intlist *
 intlist_new( void )
 {
@@ -145,11 +184,25 @@ intlist_new( void )
 	return il;
 }
 
+/* intlist_new_range()
+ *
+ * Allocates a intlist initialized to values from [low,high) with step step.
+ * Returns pointer to intlist on success, NULL on memory error;
+ */
 intlist *
 intlist_new_range( int low, int high, int step )
 {
-	intlist *il = ( intlist * ) malloc( sizeof( intlist ) );
-	if ( il ) intlist_init_range( il, low, high, step );
+	intlist *il;
+	int n;
+	il = ( intlist * ) malloc( sizeof( intlist ) );
+	if ( il ) {
+		n = intlist_init_range( il, low, high, step );
+		if ( n==-1 ) {
+			intlist_free( il );
+			free( il );
+			il = NULL;
+		}
+	}
 	return il;
 }
 
@@ -198,47 +251,66 @@ intlist_randomize( intlist *il )
 	}
 }
 
-void
+/* Returns 1 on success, 0 on error */
+int
 intlist_copy( intlist *to, intlist *from )
 {
 	int i;
 	intlist_free( to );
 	to->data = ( int* ) malloc( sizeof( int ) * from->n );
-	if ( !to->data ) return;
+	if ( !to->data ) return 0;
 	to->n = to->max = from->n;
 	for ( i=0; i<from->n; ++i ) 
 		to->data[i] = from->data[i];
+	return 1;
 }
 
+/* Returns pointer on success, NULL on error */
 intlist *
 intlist_dup( intlist *il )
 {
 	intlist *l;
-	l = ( intlist* ) malloc( sizeof( intlist ) );
-	if ( !l ) goto err0;
-	intlist_copy( l, il );
-	return l;
-	free( l );
-err0:
+	int n;
+
+	l = intlist_new();
+	if ( l ) {
+		n = intlist_copy( l, il );
+		if ( !n ) {
+			intlist_delete( l );
+			l = NULL;
+		}
+	}
+
 	return l;
 }
 
-void
+int
 intlist_append( intlist *to, intlist *from )
 {
-	int i;
-	for ( i=0; i<from->n; ++i )
-		intlist_add( to, from->data[i] );
+	int i, n, nsave = to->n;
+	for ( i=0; i<from->n; ++i ) {
+		n = intlist_add( to, from->data[i] );
+		if ( n==-1 ) {
+			to->n = nsave;
+			return -1;
+		}
+	}
+	return to->n;
 }
 
-void
+int
 intlist_append_unique( intlist *to, intlist *from )
 {
-	int i;
+	int i, n, nsave = to->n;
 	for ( i=0; i<from->n; ++i ) {
 		if ( intlist_find( to, from->data[i] )!=-1 ) continue;
-		intlist_add( to, from->data[i] );
+		n = intlist_add( to, from->data[i] );
+		if ( n==-1 ) {
+			to->n = nsave;
+			return -1;
+		}
 	}
+	return to->n;
 }
 
 int
@@ -248,3 +320,55 @@ intlist_get( intlist *il, int pos )
 	else return il->data[pos];
 }
 
+/* intlist_set()
+ *
+ *   Returns 1 on success, 0 on failure
+ */
+int
+intlist_set( intlist *il, int pos, int value )
+{
+	if ( pos<0 || pos>=il->n ) return 0;
+	il->data[pos] = value;
+	return 1;
+}
+
+float
+intlist_median( intlist *il )
+{
+	intlist *tmp;
+	float median;
+	int m1, m2;
+
+	if ( il->n==0 ) return 0.0;
+
+	tmp = intlist_dup( il );
+	if ( !tmp ) return 0.0;
+
+	intlist_sort( tmp );
+
+	if ( tmp->n % 2 == 1 ) {
+		median = intlist_get( tmp, tmp->n / 2 );
+	} else {
+		m1 = intlist_get( tmp, tmp->n / 2 );
+		m2 = intlist_get( tmp, tmp->n / 2 + 1);
+		median = ( m1 + m2 ) / 2.0;
+	}
+
+	intlist_delete( tmp );
+
+	return median;
+}
+
+float
+intlist_mean( intlist *il )
+{
+	float sum = 0.0;
+	int i;
+
+	if ( il->n==0 ) return 0.0;
+
+	for ( i=0; i<il->n; ++i )
+		sum += intlist_get( il, i );
+
+	return sum / il->n;
+}

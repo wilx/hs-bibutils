@@ -1,9 +1,9 @@
 /*
  * list.h
  *
- * version: 2013-04-02
+ * version: 2014-11-15
  *
- * Copyright (c) Chris Putnam 2004-2013
+ * Copyright (c) Chris Putnam 2004-2014
  *
  * Source code released under the GPL version 2
  *
@@ -18,13 +18,17 @@
 #include <string.h>
 #include "newstr.h"
 
+#define LIST_ERR (0)
+#define LIST_ERR_CANNOTOPEN (-1)
+#define LIST_OK  (1)
+
 #define LIST_CHR (0)
 #define LIST_STR (1)
 
 typedef struct list {
 	int n, max;
-	int sorted;
 	newstr *str;
+	unsigned char sorted;
 } list;
 
 
@@ -41,40 +45,43 @@ extern list *  list_new( void );
 extern void    list_delete( list * );
 
 extern list*   list_dup( list *a );
-extern void    list_copy( list *to, list *from );
+extern int     list_copy( list *to, list *from );
 
-extern newstr * list_add( list *a, char *value );
-extern newstr * list_addstr( list *a, newstr *value );
-extern newstr * list_addvp( list *a, void *vp, unsigned char mode );
+extern newstr * list_addvp( list *a, unsigned char mode, void *vp );
+extern newstr * list_addc( list *a, const char *value );
+extern newstr * list_add( list *a, newstr *value );
 
-extern int      list_adds( list *a, ... );
+extern int      list_addvp_all( list *a, unsigned char mode, ... );
+extern int      list_addc_all( list *a, ... );
+extern int      list_add_all( list *a, ... );
 
-extern newstr * list_add_unique( list *a, char *value );
-extern newstr * list_addstr_unique( list *a, newstr *value );
-extern newstr * list_addvp_unique( list *a, void *vp, unsigned char mode );
+extern newstr * list_addvp_unique( list *a, unsigned char mode, void *vp );
+extern newstr * list_addc_unique( list *a, const char *value );
+extern newstr * list_add_unique( list *a, newstr *value );
 
-extern void    list_append( list *a, list *toadd );
-extern void    list_append_unique( list *a, list *toadd );
+extern int     list_append( list *a, list *toadd );
+extern int     list_append_unique( list *a, list *toadd );
 
-extern void    list_remove( list *a, int n );
+extern int     list_remove( list *a, int n );
 
 extern newstr* list_get( list *a, int n );
-extern newstr* list_getstr( list *a, int n );
 extern char*   list_getc( list *a, int n );
-extern char*   list_getstr_char( list *a, int n );
+
+extern newstr* list_set( list *a, int n, newstr *s );
+extern newstr* list_setc( list *a, int n, const char *s );
 
 extern void    list_sort( list *a );
 
-extern int     list_find( list *a, char *searchstr );
-extern int     list_findnocase( list *a, char *searchstr );
-extern int     list_find_or_add( list *a, char *searchstr );
+extern void    list_swap( list *a, int n1, int n2 );
+
+extern int     list_find( list *a, const char *searchstr );
+extern int     list_findnocase( list *a, const char *searchstr );
 extern int     list_match_entry( list *a, int n, char *s );
 extern void    list_trimend( list *a, int n );
 
-extern int     list_fill( list *a, char *filename );
-extern void    list_fillfp( list *a, FILE *fp );
-extern void    list_tokenize( list *tokens, newstr *in, char delim, int merge_delim );
-extern void    list_newstrtok( list *t, newstr *s, char *sep );
-
+extern int     list_fill( list *a, const char *filename, unsigned char skip_blank_lines );
+extern int     list_fillfp( list *a, FILE *fp, unsigned char skip_blank_lines );
+extern int     list_tokenize( list *tokens, newstr *in, const char *delim, int merge_delim );
+extern int     list_tokenizec( list *tokens, char *p, const char *delim, int merge_delim );
 
 #endif

@@ -28,7 +28,7 @@ endout_initparams( param *p, const char *progname )
 	p->latexout         = 0;
 	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
 	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
-	p->xmlout           = 0;
+	p->xmlout           = BIBL_XMLOUT_FALSE;
 	p->nosplittitle     = 0;
 	p->verbose          = 0;
 	p->addcount         = 0;
@@ -87,13 +87,62 @@ enum {
 	TYPE_UNPUBLISHED,                 /* Unpublished Work */
 };
 
+static void
+write_type( FILE *fp, int type )
+{
+	switch( type ) {
+	case TYPE_UNKNOWN:           fprintf( fp, "TYPE_UNKNOWN" );            break;
+	case TYPE_GENERIC:           fprintf( fp, "TYPE_GENERIC" );            break;
+	case TYPE_ARTWORK:           fprintf( fp, "TYPE_ARTWORK" );            break;
+	case TYPE_AUDIOVISUAL:       fprintf( fp, "TYPE_AUDIOVISUAL" );        break;
+	case TYPE_BILL:              fprintf( fp, "TYPE_BILL" );               break;
+	case TYPE_BOOK:              fprintf( fp, "TYPE_BOOK" );               break;
+	case TYPE_INBOOK:            fprintf( fp, "TYPE_INBOOK" );             break;
+	case TYPE_CASE:              fprintf( fp, "TYPE_CASE" );               break;
+	case TYPE_CHARTTABLE:        fprintf( fp, "TYPE_CHARITABLE" );         break;
+	case TYPE_CLASSICALWORK:     fprintf( fp, "TYPE_CLASSICALWORK" );      break;
+	case TYPE_PROGRAM:           fprintf( fp, "TYPE_PROGRAM" );            break;
+	case TYPE_INPROCEEDINGS:     fprintf( fp, "TYPE_INPROCEEDINGS" );      break;
+	case TYPE_PROCEEDINGS:       fprintf( fp, "TYPE_PROCEEDINGS" );        break;
+	case TYPE_EDITEDBOOK:        fprintf( fp, "TYPE_EDITEDBOOK" );         break;
+	case TYPE_EQUATION:          fprintf( fp, "TYPE_EQUATION" );           break;
+	case TYPE_ELECTRONICARTICLE: fprintf( fp, "TYPE_ELECTRONICARTICLE" );  break;
+	case TYPE_ELECTRONICBOOK:    fprintf( fp, "TYPE_ELECTRONICBOOK" );     break;
+	case TYPE_ELECTRONIC:        fprintf( fp, "TYPE_ELECTRONIC" );         break;
+	case TYPE_FIGURE:            fprintf( fp, "TYPE_FIGURE" );             break;
+	case TYPE_FILMBROADCAST:     fprintf( fp, "TYPE_FILMBROADCAST" );      break;
+	case TYPE_GOVERNMENT:        fprintf( fp, "TYPE_GOVERNMENT" );         break;
+	case TYPE_HEARING:           fprintf( fp, "TYPE_HEARING" );            break;
+	case TYPE_ARTICLE:           fprintf( fp, "TYPE_ARTICLE" );            break;
+	case TYPE_LEGALRULE:         fprintf( fp, "TYPE_LEGALRULE" );          break;
+	case TYPE_MAGARTICLE:        fprintf( fp, "TYPE_MAGARTICLE" );         break;
+	case TYPE_MANUSCRIPT:        fprintf( fp, "TYPE_MANUSCRIPT" );         break;
+	case TYPE_MAP:               fprintf( fp, "TYPE_MAP" );                break;
+	case TYPE_NEWSARTICLE:       fprintf( fp, "TYPE_NEWSARTICLE" );        break;
+	case TYPE_ONLINEDATABASE:    fprintf( fp, "TYPE_ONLINEDATABASE" );     break;
+	case TYPE_ONLINEMULTIMEDIA:  fprintf( fp, "TYPE_ONLINEMULTIMEDIA" );   break;
+	case TYPE_PATENT:            fprintf( fp, "TYPE_PATENT" );             break;
+	case TYPE_COMMUNICATION:     fprintf( fp, "TYPE_COMMUNICATION" );      break;
+	case TYPE_REPORT:            fprintf( fp, "TYPE_REPORT" );             break;
+	case TYPE_STATUTE:           fprintf( fp, "TYPE_STATUTE" );            break;
+	case TYPE_THESIS:            fprintf( fp, "TYPE_THESIS" );             break;
+	case TYPE_MASTERSTHESIS:     fprintf( fp, "TYPE_MASTERSTHESIS" );      break;
+	case TYPE_PHDTHESIS:         fprintf( fp, "TYPE_PHDTHESIS" );          break;
+	case TYPE_DIPLOMATHESIS:     fprintf( fp, "TYPE_DIPLOMATHESIS" );      break;
+	case TYPE_DOCTORALTHESIS:    fprintf( fp, "TYPE_DOCTORALTHESIS" );     break;
+	case TYPE_HABILITATIONTHESIS:fprintf( fp, "TYPE_HABILITATIONTHESIS" ); break;
+	case TYPE_UNPUBLISHED:       fprintf( fp, "TYPE_UNPUBLISHED" );        break;
+	default:                     fprintf( fp, "Error - type not in enum" );break;
+	}
+}
+
 typedef struct match_type {
 	char *name;
 	int type;
 } match_type;
 
 static int
-get_type( fields *info )
+get_type( fields *info, param *p, unsigned long refnum )
 {
 	/* Comment out TYPE_GENERIC entries as that is default, but
          * keep in source as record of mapping decision. */
@@ -107,8 +156,10 @@ get_type( fields *info )
 /*		{ "bibliography",              TYPE_GENERIC },*/
 		{ "biography",                 TYPE_BOOK },
 		{ "book",                      TYPE_BOOK },
+/*		{ "calendar",                  TYPE_GENERIC },*/
 /*		{ "catalog",                   TYPE_GENERIC },*/
 		{ "chart",                     TYPE_CHARTTABLE },
+/*		{ "comic or graphic novel",    TYPE_GENERIC },*/
 /*		{ "comic strip",               TYPE_GENERIC },*/
 		{ "conference publication",    TYPE_PROCEEDINGS },
 		{ "database",                  TYPE_ONLINEDATABASE },
@@ -175,6 +226,7 @@ get_type( fields *info )
 /*		{ "slide",                     TYPE_GENERIC },*/
 		{ "sound",                     TYPE_AUDIOVISUAL },
 /*		{ "speech",                    TYPE_GENERIC },*/
+/*		{ "standard or specification", TYPE_GENERIC },*/
 /*		{ "statistics",                TYPE_GENERIC },*/
 /*		{ "survey of literature",      TYPE_GENERIC },*/
 		{ "technical drawing",         TYPE_ARTWORK },
@@ -201,9 +253,10 @@ get_type( fields *info )
 	};
 	int nmatch_genres = sizeof( match_genres ) / sizeof( match_genres[0] );
 
+	int i, j, n, maxlevel, type = TYPE_UNKNOWN;
 	char *tag, *data;
-	int i, j, type = TYPE_UNKNOWN;
 
+	/* Determine type from genre information */
 	for ( i=0; i<info->n; ++i ) {
 		tag = info->tag[i].data;
 		if ( strcasecmp( tag, "GENRE" )!=0 &&
@@ -214,6 +267,12 @@ get_type( fields *info )
 				type = match_genres[j].type;
 				fields_setused( info, i );
 			}
+		}
+		if ( p->verbose ) {
+			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+			fprintf( stderr, "Type from tag '%s' data '%s': ", info->tag[i].data, info->data[i].data );
+			write_type( stderr, type );
+			fprintf( stderr, "\n" );
 		}
 		if ( type==TYPE_UNKNOWN ) {
 			if ( !strcasecmp( data, "periodical" ) )
@@ -231,10 +290,16 @@ get_type( fields *info )
 			if ( type!=TYPE_UNKNOWN ) fields_setused( info, i );
 		}
 		/* the inbook type should be defined if 'book' in host */
-		if ( type==TYPE_BOOK && info->level[i]!=0 ) type = TYPE_INBOOK;
-		/* the article types should be defined if it's the host */
-		if ( ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE || type==TYPE_NEWSARTICLE ) && info->level[i]<1 ) type=TYPE_UNKNOWN;
+		if ( type==TYPE_BOOK && info->level[i]>0 ) type = TYPE_INBOOK;
 	}
+	if ( p->verbose ) {
+		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+		fprintf( stderr, "Type from genre element: " );
+		write_type( stderr, type );
+		fprintf( stderr, "\n" );
+	}
+
+	/* Determine from resource information */
 	if ( type==TYPE_UNKNOWN ) {
 		for ( i=0; i<info->n; ++i ) {
 			if ( strcasecmp( info->tag[i].data, "RESOURCE" ) )
@@ -246,10 +311,54 @@ get_type( fields *info )
 				type = TYPE_PROGRAM;
 			if ( type!=TYPE_UNKNOWN ) fields_setused( info, i );
 		}
+		if ( p->verbose ) {
+			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+			fprintf( stderr, "Type from resource element: " );
+			write_type( stderr, type );
+			fprintf( stderr, "\n" );
+		}
 	}
 
-	/* default to generic */
-	if ( type==TYPE_UNKNOWN ) type = TYPE_GENERIC;
+	/* Determine from issuance information */
+	if ( type==TYPE_UNKNOWN ) {
+		for ( i=0; i<info->n; ++i ) {
+			if ( strcasecmp( info->tag[i].data, "ISSUANCE" ) )
+				continue;
+			data = info->data[i].data;
+			if ( !strcasecmp( data, "monographic" ) ) {
+				if ( info->level[i]==0 ) type = TYPE_BOOK;
+				else type = TYPE_INBOOK;
+			}
+		}
+		if ( p->verbose ) {
+			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+			fprintf( stderr, "Type from issuance element: " );
+			write_type( stderr, type );
+			fprintf( stderr, "\n" );
+		}
+	}
+
+	/* default to generic or book chapter, depending on maxlevel */
+	if ( type==TYPE_UNKNOWN ) {
+		maxlevel = fields_maxlevel( info );
+		if ( maxlevel > 0 ) type = TYPE_INBOOK;
+		else {
+			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+			fprintf( stderr, "Cannot identify TYPE in reference %lu ", refnum+1 );
+			n = fields_find( info, "REFNUM", -1 );
+			if ( n!=-1 )
+				fprintf( stderr, " %s", info->data[n].data );
+			fprintf( stderr, " (defaulting to generic)\n" );
+			type = TYPE_GENERIC;
+		}
+	}
+
+	if ( p->verbose ) {
+		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+		fprintf( stderr, "Final type: " );
+		write_type( stderr, type );
+		fprintf( stderr, "\n" );
+	}
 	
 	return type;
 }
@@ -524,7 +633,7 @@ endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 
 	fields_clearused( info );
 
-	type = get_type( info );
+	type = get_type( info, p, refnum );
 
 	output_type( fp, type, p );
 
@@ -597,6 +706,7 @@ endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 	output_easyall( fp, info, "KEYWORD",         "%K", LEVEL_ANY );
 	output_easyall( fp, info, "NGENRE",          "%9", LEVEL_ANY );
 	output_thesishint( fp, type );
+	output_easyall( fp, info, "DOI",             "%R", LEVEL_ANY );
 	output_easyall( fp, info, "URL",             "%U", LEVEL_ANY ); 
 	output_easyall( fp, info, "FILEATTACH",      "%U", LEVEL_ANY ); 
 	output_doi( fp, info );

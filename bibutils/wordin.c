@@ -16,6 +16,10 @@
 #include "xml_encoding.h"
 #include "wordin.h"
 
+/*****************************************************
+ PUBLIC: void wordin_initparams()
+*****************************************************/
+
 void
 wordin_initparams( param *p, const char *progname )
 {
@@ -45,6 +49,10 @@ wordin_initparams( param *p, const char *progname )
 	if ( !progname ) p->progname = NULL;
 	else p->progname = strdup( progname );
 }
+
+/*****************************************************
+ PUBLIC: int wordin_readf()
+*****************************************************/
 
 static char *
 wordin_findstartwrapper( char *buf, int *ntype )
@@ -93,25 +101,9 @@ wordin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, newst
 	return haveref;
 }
 
-static inline int
-xml_hasdata( xml *node )
-{
-	if ( node && node->value && node->value->data ) return 1;
-	return 0;
-}
-
-static inline char *
-xml_data( xml *node )
-{
-	return node->value->data;
-}
-
-static inline int
-xml_tagwithdata( xml *node, char *tag )
-{
-	if ( !xml_hasdata( node ) ) return 0;
-	return xml_tagexact( node, tag );
-}
+/*****************************************************
+ PUBLIC: int wordin_processf()
+*****************************************************/
 
 typedef struct xml_convert {
 	char *in;       /* The input tag */
@@ -120,126 +112,204 @@ typedef struct xml_convert {
 	int level;
 } xml_convert;
 
-static void
+/* wordin_person_last()
+ *
+ * From an xml list, extract the value from the first entry
+ * of <b:Last>xxxx</b:Last> and copy into name
+ *
+ * Additional <b:Last>yyyyy</b:Last> will be ignored.
+ *
+ * Returns BIBL_ERR_MEMERR on memory error, BIBL_OK otherwise.
+ */
+static int
+wordin_person_last( xml *node, newstr *name )
+{
+	while ( node && !xml_tagexact( node, "b:Last" ) )
+		node = node->next;
+	if ( node && node->value->len ) {
+		newstr_strcpy( name, node->value->data );
+		if ( newstr_memerr( name ) ) return BIBL_ERR_MEMERR;
+	}
+	return BIBL_OK;
+}
+
+/* wordin_person_first()
+ *
+ * From an xml list, extract the value of any
+ * <b:First>xxxx</b:First> and append "|xxxx" to name.
+ *
+ * Returns BIBL_ERR_MEMERR on memory error, BIBL_OK otherwise
+ */
+static int
+wordin_person_first( xml *node, newstr *name )
+{
+	for ( ; node; node=node->next ) {
+		if ( !xml_tagexact( node, "b:First" ) ) continue;
+		if ( node->value->len ) {
+			if ( name->len ) newstr_addchar( name, '|' );
+			newstr_strcat( name, node->value->data );
+			if ( newstr_memerr( name ) ) return BIBL_ERR_MEMERR;
+		}
+	}
+	return BIBL_OK;
+}
+
+static int
 wordin_person( xml *node, fields *info, char *type )
 {
-	xml *last, *first;
+	int status, ret = BIBL_OK;
 	newstr name;
 
 	newstr_init( &name );
 
-	last = node;
-	while ( last && !xml_tagexact( last, "b:Last" ) )
-		last = last->next;
-	if ( last ) newstr_strcpy( &name, last->value->data );
-
-	first = node;
-	while ( first ) {
-		if ( xml_tagexact( first, "b:First" ) ) {
-			if ( name.len ) newstr_addchar( &name, '|' );
-			newstr_strcat( &name, first->value->data );
-		}
-		first = first->next;
+	status = wordin_person_last( node, &name );
+	if ( status!=BIBL_OK ) {
+		ret = status;
+		goto out;
 	}
 
-	fields_add( info, type, name.data, 0 );
+	status = wordin_person_first( node, &name );
+	if ( status!=BIBL_OK ) {
+		ret = status;
+		goto out;
+	}
 
+	status = fields_add( info, type, name.data, 0 );
+	if ( status != FIELDS_OK ) ret = BIBL_ERR_MEMERR;
+out:
 	newstr_free( &name );
+	return ret;
 }
 
-static void
+static int
 wordin_people( xml *node, fields *info, char *type )
 {
+	int ret = BIBL_OK;
 	if ( xml_tagexact( node, "b:Author" ) && node->down ) {
-		wordin_people( node->down, info, type );
+		ret = wordin_people( node->down, info, type );
 	} else if ( xml_tagexact( node, "b:NameList" ) && node->down ) {
-		wordin_people( node->down, info, type );
+		ret = wordin_people( node->down, info, type );
 	} else if ( xml_tagexact( node, "b:Person" ) ) {
-		if ( node->down ) wordin_person( node->down, info, type );
-		if ( node->next ) wordin_people( node->next, info, type );
+		if ( node->down ) ret = wordin_person( node->down, info, type );
+		if ( ret!=BIBL_OK ) return ret;
+		if ( node->next ) ret = wordin_people( node->next, info, type );
 	}
+	return ret;
 }
 
-static void
+static int
 wordin_pages( xml *node, fields *info )
 {
+	int i, status, ret = BIBL_OK;
 	newstr sp, ep;
 	char *p;
-	int i;
+
 	newstrs_init( &sp, &ep, NULL );
-/*
-	newstr_init( &sp );
-	newstr_init( &ep );
-*/
+
 	p = xml_data( node );
 	while ( *p && *p!='-' )
 		newstr_addchar( &sp, *p++ );
+	if ( newstr_memerr( &sp ) ) {
+		ret = BIBL_ERR_MEMERR;
+		goto out;
+	}
+
 	if ( *p=='-' ) p++;
 	while ( *p )
 		newstr_addchar( &ep, *p++ );
-	if ( sp.len ) fields_add( info, "PAGESTART", sp.data, 1 );
+	if ( newstr_memerr( &ep ) ) {
+		ret = BIBL_ERR_MEMERR;
+		goto out;
+	}
+
+	if ( sp.len ) {
+		status = fields_add( info, "PAGESTART", sp.data, 1 );
+		if ( status!=FIELDS_OK ) {
+			ret = BIBL_ERR_MEMERR;
+			goto out;
+		}
+	}
+
 	if ( ep.len ) {
 		if ( sp.len > ep.len ) {
 			for ( i=sp.len-ep.len; i<sp.len; ++i )
 				sp.data[i] = ep.data[i-sp.len+ep.len];
-			fields_add( info, "PAGEEND", sp.data, 1 );
+			status = fields_add( info, "PAGEEND", sp.data, 1 );
 		} else
-			fields_add( info, "PAGEEND", ep.data, 1 );
-	}
-	newstrs_free( &sp, &ep, NULL );
-/*
-	newstr_free( &sp );
-	newstr_free( &ep );
-*/
-}
-
-static void
-wordin_reference( xml *node, fields *info )
-{
-	if ( xml_hasdata( node ) ) {
-		if ( xml_tagexact( node, "b:Tag" ) ) {
-			fields_add( info, "REFNUM", xml_data( node ), 0 );
-		} else if ( xml_tagexact( node, "b:SourceType" ) ) {
-		} else if ( xml_tagexact( node, "b:City" ) ) {
-			fields_add( info, "ADDRESS", xml_data( node ), 0 );
-		} else if ( xml_tagexact( node, "b:Publisher" ) ) {
-			fields_add( info, "PUBLISHER", xml_data( node ), 0 );
-		} else if ( xml_tagexact( node, "b:Title" ) ) {
-			fields_add( info, "TITLE", xml_data( node ), 0 );
-		} else if ( xml_tagexact( node, "b:JournalName" ) ) {
-			fields_add( info, "TITLE", xml_data( node ), 1 );
-		} else if ( xml_tagexact( node, "b:Volume" ) ) {
-			fields_add( info, "VOLUME", xml_data( node ), 1 );
-		} else if ( xml_tagexact( node, "b:Comments" ) ) {
-			fields_add( info, "NOTES", xml_data( node ), 0 );
-		} else if ( xml_tagexact( node, "b:Pages" ) ) {
-			wordin_pages( node, info );
-		} else if ( xml_tagexact( node, "b:Author" ) && node->down ) {
-			wordin_people( node->down, info, "AUTHOR" );
-		} else if ( xml_tagexact( node, "b:Editor" ) && node->down ) {
-			wordin_people( node->down, info, "EDITOR" );
+			status = fields_add( info, "PAGEEND", ep.data, 1 );
+		if ( status!=FIELDS_OK ) {
+			ret = BIBL_ERR_MEMERR;
+			goto out;
 		}
 	}
-	if ( node->next ) wordin_reference( node->next, info );
+
+out:
+	newstrs_free( &sp, &ep, NULL );
+	return ret;
 }
 
-static void
+static int
+wordin_reference( xml *node, fields *info )
+{
+	int status, ret = BIBL_OK;
+	if ( xml_hasdata( node ) ) {
+		if ( xml_tagexact( node, "b:Tag" ) ) {
+			status = fields_add( info, "REFNUM", xml_data( node ), 0 );
+			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
+		} else if ( xml_tagexact( node, "b:SourceType" ) ) {
+		} else if ( xml_tagexact( node, "b:City" ) ) {
+			status = fields_add( info, "ADDRESS", xml_data( node ), 0 );
+			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
+		} else if ( xml_tagexact( node, "b:Publisher" ) ) {
+			status = fields_add( info, "PUBLISHER", xml_data( node ), 0 );
+			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
+		} else if ( xml_tagexact( node, "b:Title" ) ) {
+			status = fields_add( info, "TITLE", xml_data( node ), 0 );
+			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
+		} else if ( xml_tagexact( node, "b:JournalName" ) ) {
+			status = fields_add( info, "TITLE", xml_data( node ), 1 );
+			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
+		} else if ( xml_tagexact( node, "b:Volume" ) ) {
+			status = fields_add( info, "VOLUME", xml_data( node ), 1 );
+			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
+		} else if ( xml_tagexact( node, "b:Comments" ) ) {
+			status = fields_add( info, "NOTES", xml_data( node ), 0 );
+			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
+		} else if ( xml_tagexact( node, "b:Pages" ) ) {
+			ret = wordin_pages( node, info );
+		} else if ( xml_tagexact( node, "b:Author" ) && node->down ) {
+			ret = wordin_people( node->down, info, "AUTHOR" );
+		} else if ( xml_tagexact( node, "b:Editor" ) && node->down ) {
+			ret = wordin_people( node->down, info, "EDITOR" );
+		}
+	}
+	if ( ret==BIBL_OK && node->next ) wordin_reference( node->next, info );
+	return ret;
+}
+
+static int
 wordin_assembleref( xml *node, fields *info )
 {
+	int ret = BIBL_OK;
 	if ( xml_tagexact( node, "b:Source" ) ) {
-		if ( node->down ) wordin_reference( node->down, info );
+		if ( node->down ) ret = wordin_reference( node->down, info );
 	} else if ( node->tag->len==0 && node->down ) {
-		wordin_assembleref( node->down, info );
+		ret = wordin_assembleref( node->down, info );
 	}
+	return ret;
 }
 
 int
 wordin_processf( fields *wordin, char *data, char *filename, long nref )
 {
+	int status, ret = 1;
 	xml top;
+
 	xml_init( &top );
 	xml_tree( data, &top );
-	wordin_assembleref( &top, wordin );
+	status = wordin_assembleref( &top, wordin );
 	xml_free( &top );
-	return 1;
+
+	if ( status==BIBL_ERR_MEMERR ) ret = 0;
+	return ret;
 }

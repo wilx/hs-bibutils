@@ -1,7 +1,7 @@
 /*
  * marc.c
  *
- * Copyright (c) Chris Putnam 2004-2013
+ * Copyright (c) Chris Putnam 2004-2014
  *
  * Source code released under the GPL version 2
  *
@@ -22,8 +22,10 @@ marc_findgenre( char *query )
 		"bibliography",
 		"biography",
 		"book",
+		"calendar",
 		"catalog", 
 		"chart",
+		"comic or graphic novel",
 		"comic strip",
 		"conference publication",
 		"database",
@@ -49,9 +51,12 @@ marc_findgenre( char *query )
 		"handbook",
 		"history",
 		"humor, satire",
+		"hymnal",
 		"index",
 		"instruction",
 		"interview",
+		"issue",
+		"journal",
 		"kit",
 		"language instruction",
 		"law report or digest",
@@ -86,6 +91,7 @@ marc_findgenre( char *query )
 		"slide",
 		"sound",
 		"speech",
+		"standard or specification",
 		"statistics",
 		"survey of literature",
 		"technical drawing",
@@ -95,7 +101,8 @@ marc_findgenre( char *query )
 		"transparency",
 		"treaty",
 		"videorecording",
-		"web site" 
+		"web site",
+		"yearbook",
 	};
 	int nmarc = sizeof( marc ) / sizeof( char* );
 	int i;
@@ -110,11 +117,14 @@ marc_findresource( char *query )
 {
 	char *marc[] = { 
 		"cartographic",
+		"kit",
 		"mixed material",
 		"moving image",
 		"notated music",
 		"software, multimedia",
 		"sound recording",
+		"sound recording - musical",
+		"sound recording - nonmusical",
 		"still image",
 		"text",
 		"three dimensional object"

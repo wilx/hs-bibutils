@@ -1,7 +1,7 @@
 /*
  * bibl.c
  *
- * Copyright (c) Chris Putnam 2005-2013
+ * Copyright (c) Chris Putnam 2005-2014
  *
  * Source code released under the GPL version 2
  *
@@ -80,19 +80,20 @@ int
 bibl_copy( bibl *bout, bibl *bin )
 {
 	fields *refin, *refout;
-	int i, j, n, ok, level;
+	int i, j, n, status, ok, level;
 	char *tag, *value;
 	for ( i=0; i<bin->nrefs; ++i ) {
 		refin = bin->ref[i];
 		refout = fields_new();
+		if ( !refout ) return 0;
 		n = fields_num( refin );
 		for ( j=0; j<n; ++j ) {
 			tag   = fields_tag( refin, j, FIELDS_CHRP );
 			value = fields_value( refin, j, FIELDS_CHRP );
 			level = fields_level( refin, j );
 			if ( tag && value ) {
-				ok = fields_add( refout, tag, value, level );
-				if ( !ok ) return 0;
+				status = fields_add( refout, tag, value, level );
+				if ( status!=FIELDS_OK ) return 0;
 			}
 		}
 		ok = bibl_addref( bout, refout );

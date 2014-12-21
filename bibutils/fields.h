@@ -1,13 +1,16 @@
 /*
  * fields.h
  *
- * Copyright (c) Chris Putnam 2003-2013
+ * Copyright (c) Chris Putnam 2003-2014
  *
  * Source code released under the GPL version 2
  *
  */
 #ifndef FIELDS_H
 #define FIELDS_H
+
+#define FIELDS_OK     (1)
+#define FIELDS_ERR    (0)
 
 #define LEVEL_ANY    (-1)
 #define LEVEL_MAIN    (0)
@@ -45,7 +48,6 @@ extern int  fields_replace_or_add( fields *f, char *tag, char *data, int level )
 extern inline int fields_num( fields *f );
 extern inline int fields_used( fields *f, int n );
 extern inline int fields_nodata( fields *f, int n );
-extern inline int fields_get_level( fields *f, int n );
 
 extern inline int fields_match_level( fields *f, int n, int level );
 extern inline int fields_match_tag( fields *f, int n, char *tag );

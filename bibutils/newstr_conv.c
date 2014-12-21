@@ -1,7 +1,7 @@
 /*
  * newstr_conv.c
  *
- * Copyright (c) Chris Putnam 1999-2013
+ * Copyright (c) Chris Putnam 1999-2014
  *
  * Source code released under the GPL version 2
  *
@@ -50,13 +50,13 @@ addxmlchar( newstr *s, unsigned int ch )
 }
 
 static void
-addutf8char( newstr *s, unsigned int ch, int xmlout, int utf8out )
+addutf8char( newstr *s, unsigned int ch, int xmlout )
 {
 	unsigned char code[6];
 	int nc, i;
 	if ( xmlout ) {
 		if ( minimalxmlchars( s, ch ) ) return;
-		if ( ch > 127 && xmlout > 1 )
+		if ( ch > 127 && xmlout == NEWSTR_CONV_XMLOUT_ENTITIES )
 			{ addentity( s, ch ); return; }
 	}
 	nc = utf8_encode( ch, code );
@@ -65,13 +65,13 @@ addutf8char( newstr *s, unsigned int ch, int xmlout, int utf8out )
 }
 
 static void
-addgb18030char( newstr *s, unsigned int ch, int xmlout, int utf8out )
+addgb18030char( newstr *s, unsigned int ch, int xmlout )
 {
 	unsigned char code[4];
 	int nc, i;
 	if ( xmlout ) {
 		if ( minimalxmlchars( s, ch ) ) return;
-		if ( ch > 127 && xmlout > 1 )
+		if ( ch > 127 && xmlout == NEWSTR_CONV_XMLOUT_ENTITIES )
 			{ addentity( s, ch ); return; }
 	}
 	nc = gb18030_encode( ch, code );
@@ -89,7 +89,7 @@ addlatexchar( newstr *s, unsigned int ch, int xmlout, int utf8out )
 	 * output the unicode.
 	 */
 	if ( utf8out && !strcmp( buf, "?" ) ) {
-		addutf8char( s, ch, xmlout, utf8out );
+		addutf8char( s, ch, xmlout );
 	} else {
 		newstr_strcat( s, buf );
 	}
@@ -151,9 +151,9 @@ write_unicode( newstr *s, unsigned int ch, int charsetout, int latexout,
 	if ( latexout ) {
 		addlatexchar( s, ch, xmlout, utf8out );
 	} else if ( utf8out ) {
-		addutf8char( s, ch, xmlout, utf8out );
+		addutf8char( s, ch, xmlout );
 	} else if ( charsetout==CHARSET_GB18030 ) {
-		addgb18030char( s, ch, xmlout, utf8out );
+		addgb18030char( s, ch, xmlout );
 	} else {
 		c = charset_lookupuni( charsetout, ch );
 		if ( xmlout ) addxmlchar( s, c );
@@ -173,9 +173,9 @@ newstr_convert( newstr *s,
 	unsigned int pos = 0;
 	unsigned int ch;
 	newstr ns;
-	int ok;
+	int ok = 1;
 
-	if ( !s || s->len==0 ) return 1;
+	if ( !s || s->len==0 ) return ok;
 
 	newstr_init( &ns );
 
@@ -185,13 +185,13 @@ newstr_convert( newstr *s,
 	while ( s->data[pos] ) {
 		ch = get_unicode( s, &pos, charsetin, latexin, utf8in, xmlin );
 		ok = write_unicode( &ns, ch, charsetout, latexout, utf8out, xmlout );
-		if ( !ok ) return 0;
+		if ( !ok ) goto out;
 	}
 
 	newstr_swapstrings( s, &ns );
-
+out:
 	newstr_free( &ns );
 
-	return 1;
+	return ok;
 }
 

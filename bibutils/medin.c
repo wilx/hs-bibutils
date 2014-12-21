@@ -1,7 +1,7 @@
 /*
  * medin.c
  *
- * Copyright (c) Chris Putnam 2004-2013
+ * Copyright (c) Chris Putnam 2004-2014
  *
  * Source code released under the GPL version 2
  *
@@ -18,6 +18,9 @@
 #include "iso639_2.h"
 #include "bibutils.h"
 
+/*****************************************************
+ PUBLIC: void medin_initparams()
+*****************************************************/
 void
 medin_initparams( param *p, const char *progname )
 {
@@ -47,6 +50,10 @@ medin_initparams( param *p, const char *progname )
 	if ( !progname ) p->progname = NULL;
 	else p->progname = strdup( progname );
 }
+
+/*****************************************************
+ PUBLIC: int medin_readf()
+*****************************************************/
 
 /*
  * The only difference between MEDLINE and PUBMED in format is
@@ -108,25 +115,9 @@ medin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line, newstr
 	return haveref;
 }
 
-static inline int
-xml_hasdata( xml *node )
-{
-	if ( node && node->value && node->value->data ) return 1;
-	return 0;
-}
-
-static inline char *
-xml_data( xml *node )
-{
-	return node->value->data;
-}
-
-static inline int
-xml_tagwithdata( xml *node, char *tag )
-{
-	if ( !xml_hasdata( node ) ) return 0;
-	return xml_tagexact( node, tag );
-}
+/*****************************************************
+ PUBLIC: int medin_processf()
+*****************************************************/
 
 typedef struct xml_convert {
 	char *in;       /* The input tag */
@@ -136,75 +127,79 @@ typedef struct xml_convert {
 } xml_convert;
 
 static int
-medin_doconvert( xml *node, fields *info, xml_convert *c, int nc )
+medin_doconvert( xml *node, fields *info, xml_convert *c, int nc, int *found )
 {
-	int i, found = 0;
+	int i, fstatus;
 	char *d;
-	if ( !xml_hasdata( node ) ) return 0;
+	*found = 0;
+	if ( !xml_hasdata( node ) ) return BIBL_OK;
 	d = xml_data( node );
-	for ( i=0; i<nc && found==0; ++i ) {
+	for ( i=0; i<nc && *found==0; ++i ) {
 		if ( c[i].a==NULL ) {
 			if ( xml_tagexact( node, c[i].in ) ) {
-				found = 1;
-				fields_add( info, c[i].out, d, c[i].level );
+				*found = 1;
+				fstatus = fields_add( info, c[i].out, d, c[i].level );
+				if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 			}
 		} else {
 			if ( xml_tag_attrib( node, c[i].in, c[i].a, c[i].aval)){
-				found = 1;
-				fields_add( info, c[i].out, d, c[i].level );
+				*found = 1;
+				fstatus = fields_add( info, c[i].out, d, c[i].level );
+				if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 			}
 		}
 	
 	}
-	return found;
+	return BIBL_OK;
 }
 
 /* <ArticleTitle>Mechanism and.....</ArticleTitle>
  */
-static void
+static int
 medin_articletitle( xml *node, fields *info )
 {
-	if ( xml_hasdata( node ) )
-		fields_add( info, "TITLE", xml_data( node ), 0 );
+	int fstatus, status = BIBL_OK;
+	if ( xml_hasdata( node ) ) {
+		fstatus = fields_add( info, "TITLE", xml_data( node ), 0 );
+		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
+	}
+	return status;
 }
 
 /*            <MedlineDate>2003 Jan-Feb</MedlineDate> */
-static void
-medin_medlinedate( fields *info, char *string, int level )
+static int
+medin_medlinedate( fields *info, char *p, int level )
 {
+	int fstatus;
 	newstr tmp;
-	char *p, *q;
 
 	newstr_init( &tmp );
 
-	/* extract year */
-	p = string;
-	q = skip_notws( string );
-	newstr_segcpy( &tmp, p, q );
-	fields_add( info, "PARTYEAR", tmp.data, level );
-	q = skip_ws( q );
-
-	/* extract month */
-	if ( q ) {
-		p = q;
-		newstr_empty( &tmp );
-		q = skip_notws( q );
-		newstr_segcpy( &tmp, p, q );
-		newstr_findreplace( &tmp, "-", "/" );
-		fields_add( info, "PARTMONTH", tmp.data, level );
-		q = skip_ws( q );
+	p = newstr_cpytodelim( &tmp, skip_ws( p ), " \t\n\r", 0 );
+	if ( newstr_memerr( &tmp ) ) return BIBL_ERR_MEMERR;
+	if ( tmp.len > 0 ) {
+		fstatus = fields_add( info, "PARTYEAR", tmp.data, level );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 
-	/* extract day */
-	if ( q ) {
-		p = q;
-		newstr_empty( &tmp );
-		q = skip_notws( q );
-		newstr_segcpy( &tmp, p, q );
-		fields_add( info, "PARTDAY", tmp.data, level );
+	p = newstr_cpytodelim( &tmp, skip_ws( p ), " \t\n\r", 0 );
+	if ( newstr_memerr( &tmp ) ) return BIBL_ERR_MEMERR;
+	if ( tmp.len > 0 ) {
+		newstr_findreplace( &tmp, "-", "/" );
+		fstatus = fields_add( info, "PARTMONTH", tmp.data, level );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
+
+	p = newstr_cpytodelim( &tmp, skip_ws( p ), " \t\n\r", 0 );
+	if ( newstr_memerr( &tmp ) ) return BIBL_ERR_MEMERR;
+	if ( tmp.len > 0 ) {
+		fstatus = fields_add( info, "PARTDAY", tmp.data, level );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 
 	newstr_free( &tmp );
+
+	return BIBL_OK;
 }
 
 /* <Langauge>eng</Language>
@@ -213,13 +208,16 @@ static int
 medin_language( xml *node, fields *info, int level )
 {
 	char *code, *language;
-	int ok;
+	int fstatus;
 	code = xml_data( node );
-	if ( !code ) return 1;
+	if ( !code ) return BIBL_OK;
 	language = iso639_2_from_code( code );
-	if ( language ) ok = fields_add( info, "LANGUAGE", language, level );
-	else ok = fields_add( info, "LANGUAGE", code, level );
-	return ok;
+	if ( language )
+		fstatus = fields_add( info, "LANGUAGE", language, level );
+	else
+		fstatus = fields_add( info, "LANGUAGE", code, level );
+	if ( fstatus==FIELDS_OK ) return BIBL_OK;
+	else return BIBL_ERR_MEMERR;
 }
 
 /* <Journal>
@@ -250,7 +248,7 @@ medin_language( xml *node, fields *info, int level )
  *    <ISOAbbreviation>Alcohol Alcohol.</ISOAbbreviation>
  * </Journal>
  */
-static void
+static int
 medin_journal1( xml *node, fields *info )
 {
 	xml_convert c[] = {
@@ -263,60 +261,87 @@ medin_journal1( xml *node, fields *info )
 		{ "Month",           NULL, NULL, "PARTMONTH",  1 },
 		{ "Day",             NULL, NULL, "PARTDAY",    1 },
 	};
-	int nc = sizeof( c ) / sizeof( c[0] );;
-	if ( xml_hasdata( node ) && !medin_doconvert( node, info, c, nc ) ) {
-		if ( xml_tagexact( node, "MedlineDate" ) )
-			medin_medlinedate( info, xml_data( node ), 1 );
-		if ( xml_tagexact( node, "Language" ) )
-			medin_language( node, info, 1 );
+	int nc = sizeof( c ) / sizeof( c[0] ), status, found;
+	if ( xml_hasdata( node ) ) {
+		status = medin_doconvert( node, info, c, nc, &found );
+		if ( status!=BIBL_OK ) return status;
+		if ( !found ) {
+			if ( xml_tagexact( node, "MedlineDate" ) ) {
+				status = medin_medlinedate( info, xml_data( node ), 1 );
+				if ( status!=BIBL_OK ) return status;
+			}
+			if ( xml_tagexact( node, "Language" ) ) {
+				status = medin_language( node, info, 1 );
+				if ( status!=BIBL_OK ) return status;
+			}
+		}
 	}
-	if ( node->down ) medin_journal1( node->down, info );
-	if ( node->next ) medin_journal1( node->next, info );
+	if ( node->down ) {
+		status = medin_journal1( node->down, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->next ) {
+		status = medin_journal1( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
 /* <Pagination>
  *    <MedlinePgn>12111-6</MedlinePgn>
  * </Pagination>
  */
-static void
+static int
 medin_pagination( xml *node, fields *info )
 {
+	int i, fstatus, status;
 	newstr sp, ep;
-	char *p;
-	int i;
+	char *p, *pp;
 	if ( xml_tagexact( node, "MedlinePgn" ) && node->value ) {
 		newstrs_init( &sp, &ep, NULL );
-		p = xml_data( node );
-		while ( *p && *p!='-' )
-			newstr_addchar( &sp, *p++ );
-		if ( *p=='-' ) p++;
-		while ( *p )
-			newstr_addchar( &ep, *p++ );
-		if ( sp.len ) fields_add( info, "PAGESTART", sp.data, 1 );
+		p = newstr_cpytodelim( &sp, xml_data( node ), "-", 1 );
+		if ( newstr_memerr( &sp ) ) return BIBL_ERR_MEMERR;
+		if ( sp.len ) {
+			fstatus = fields_add( info, "PAGESTART", sp.data, 1 );
+			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		}
+		p = newstr_cpytodelim( &ep, p, "", 0 );
+		if ( newstr_memerr( &ep ) ) return BIBL_ERR_MEMERR;
 		if ( ep.len ) {
 			if ( sp.len > ep.len ) {
 				for ( i=sp.len-ep.len; i<sp.len; ++i )
 					sp.data[i] = ep.data[i-sp.len+ep.len];
-				fields_add( info, "PAGEEND", sp.data, 1 );
-			} else
-				fields_add( info, "PAGEEND", ep.data, 1 );
+				pp = sp.data;
+			} else  pp = ep.data;
+			fstatus = fields_add( info, "PAGEEND", pp, 1 );
+			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
 		newstrs_free( &sp, &ep, NULL );
 	}
-	if ( node->down ) medin_pagination( node->down, info );
-	if ( node->next ) medin_pagination( node->next, info );
+	if ( node->down ) {
+		status = medin_pagination( node->down, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->next ) {
+		status = medin_pagination( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
 /* <Abstract>
  *    <AbstractText>ljwejrelr</AbstractText>
  * </Abstract>
  */
-static void
+static int
 medin_abstract( xml *node, fields *info )
 {
-	if ( xml_tagwithdata( node, "AbstractText" ) )
-		fields_add( info, "ABSTRACT", xml_data( node ), 0 );
-	else if ( node->next ) medin_abstract( node->next, info );
+	int fstatus;
+	if ( xml_tagwithdata( node, "AbstractText" ) ) {
+		fstatus = fields_add( info, "ABSTRACT", xml_data( node ), 0 );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	} else if ( node->next ) return medin_abstract( node->next, info );
+	return BIBL_OK;
 }
 
 /* <AuthorList CompleteYN="Y">
@@ -331,7 +356,7 @@ medin_abstract( xml *node, fields *info )
  *    </Author>
  * </AuthorList>
  */
-static void
+static int
 medin_author( xml *node, newstr *name )
 {
 	char *p;
@@ -357,37 +382,45 @@ medin_author( xml *node, newstr *name )
 		}
 	}
 	if ( node->next ) medin_author( node->next, name );
+	return BIBL_OK;
 }
 
-static void
+static int
 medin_corpauthor( xml *node, newstr *name )
 {
 	if ( xml_tagexact( node, "CollectiveName" ) ) {
 		newstr_strcpy( name, xml_data( node ) );
 	} else if ( node->next ) medin_corpauthor( node->next, name );
+	return BIBL_OK;
 }
 
-static void
+static int
 medin_authorlist( xml *node, fields *info )
 {
+	int fstatus, status;
 	newstr name;
+	char *tag;
 	newstr_init( &name );
 	node = node->down;
 	while ( node ) {
 		if ( xml_tagexact( node, "Author" ) && node->down ) {
-			medin_author( node->down, &name );
+			status = medin_author( node->down, &name );
+			tag = "AUTHOR";
+			if ( !name.len ) {
+				status = medin_corpauthor( node->down, &name );
+				tag = "AUTHOR:CORP";
+			}
+			if ( newstr_memerr( &name ) || status!=BIBL_OK ) return BIBL_ERR_MEMERR;
 			if ( name.len ) {
-				fields_add(info,"AUTHOR",name.data,0);
-			} else {
-				medin_corpauthor( node->down, &name );
-				if ( name.len )
-					fields_add(info,"AUTHOR:CORP",name.data,0);
+				fstatus = fields_add(info,tag,name.data,0);
+				if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 			}
 			newstr_empty( &name );
 		}
 		node = node->next;
 	}
 	newstr_free( &name );
+	return BIBL_OK;
 }
 
 /* <PublicationTypeList>
@@ -402,13 +435,20 @@ medin_authorlist( xml *node, fields *info )
  * </MedlineJournalInfo>
  */
 
-static void
+static int
 medin_journal2( xml *node, fields *info )
 {
-	if ( xml_tagwithdata( node, "MedlineTA" ) && fields_find( info, "TITLE", 1 )==-1 )
-		fields_add( info, "TITLE", xml_data( node ), 1 );
-	if ( node->down ) medin_journal2( node->down, info );
-	if ( node->next ) medin_journal2( node->next, info );
+	int fstatus, status = BIBL_OK;
+	if ( xml_tagwithdata( node, "MedlineTA" ) && fields_find( info, "TITLE", 1 )==-1 ) {
+		fstatus = fields_add( info, "TITLE", xml_data( node ), 1 );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
+	if ( node->down ) {
+		status = medin_journal2( node->down, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->next ) status = medin_journal2( node->next, info );
+	return status;
 }
 
 /*
@@ -421,20 +461,28 @@ medin_journal2( xml *node, fields *info )
 </MeshHeading>
 </MeshHeadingList>
 */
-static void
+static int
 medin_meshheading( xml *node, fields *info )
 {
-	if ( xml_tagwithdata( node, "DescriptorName" ) )
-		fields_add( info, "KEYWORD", xml_data( node ), 0 );
-	if ( node->next ) medin_meshheading( node->next, info );
+	int fstatus, status = BIBL_OK;
+	if ( xml_tagwithdata( node, "DescriptorName" ) ) {
+		fstatus = fields_add( info, "KEYWORD", xml_data( node ), 0 );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
+	if ( node->next ) status = medin_meshheading( node->next, info );
+	return status;
 }
 
-static void
+static int
 medin_meshheadinglist( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "MeshHeading" ) && node->down )
-		medin_meshheading( node->down, info );
-	if ( node->next ) medin_meshheadinglist( node->next, info );
+	int status = BIBL_OK;
+	if ( xml_tagexact( node, "MeshHeading" ) && node->down ) {
+		status = medin_meshheading( node->down, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->next ) status = medin_meshheadinglist( node->next, info );
+	return status;
 }
 
 /* <PubmedData>
@@ -449,8 +497,7 @@ medin_meshheadinglist( xml *node, fields *info )
  *
  * I think "pii" is "Publisher Item Identifier"
  */
-
-static void
+static int
 medin_pubmeddata( xml *node, fields *info )
 {
 	xml_convert c[] = {
@@ -459,88 +506,127 @@ medin_pubmeddata( xml *node, fields *info )
 		{ "ArticleId", "IdType", "medline", "MEDLINE", 0 },
 		{ "ArticleId", "IdType", "pii",     "PII",     0 },
 	};
-	int nc = sizeof( c ) / sizeof( c[0] );
-	medin_doconvert( node, info, c, nc );
-	if ( node->next ) medin_pubmeddata( node->next, info );
-	if ( node->down ) medin_pubmeddata( node->down, info );
+	int nc = sizeof( c ) / sizeof( c[0] ), found, status;
+	status = medin_doconvert( node, info, c, nc, &found );
+	if ( status!=BIBL_OK ) return status;
+	if ( node->next ) {
+		status = medin_pubmeddata( node->next, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->down ) {
+		medin_pubmeddata( node->down, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	return BIBL_OK;
 }
 
-static void
+static int
 medin_article( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "Journal" ) ) 
-		medin_journal1( node, info );
+	int fstatus, status = BIBL_OK;
+	if ( xml_tagexact( node, "Journal" ) )
+		status = medin_journal1( node, info );
 	else if ( xml_tagexact( node, "ArticleTitle" ) )
-		medin_articletitle( node, info );
+		status = medin_articletitle( node, info );
 	else if ( xml_tagexact( node, "Pagination" ) && node->down )
-		medin_pagination( node->down, info );
+		status = medin_pagination( node->down, info );
 	else if ( xml_tagexact( node, "Abstract" ) && node->down )
-		medin_abstract( node->down, info );
+		status = medin_abstract( node->down, info );
 	else if ( xml_tagexact( node, "AuthorList" ) )
-		medin_authorlist( node, info );
+		status = medin_authorlist( node, info );
 	else if ( xml_tagexact( node, "Language" ) )
-		medin_language( node, info, 0 );
-	else if ( xml_tagexact( node, "Affiliation" ) )
-		fields_add( info, "ADDRESS", xml_data( node ), 0 );
-	if ( node->next ) medin_article( node->next, info );
+		status = medin_language( node, info, 0 );
+	else if ( xml_tagexact( node, "Affiliation" ) ) {
+		fstatus = fields_add( info, "ADDRESS", xml_data( node ), 0 );
+		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
+	}
+	if ( status!=BIBL_OK ) return status;
+	if ( node->next ) status = medin_article( node->next, info );
+	return BIBL_OK;
 }
 
-static void
+static int
 medin_medlinecitation( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "PMID" ) && node->value->data )
-		fields_add( info, "PMID", node->value->data, 0 );
-	if ( node->down ) {
-		if ( xml_tagexact( node, "Article" ) )
-			medin_article( node->down, info );
-		else if ( xml_tagexact( node, "MedlineJournalInfo" ) )
-			medin_journal2( node->down, info );
-		else if ( xml_tagexact( node, "MeshHeadingList" ) )
-			medin_meshheadinglist( node->down, info );
+	int fstatus, status = BIBL_OK;
+	if ( xml_tagexact( node, "PMID" ) && node->value->data ) {
+		fstatus = fields_add( info, "PMID", node->value->data, 0 );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
-	if ( node->next ) medin_medlinecitation( node->next, info );
+	if ( node->down ) {
+		if ( xml_tagexact( node, "Article" ) ) {
+			status = medin_article( node->down, info );
+		} else if ( xml_tagexact( node, "MedlineJournalInfo" ) ) {
+			status = medin_journal2( node->down, info );
+		} else if ( xml_tagexact( node, "MeshHeadingList" ) )
+			status = medin_meshheadinglist( node->down, info );
+		if ( status!=BIBL_OK ) return status;
+	}
+	if ( node->next ) status = medin_medlinecitation( node->next, info );
+	return status;
 }
 
-static void
+static int
 medin_pubmedarticle( xml *node, fields *info )
 {
+	int status = BIBL_OK;
 	if ( node->down ) {
 		if ( xml_tagexact( node, "MedlineCitation" ) )
-			medin_medlinecitation( node->down, info );
+			status = medin_medlinecitation( node->down, info );
 		else if ( xml_tagexact( node, "PubmedData" ) )
-			medin_pubmeddata( node->down, info );
+			status = medin_pubmeddata( node->down, info );
+		if ( status!=BIBL_OK ) return status;
 	}
-	if ( node->next ) medin_pubmedarticle( node->next, info );
+	if ( node->next ) status = medin_pubmedarticle( node->next, info );
+	return status;
 }
 
-static void
+static int
 medin_assembleref( xml *node, fields *info )
 {
+	int status = BIBL_OK;
 	if ( node->down ) {
 		if ( xml_tagexact( node, "PubmedArticle" ) )
-			medin_pubmedarticle( node->down, info );
+			status = medin_pubmedarticle( node->down, info );
 		else if ( xml_tagexact( node, "MedlineCitation" ) )
-			medin_medlinecitation( node->down, info );
-		else medin_assembleref( node->down, info );
+			status = medin_medlinecitation( node->down, info );
+		else
+			status = medin_assembleref( node->down, info );
+	}
+	if ( status!=BIBL_OK ) return status;
+
+	if ( node->next ) {
+		status = medin_assembleref( node->next, info );
+		if ( status!=BIBL_OK ) return status;
 	}
 
-	if ( node->next ) medin_assembleref( node->next, info );
 	/* assume everything is a journal article */
 	if ( fields_num( info ) ) {
-		fields_add( info, "RESOURCE", "text", 0 );
-		fields_add( info, "ISSUANCE", "continuing", 1 );
-		fields_add( info, "GENRE", "periodical", 1 );
-		fields_add( info, "GENRE", "academic journal", 1 );
+		status = fields_add( info, "RESOURCE", "text", 0 );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		status = fields_add( info, "ISSUANCE", "continuing", 1 );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		status = fields_add( info, "GENRE", "periodical", 1 );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		status = fields_add( info, "GENRE", "academic journal", 1 );
+		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		status = BIBL_OK;
 	}
+
+	return status;
 }
 
 int
 medin_processf( fields *medin, char *data, char *filename, long nref )
 {
+	int status;
 	xml top;
+
 	xml_init( &top );
 	xml_tree( data, &top );
-	medin_assembleref( &top, medin );
+	status = medin_assembleref( &top, medin );
 	xml_free( &top );
-	return 1;
+
+	if ( status==BIBL_OK ) return 1;
+	return 0;
 }

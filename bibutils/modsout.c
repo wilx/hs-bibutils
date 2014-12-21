@@ -1,7 +1,7 @@
 /*
  * modsout.c
  *
- * Copyright (c) Chris Putnam 2003-2013
+ * Copyright (c) Chris Putnam 2003-2014
  *
  * Source code released under the GPL version 2
  *
@@ -30,7 +30,7 @@ modsout_initparams( param *p, const char *progname )
 	p->latexout         = 0;
 	p->utf8out          = 1;
 	p->utf8bom          = 1;
-	p->xmlout           = 1;
+	p->xmlout           = BIBL_XMLOUT_TRUE;
 	p->nosplittitle     = 0;
 	p->verbose          = 0;
 	p->addcount         = 0;
@@ -386,6 +386,7 @@ output_origin( fields *f, FILE *outptr, int level )
 		{ "issuance",	  "ISSUANCE",	0 },
 		{ "publisher",	  "PUBLISHER",	0 },
 		{ "place",	  "ADDRESS",	1 },
+		{ "place",	  "AUTHORADDRESS",	0 },
 		{ "edition",	  "EDITION",	0 },
 		{ "dateCaptured", "URLDATE",    0 }
 	};
@@ -571,9 +572,10 @@ output_partdate( fields *f, FILE *outptr, int level, int wrote_header )
 static int
 output_partpages( fields *f, FILE *outptr, int level, int wrote_header )
 {
-	convert parts[3] = {
+	convert parts[4] = {
 		{ "",  "PAGESTART",                -1 },
 		{ "",  "PAGEEND",                  -1 },
+		{ "",  "PAGES",                    -1 },
 		{ "",  "TOTALPAGES",               -1 }
 	};
 	int nparts = sizeof(parts)/sizeof(parts[0]);
@@ -591,13 +593,16 @@ output_partpages( fields *f, FILE *outptr, int level, int wrote_header )
 			mods_output_detail( f, outptr, parts[1].code,
 				"page", level );
 		if ( parts[2].code!=-1 )
+			mods_output_detail( f, outptr, parts[2].code,
+				"page", level );
+		if ( parts[3].code!=-1 )
 			mods_output_extents( f, outptr, -1, -1,
-					parts[2].code, "page", level ); 
+					parts[3].code, "page", level );
 	}
 	/* If both PAGESTART and PAGEEND are defined */
 	else {
 		mods_output_extents( f, outptr, parts[0].code, 
-			parts[1].code, parts[2].code, "page", level ); 
+			parts[1].code, parts[3].code, "page", level );
 	}
 
 	return 1;
@@ -763,6 +768,7 @@ output_sn( fields *f, FILE *outptr, int level )
 {
 	convert sn_types[] = {
 		{ "isbn",      "ISBN",      0 },
+		{ "isbn",      "ISBN13",    0 },
 		{ "lccn",      "LCCN",      0 },
 		{ "issn",      "ISSN",      0 },
 		{ "citekey",   "REFNUM",    0 },

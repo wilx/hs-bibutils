@@ -3,7 +3,7 @@
  *
  * mangle names w/ and w/o commas
  *
- * Copyright (c) Chris Putnam 2004-2013
+ * Copyright (c) Chris Putnam 2004-2014
  *
  * Source code released under the GPL version 2
  *
@@ -363,13 +363,14 @@ name_construct_multi( newstr *outname, list *tokens, int begin, int end )
 int
 name_addmultielement( fields *info, char *tag, list *tokens, int begin, int end, int level )
 {
+	int status, ok = 1;
 	newstr name;
-	int ok;
 
 	newstr_init( &name );
 
 	name_construct_multi( &name, tokens, begin, end );
-	ok = fields_add( info, tag, name.data, level );
+	status = fields_add( info, tag, name.data, level );
+	if ( status!=FIELDS_OK ) ok = 0;
 
 	newstr_free( &name );
 
@@ -386,13 +387,14 @@ name_addmultielement( fields *info, char *tag, list *tokens, int begin, int end,
 int
 name_addsingleelement( fields *info, char *tag, char *name, int level, int corp )
 {
+	int status, ok = 1;
 	newstr outtag;
-	int ok;
 	newstr_init( &outtag );
 	newstr_strcpy( &outtag, tag );
 	if ( !corp ) newstr_strcat( &outtag, ":ASIS" );
 	else newstr_strcat( &outtag, ":CORP" );
-	ok = fields_add( info, outtag.data, name, level );
+	status = fields_add( info, outtag.data, name, level );
+	if ( status!=FIELDS_OK ) ok = 0;
 	newstr_free( &outtag );
 	return ok;
 }
@@ -428,7 +430,7 @@ name_parse( newstr *outname, newstr *inname, list *asis, list *corps )
 	}
 
 	newstr_findreplace( inname, ",", ", " );
-	list_tokenize( &tokens, inname, ' ', 1 );
+	list_tokenize( &tokens, inname, " ", 1 );
 
 	if ( tokens.n==1 ) {
 		newstr_newstrcpy( outname, inname );
@@ -486,7 +488,7 @@ name_copy( newstr *name, char *p )
 int
 name_add( fields *info, char *tag, char *q, int level, list *asis, list *corps )
 {
-	int ok, nametype, ret = 1;
+	int ok, status, nametype, ret = 1;
 	newstr inname, outname;
 	list tokens;
 
@@ -500,10 +502,12 @@ name_add( fields *info, char *tag, char *q, int level, list *asis, list *corps )
 		q = name_copy( &inname, q );
 
 		nametype = name_parse( &outname, &inname, asis, corps );
-		if ( !nametype ) return 0;
+		if ( !nametype ) { ret = 0; goto out; }
 
-		if ( nametype==1 )
-			ok = fields_add( info, tag, outname.data, level );
+		if ( nametype==1 ) {
+			status = fields_add( info, tag, outname.data, level );
+			ok = ( status==FIELDS_OK ) ? 1 : 0;
+		}
 		else if ( nametype==2 )
 			ok = name_addsingleelement( info, tag, outname.data, level, 0 );
 		else
@@ -515,7 +519,7 @@ name_add( fields *info, char *tag, char *q, int level, list *asis, list *corps )
 
 out:
 	newstrs_free( &inname, &outname, NULL );
-	newstr_free( &outname );
+	list_free( &tokens );
 
 	return ret;
 }

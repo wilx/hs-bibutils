@@ -664,6 +664,7 @@ variants bibtex_all[] = {
 	REFTYPE( "manual", manual ),
 	REFTYPE( "mastersthesis", masters ),
 	REFTYPE( "misc", misc ),
+	REFTYPE( "online", misc ),
 	REFTYPE( "patent", patent ),
 	REFTYPE( "phdthesis", phds ),
 	REFTYPE( "periodical", periodical ),
