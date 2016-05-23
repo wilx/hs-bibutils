@@ -65,7 +65,6 @@ extra-source-files:
         bibutils/vplist.h bibutils/wordin.c bibutils/wordin.h
         bibutils/wordout.c bibutils/wordout.h bibutils/xml.c
         bibutils/xml.h bibutils/xml_encoding.c bibutils/xml_encoding.h
-        bibutils/mycvout.c
 
 library
     exposed-modules:  Text.Bibutils
@@ -96,7 +95,7 @@ library
         bibutils/ristypes.c bibutils/serialno.c bibutils/strsearch.c
         bibutils/title.c bibutils/unicode.c bibutils/utf8.c
         bibutils/vplist.c bibutils/wordin.c bibutils/wordout.c
-        bibutils/xml.c bibutils/xml_encoding.c bibutils/mycvout.c
+        bibutils/xml.c bibutils/xml_encoding.c
 
     if impl(ghc >= 6.10)
        build-depends: base >= 4, syb
