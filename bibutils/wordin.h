@@ -1,7 +1,7 @@
 /*
  * wordin.h
  *
- * Copyright (c) Chris Putnam 2009-2013
+ * Copyright (c) Chris Putnam 2009-2016
  *
  * Source code released under the GPL version 2
  *

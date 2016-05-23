@@ -1,7 +1,7 @@
 /*
  * endout.c
  *
- * Copyright (c) Chris Putnam 2004-2013
+ * Copyright (c) Chris Putnam 2004-2016
  *
  * Program and source code released under the GPL version 2
  *
@@ -426,14 +426,14 @@ output_type( FILE *fp, int type, param *p )
 	fprintf( fp, "\n" );
 }
 
-static void
+static int
 output_title( FILE *fp, fields *info, char *full, char *sub, char *endtag, 
 		int level )
 {
 	newstr *mainttl = fields_findv( info, level, FIELDS_STRP, full );
 	newstr *subttl  = fields_findv( info, level, FIELDS_STRP, sub );
 
-	if ( !mainttl ) return;
+	if ( !mainttl ) return 0;
 
 	fprintf( fp, "%s %s", endtag, mainttl->data );
 	if ( subttl ) {
@@ -443,6 +443,8 @@ output_title( FILE *fp, fields *info, char *full, char *sub, char *endtag,
 		fprintf( fp, " %s", subttl->data );
 	}
 	fprintf( fp, "\n" );
+
+	return 1;
 }
 
 static void
@@ -629,7 +631,7 @@ output_easy( FILE *fp, fields *info, char *tag, char *entag, int level )
 void
 endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 {
-	int type;
+	int type, status;
 
 	fields_clearused( info );
 
@@ -637,8 +639,9 @@ endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 
 	output_type( fp, type, p );
 
-	output_title( fp, info, "TITLE",      "SUBTITLE",      "%T", LEVEL_MAIN );
-	output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%!", LEVEL_MAIN );
+	status = output_title( fp, info, "TITLE",      "SUBTITLE",      "%T", LEVEL_MAIN );
+	if ( status==0 ) output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%T", LEVEL_MAIN );
+	else             output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%!", LEVEL_MAIN );
 
 	output_people( fp, info, "AUTHOR",     "%A", LEVEL_MAIN );
 	output_people( fp, info, "EDITOR",     "%E", LEVEL_MAIN );
@@ -671,12 +674,19 @@ endout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 		output_easyall( fp, info, "TRANSLATOR:ASIS", "%H", LEVEL_ANY  );
 	}
 
-	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE || type==TYPE_ELECTRONICARTICLE || type==TYPE_NEWSARTICLE )
-		output_title( fp, info, "TITLE", "SUBTITLE", "%J", LEVEL_HOST );
+	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE || type==TYPE_ELECTRONICARTICLE || type==TYPE_NEWSARTICLE ) {
+		status = output_title( fp, info, "TITLE", "SUBTITLE", "%J", LEVEL_HOST );
+		if ( status==0 ) status = output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%J", LEVEL_HOST );
+	}
+
 	else if ( type==TYPE_INBOOK || type==TYPE_INPROCEEDINGS ) {
-		output_title( fp, info, "TITLE", "SUBTITLE", "%B", LEVEL_HOST );
-	} else {
-		output_title( fp, info, "TITLE", "SUBTITLE", "%S", LEVEL_HOST );
+		status = output_title( fp, info, "TITLE", "SUBTITLE", "%B", LEVEL_HOST );
+		if ( status==0 ) output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%B", LEVEL_HOST );
+	}
+
+	else {
+		status = output_title( fp, info, "TITLE", "SUBTITLE", "%S", LEVEL_HOST );
+		if ( status==0 ) output_title( fp, info, "SHORTTITLE", "SHORTSUBTITLE", "%S", LEVEL_HOST );
 	}
 
 	if ( type!=TYPE_CASE && type!=TYPE_HEARING ) {

@@ -1,7 +1,7 @@
 /*
  * modstypes.h
  *
- * Copyright (c) Chris Putnam 2008-2013
+ * Copyright (c) Chris Putnam 2008-2016
  *
  * Source code released under the GPL version 2
  *
@@ -9,8 +9,9 @@
 #ifndef MODSTYPES_H
 #define MODSTYPES_H
 typedef struct convert {
-        char *mods; /* old */
-        char *internal; /* new */
+	char *mods;     /* old */
+	char *internal; /* new */
+	int pos;
 	int code;
 } convert;
 

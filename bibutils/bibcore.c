@@ -1,7 +1,7 @@
 /*
  * bibcore.c
  *
- * Copyright (c) Chris Putnam 2005-2014
+ * Copyright (c) Chris Putnam 2005-2016
  *
  * Source code released under the GPL version 2
  *
@@ -838,7 +838,10 @@ bibl_read( bibl *b, FILE *fp, char *filename, param *p )
 	bibl_init( &bin );
 
 	status = read_ref( fp, &bin, filename, &lp );
-	if ( status!=BIBL_OK ) return status;
+	if ( status!=BIBL_OK ) {
+		bibl_freeparams( &lp );
+		return status;
+	}
 
 	if ( debug_set( p ) ) {
 		fflush( stdout );
@@ -884,12 +887,17 @@ bibl_read( bibl *b, FILE *fp, char *filename, param *p )
 			fflush( stderr );
 		}
 		ok = bibl_copy( b, &bin );
-		if ( !ok ) return BIBL_ERR_MEMERR;
+		if ( !ok ) {
+			bibl_freeparams( &lp );
+			return BIBL_ERR_MEMERR;
+		}
 	}
 	if ( !lp.output_raw || ( lp.output_raw & BIBL_RAW_WITHMAKEREFID ) )
 		bibl_checkrefid( b, &lp );
 
 	bibl_free( &bin );
+
+	bibl_freeparams( &lp );
 
 	return BIBL_OK;
 }
@@ -976,6 +984,8 @@ bibl_write( bibl *b, FILE *fp, param *p )
 
 	if ( p->singlerefperfile ) status = bibl_writeeachfp( fp, b, &lp );
 	else status = bibl_writefp( fp, b, &lp );
+
+	bibl_freeparams( &lp );
 
 	return status;
 }

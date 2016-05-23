@@ -1,7 +1,7 @@
 /*
  * bibtexin.c
  *
- * Copyright (c) Chris Putnam 2003-2014
+ * Copyright (c) Chris Putnam 2003-2016
  *
  * Program and source code released under the GPL version 2
  *
@@ -1293,7 +1293,7 @@ int
 bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p,
 		variants *all, int nall )
 {
-	int process, level, i, n, nfields, status;
+	int process, level, i, n, nfields, status = BIBL_OK;
 	newstr *t, *d;
 	char *outtag;
 

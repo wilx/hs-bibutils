@@ -1,7 +1,7 @@
 /*
  * newstr_conv.c
  *
- * Copyright (c) Chris Putnam 1999-2014
+ * Copyright (c) Chris Putnam 1999-2016
  *
  * Source code released under the GPL version 2
  *

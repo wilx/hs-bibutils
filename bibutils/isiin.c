@@ -1,7 +1,7 @@
 /*
  * isiin.c
  *
- * Copyright (c) Chris Putnam 2004-2013
+ * Copyright (c) Chris Putnam 2004-2016
  *
  * Program and source code released under the GPL version 2
  *
@@ -301,8 +301,6 @@ isiin_convertf( fields *isiin, fields *info, int reftype, param *p, variants *al
 		if ( process == ALWAYS ) continue; /* add in core code */
 
 		d = fields_value( isiin, i, FIELDS_STRP );
-
-		ok = 1;
 
 		switch ( process ) {
 

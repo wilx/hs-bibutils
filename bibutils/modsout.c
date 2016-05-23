@@ -1,13 +1,14 @@
 /*
  * modsout.c
  *
- * Copyright (c) Chris Putnam 2003-2014
+ * Copyright (c) Chris Putnam 2003-2016
  *
  * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include "is_ws.h"
 #include "newstr.h"
@@ -41,96 +42,134 @@ modsout_initparams( param *p, const char *progname )
 	p->writef  = modsout_write;
 }
 
-static int
-increment_level( int level, int amt )
+/* output_tag()
+ *
+ * mode = TAG_OPEN,         "<tag>"
+ * mode = TAG_CLOSE,        "</tag>"
+ * mode = TAG_OPENCLOSE,    "<tag>data</tag>"
+ * mode = TAG_SELFCLOSE,    "<tag/>"
+ *
+ * newline = TAG_NONEWLINE, "<tag>"
+ * newline = TAG_NEWLINE,   "<tag>\n"
+ *
+ */
+#define TAG_OPEN      (0)
+#define TAG_CLOSE     (1)
+#define TAG_OPENCLOSE (2)
+#define TAG_SELFCLOSE (3)
+
+#define TAG_NONEWLINE (0)
+#define TAG_NEWLINE   (1)
+
+static void
+output_tag_core( FILE *outptr, int nindents, char *tag, char *data, unsigned char mode, unsigned char newline, va_list *attrs )
+{
+	char *attr, *val;
+	int i;
+
+	for ( i=0; i<nindents; ++i ) fprintf( outptr, "    " );
+
+	if ( mode!=TAG_CLOSE )
+		fprintf( outptr, "<" );
+	else
+		fprintf( outptr, "</" );
+
+	fprintf( outptr, "%s", tag );
+
+	do {
+		attr = va_arg( *attrs, char * );
+		if ( attr ) val  = va_arg( *attrs, char * );
+		if ( attr && val )
+			fprintf( outptr, " %s=\"%s\"", attr, val );
+	} while ( attr && val );
+
+	if ( mode!=TAG_SELFCLOSE )
+		fprintf( outptr, ">" );
+	else
+		fprintf( outptr, "/>" );
+
+	if ( mode==TAG_OPENCLOSE ) {
+		fprintf( outptr, "%s</%s>", data, tag );
+	}
+
+	if ( newline==TAG_NEWLINE )
+		fprintf( outptr, "\n" );
+}
+
+/* output_tag()
+ *
+ *     output XML tag
+ *
+ * mode     = [ TAG_OPEN | TAG_CLOSE | TAG_OPENCLOSE | TAG_SELFCLOSE ]
+ * newline  = [ TAG_NEWLINE | TAG_NONEWLINE ]
+ *
+ * for mode TAG_OPENCLOSE, ensure that value is non-NULL, as string pointed to by value
+ * will be output in the tag
+ */
+static void
+output_tag( FILE *outptr, int nindents, char *tag, char *value, unsigned char mode, unsigned char newline, ... )
+{
+	va_list attrs;
+
+	va_start( attrs, newline );
+	output_tag_core( outptr, nindents, tag, value, mode, newline, &attrs );
+	va_end( attrs );
+}
+
+/* output_fil()
+ *
+ *     output XML tag, but lookup data in fields struct
+ *
+ * mode     = [ TAG_OPEN | TAG_CLOSE | TAG_OPENCLOSE | TAG_SELFCLOSE ]
+ * newline  = [ TAG_NEWLINE | TAG_NONEWLINE ]
+ *
+ * value looked up in fields will only be used in mode TAG_OPENCLOSE
+ */
+static void
+output_fil( FILE *outptr, int nindents, char *tag, fields *f, int n, unsigned char mode, unsigned char newline, ... )
+{
+	va_list attrs;
+	char *value;
+
+	if ( n!=-1 ) {
+		value = (char *) fields_value( f, n, FIELDS_CHRP );
+		va_start( attrs, newline );
+		output_tag_core( outptr, nindents, tag, value, mode, newline, &attrs );
+		va_end( attrs );
+	}
+}
+
+static inline int
+lvl2indent( int level )
+{
+	if ( level < -1 ) return -level + 1;
+	else return level + 1;
+}
+
+static inline int
+incr_level( int level, int amt )
 {
 	if ( level > -1 ) return level+amt;
 	else return level-amt;
 }
 
-static void
-output_tab0( FILE *outptr, int level )
-{
-	int i;
-	level = abs( level );
-	for ( i=0; i<=level; ++i ) fprintf( outptr, "    " );
-}
-
-static void
-output_tab1( FILE *outptr, int level, char *tag )
-{
-	output_tab0( outptr, level );
-	fprintf( outptr, "%s", tag );
-}
-
-static void
-output_tab2_attrib( FILE *outptr, int level, char *tag, char *data, 
-	char *attrib, char *type, int cr )
-{
-	output_tab0( outptr, level );
-	fprintf( outptr, "<%s", tag );
-	if ( attrib && type ) fprintf( outptr, " %s=\"%s\"", attrib, type );
-	fprintf( outptr, ">%s</%s>", data, tag );
-	if ( cr ) fprintf( outptr, "\n" );
-}
-
-static void
-output_tab4( FILE *outptr, int level, char *tag, char *aname, char *avalue,
-		char *data, int cr )
-{
-	output_tab0( outptr, level );
-	fprintf( outptr, "<%s %s=\"%s\">%s</%s>", tag,aname,avalue,data,tag);
-	if ( cr ) fprintf( outptr, "\n" );
-}
-
-static void
-output_tab6( FILE *outptr, int level, char *tag, char *aname, char *avalue,
-		char *bname, char *bvalue, char *data, int cr )
-{
-	output_tab0( outptr, level );
-	fprintf( outptr, "<%s %s=\"%s\" %s=\"%s\">%s</%s>", tag,aname,avalue,bname,bvalue,data,tag);
-	if ( cr ) fprintf( outptr, "\n" );
-}
-
-static void
-output_fill2( FILE *outptr, int level, char *tag, fields *f, int n, int cr )
-{
-	char *value;
-	if ( n!=-1 ) {
-		value = fields_value( f, n, FIELDS_CHRP );
-		output_tab2_attrib( outptr, level, tag, value, 
-			NULL, NULL, cr );
-		fields_setused( f, n );
-	}
-}
-
-static void
-output_fill4( FILE *outptr, int level, char *tag, char *aname, char *avalue,
-		fields *f, int n, int cr )
-{
-	char *value;
-	if ( n!=-1 ) {
-		value = fields_value( f, n, FIELDS_CHRP );
-		output_tab4( outptr, level, tag, aname, avalue,
-				value, cr );
-		fields_setused( f, n );
-	}
-}
-
-/*
- * Find the positions of all convert.internal tags and store the
- * locations in convert.code.
+/* convert_findallfields()
  *
- * Return number of the tags found
+ *       Find the positions of all convert.internal tags in the fields
+ *       structure and store the locations in convert.pos element.
+ *
+ *       Return number of the tags found.
  */
 static int
-find_alltags( fields *f, convert *parts, int nparts, int level )
+convert_findallfields( fields *f, convert *parts, int nparts, int level )
 {
-	int i, n=0;
+	int i, n = 0;
+
 	for ( i=0; i<nparts; ++i ) {
-		parts[i].code = fields_find( f, parts[i].internal, level );
-		n += ( parts[i].code!=-1 );
+		parts[i].pos = fields_find( f, parts[i].internal, level );
+		n += ( parts[i].pos!=-1 );
 	}
+
 	return n;
 }
 
@@ -141,34 +180,26 @@ output_title( fields *f, FILE *outptr, int level )
 	int subttl = fields_find( f, "SUBTITLE", level );
 	int shrttl = fields_find( f, "SHORTTITLE", level );
 	int parttl = fields_find( f, "PARTTITLE", level );
+	char *val;
 
-	output_tab1( outptr, level, "<titleInfo>\n" );
-	output_fill2( outptr, increment_level(level,1), "title", f, ttl, 1 );
-	output_fill2( outptr, increment_level(level,1), "subTitle", f, subttl, 1 );
-	output_fill2( outptr, increment_level(level,1), "partName", f, parttl, 1 );
+	output_tag( outptr, lvl2indent(level),               "titleInfo", NULL,      TAG_OPEN,      TAG_NEWLINE, NULL );
+	output_fil( outptr, lvl2indent(incr_level(level,1)), "title",     f, ttl,    TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+	output_fil( outptr, lvl2indent(incr_level(level,1)), "subTitle",  f, subttl, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+	output_fil( outptr, lvl2indent(incr_level(level,1)), "partName",  f, parttl, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+	/* MODS output doesn't verify if we don't at least have a <title/> element */
 	if ( ttl==-1 && subttl==-1 )
-		output_tab1( outptr, increment_level(level,1), "<title/>\n" );
-	output_tab1( outptr, level, "</titleInfo>\n" );
+		output_tag( outptr, lvl2indent(incr_level(level,1)), "title", NULL,  TAG_SELFCLOSE, TAG_NEWLINE, NULL );
+	output_tag( outptr, lvl2indent(level),               "titleInfo", NULL,      TAG_CLOSE,     TAG_NEWLINE, NULL );
 
 	/* output shorttitle if it's different from normal title */
 	if ( shrttl!=-1 ) {
-		if ( ttl==-1 || subttl!=-1 ||
-			strcmp(f->data[ttl].data,f->data[shrttl].data) ) {
-			output_tab1( outptr, level, 
-					"<titleInfo type=\"abbreviated\">\n" );
-			output_fill2( outptr, level+1, "title", f, shrttl,1);
-			output_tab1( outptr, level, "</titleInfo>\n" );
+		val = (char *) fields_value( f, shrttl, FIELDS_CHRP );
+		if ( ttl==-1 || subttl!=-1 || strcmp(f->data[ttl].data,val) ) {
+			output_tag( outptr, lvl2indent(level),               "titleInfo", NULL, TAG_OPEN,      TAG_NEWLINE, "type", "abbreviated", NULL );
+			output_tag( outptr, lvl2indent(incr_level(level,1)), "title",     val,  TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+			output_tag( outptr, lvl2indent(level),               "titleInfo", NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
 		}
-		fields_setused( f, shrttl );
 	}
-}
-
-static void
-output_personalstart( FILE *outptr, int level )
-{
-	int j;
-	for ( j=0; j<=level; ++j ) fprintf( outptr, "    " );
-		fprintf( outptr, "<name type=\"personal\">\n" );
 }
 
 static void
@@ -190,9 +221,9 @@ output_name( FILE *outptr, char *p, int level )
 				part.len=1;
 				part.data[1]='\0';
 			}
-			if ( n==0 ) output_personalstart( outptr, level );
-			output_tab4( outptr, increment_level(level,1), "namePart", "type", 
-					"given", part.data, 1 );
+			if ( n==0 )
+				output_tag( outptr, lvl2indent(level), "name", NULL, TAG_OPEN, TAG_NEWLINE, "type", "personal", NULL );
+			output_tag( outptr, lvl2indent(incr_level(level,1)), "namePart", part.data, TAG_OPENCLOSE, TAG_NEWLINE, "type", "given", NULL );
 			n++;
 		}
 		if ( *p=='|' ) {
@@ -206,15 +237,16 @@ output_name( FILE *outptr, char *p, int level )
 	}
 
 	if ( family.len ) {
-		if ( n==0 ) output_personalstart( outptr, level );
-		output_tab4( outptr, increment_level(level,1), "namePart", "type", "family",
-				family.data, 1 );
+		if ( n==0 )
+			output_tag( outptr, lvl2indent(level), "name", NULL, TAG_OPEN, TAG_NEWLINE, "type", "personal", NULL );
+		output_tag( outptr, lvl2indent(incr_level(level,1)), "namePart", family.data, TAG_OPENCLOSE, TAG_NEWLINE, "type", "family", NULL );
+		n++;
 	}
 
 	if ( suffix.len ) {
-		if ( n==0 ) output_personalstart( outptr, level );
-		output_tab4( outptr, increment_level(level,1), "namePart", "type", "suffix",
-				suffix.data, 1 );
+		if ( n==0 )
+			output_tag( outptr, lvl2indent(level), "name", NULL, TAG_OPEN, TAG_NEWLINE, "type", "personal", NULL );
+		output_tag( outptr, lvl2indent(incr_level(level,1)), "namePart", suffix.data, TAG_OPENCLOSE, TAG_NEWLINE, "type", "suffix", NULL );
 	}
 
 	newstrs_free( &part, &family, &suffix, NULL );
@@ -241,36 +273,36 @@ static void
 output_names( fields *f, FILE *outptr, int level )
 {
 	convert   names[] = {
-	  { "author",                              "AUTHOR",          MARC_AUTHORITY },
-	  { "editor",                              "EDITOR",          MARC_AUTHORITY },
-	  { "annotator",                           "ANNOTATOR",       MARC_AUTHORITY },
-	  { "artist",                              "ARTIST",          MARC_AUTHORITY },
-	  { "author",                              "2ND_AUTHOR",      MARC_AUTHORITY },
-	  { "author",                              "3RD_AUTHOR",      MARC_AUTHORITY },
-	  { "author",                              "SUB_AUTHOR",      MARC_AUTHORITY },
-	  { "author",                              "COMMITTEE",       MARC_AUTHORITY },
-	  { "author",                              "COURT",           MARC_AUTHORITY },
-	  { "author",                              "LEGISLATIVEBODY", MARC_AUTHORITY },
-	  { "author of afterword, colophon, etc.", "AFTERAUTHOR",     MARC_AUTHORITY },
-	  { "author of introduction, etc.",        "INTROAUTHOR",     MARC_AUTHORITY },
-	  { "cartographer",                        "CARTOGRAPHER",    MARC_AUTHORITY },
-	  { "collaborator",                        "COLLABORATOR",    MARC_AUTHORITY },
-	  { "commentator",                         "COMMENTATOR",     MARC_AUTHORITY },
-	  { "compiler",                            "COMPILER",        MARC_AUTHORITY },
-	  { "degree grantor",                      "DEGREEGRANTOR",   MARC_AUTHORITY },
-	  { "director",                            "DIRECTOR",        MARC_AUTHORITY },
-	  { "event",                               "EVENT",           NO_AUTHORITY   },
-	  { "inventor",                            "INVENTOR",        MARC_AUTHORITY },
-	  { "organizer of meeting",                "ORGANIZER",       MARC_AUTHORITY },
-	  { "patent holder",                       "ASSIGNEE",        MARC_AUTHORITY },
-	  { "performer",                           "PERFORMER",       MARC_AUTHORITY },
-	  { "producer",                            "PRODUCER",        MARC_AUTHORITY },
-	  { "recipient",                           "RECIPIENT",       MARC_AUTHORITY },
-	  { "redactor",                            "REDACTOR",        MARC_AUTHORITY },
-	  { "reporter",                            "REPORTER",        MARC_AUTHORITY },
-	  { "sponsor",                             "SPONSOR",         MARC_AUTHORITY },
-	  { "translator",                          "TRANSLATOR",      MARC_AUTHORITY },
-	  { "writer",                              "WRITER",          MARC_AUTHORITY },
+	  { "author",                              "AUTHOR",          0, MARC_AUTHORITY },
+	  { "editor",                              "EDITOR",          0, MARC_AUTHORITY },
+	  { "annotator",                           "ANNOTATOR",       0, MARC_AUTHORITY },
+	  { "artist",                              "ARTIST",          0, MARC_AUTHORITY },
+	  { "author",                              "2ND_AUTHOR",      0, MARC_AUTHORITY },
+	  { "author",                              "3RD_AUTHOR",      0, MARC_AUTHORITY },
+	  { "author",                              "SUB_AUTHOR",      0, MARC_AUTHORITY },
+	  { "author",                              "COMMITTEE",       0, MARC_AUTHORITY },
+	  { "author",                              "COURT",           0, MARC_AUTHORITY },
+	  { "author",                              "LEGISLATIVEBODY", 0, MARC_AUTHORITY },
+	  { "author of afterword, colophon, etc.", "AFTERAUTHOR",     0, MARC_AUTHORITY },
+	  { "author of introduction, etc.",        "INTROAUTHOR",     0, MARC_AUTHORITY },
+	  { "cartographer",                        "CARTOGRAPHER",    0, MARC_AUTHORITY },
+	  { "collaborator",                        "COLLABORATOR",    0, MARC_AUTHORITY },
+	  { "commentator",                         "COMMENTATOR",     0, MARC_AUTHORITY },
+	  { "compiler",                            "COMPILER",        0, MARC_AUTHORITY },
+	  { "degree grantor",                      "DEGREEGRANTOR",   0, MARC_AUTHORITY },
+	  { "director",                            "DIRECTOR",        0, MARC_AUTHORITY },
+	  { "event",                               "EVENT",           0, NO_AUTHORITY   },
+	  { "inventor",                            "INVENTOR",        0, MARC_AUTHORITY },
+	  { "organizer of meeting",                "ORGANIZER",       0, MARC_AUTHORITY },
+	  { "patent holder",                       "ASSIGNEE",        0, MARC_AUTHORITY },
+	  { "performer",                           "PERFORMER",       0, MARC_AUTHORITY },
+	  { "producer",                            "PRODUCER",        0, MARC_AUTHORITY },
+	  { "recipient",                           "RECIPIENT",       0, MARC_AUTHORITY },
+	  { "redactor",                            "REDACTOR",        0, MARC_AUTHORITY },
+	  { "reporter",                            "REPORTER",        0, MARC_AUTHORITY },
+	  { "sponsor",                             "SPONSOR",         0, MARC_AUTHORITY },
+	  { "translator",                          "TRANSLATOR",      0, MARC_AUTHORITY },
+	  { "writer",                              "WRITER",          0, MARC_AUTHORITY },
 	};
 	int i, n, nfields, ntypes = sizeof( names ) / sizeof( convert );
 	int f_asis, f_corp, f_conf;
@@ -290,91 +322,117 @@ output_names( fields *f, FILE *outptr, int level )
 			if ( strcasecmp( role.data, names[n].internal ) )
 				continue;
 			if ( f_asis ) {
-				output_tab0( outptr, level );
-				fprintf( outptr, "<name>\n" );
-				output_fill2( outptr, increment_level(level,1), "namePart", f, i, 1 );
+				output_tag( outptr, lvl2indent(level),               "name",     NULL, TAG_OPEN,      TAG_NEWLINE, NULL );
+				output_fil( outptr, lvl2indent(incr_level(level,1)), "namePart", f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 			} else if ( f_corp ) {
-				output_tab0( outptr, level );
-				fprintf( outptr, "<name type=\"corporate\">\n" );
-				output_fill2( outptr, increment_level(level,1), "namePart", f, i, 1 );
+				output_tag( outptr, lvl2indent(level),               "name",     NULL, TAG_OPEN,      TAG_NEWLINE, "type", "corporate", NULL );
+				output_fil( outptr, lvl2indent(incr_level(level,1)), "namePart", f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 			} else if ( f_conf ) {
-				output_tab0( outptr, level );
-				fprintf( outptr, "<name type=\"conference\">\n" );
-				output_fill2( outptr, increment_level(level,1), "namePart", f, i, 1 );
+				output_tag( outptr, lvl2indent(level),               "name",     NULL, TAG_OPEN,      TAG_NEWLINE, "type", "conference", NULL );
+				output_fil( outptr, lvl2indent(incr_level(level,1)), "namePart", f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 			} else {
 				output_name(outptr, f->data[i].data, level);
 			}
-			output_tab1( outptr, increment_level(level,1), "<role>\n" );
-			output_tab1( outptr, increment_level(level,2), "<roleTerm" );
+			output_tag( outptr, lvl2indent(incr_level(level,1)), "role", NULL, TAG_OPEN, TAG_NEWLINE, NULL );
 			if ( names[n].code & MARC_AUTHORITY )
-				fprintf( outptr, " authority=\"marcrelator\"");
-			fprintf( outptr, " type=\"text\">");
-			fprintf( outptr, "%s", names[n].mods );
-			fprintf( outptr, "</roleTerm>\n");
-			output_tab1( outptr, increment_level(level,1), "</role>\n" );
-			output_tab1( outptr, level, "</name>\n" );
+				output_tag( outptr, lvl2indent(incr_level(level,2)), "roleTerm", names[n].mods, TAG_OPENCLOSE, TAG_NEWLINE, "authority", "marcrelator", "type", "text", NULL );
+			else
+				output_tag( outptr, lvl2indent(incr_level(level,2)), "roleTerm", names[n].mods, TAG_OPENCLOSE, TAG_NEWLINE, "type", "text", NULL );
+			output_tag( outptr, lvl2indent(incr_level(level,1)), "role", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
+			output_tag( outptr, lvl2indent(level),               "name", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
 			fields_setused( f, i );
 		}
 	}
 	newstr_free( &role );
 }
 
+/* datepos[ NUM_DATE_TYPES ]
+ *     use define to ensure that the array and loops don't get out of sync
+ *     datepos[0] -> YEAR/PARTYEAR
+ *     datepos[1] -> MONTH/PARTMONTH
+ *     datepos[2] -> DAY/PARTDAY
+ *     datepos[3] -> DATE/PARTDATE
+ */
+#define DATE_YEAR      (0)
+#define DATE_MONTH     (1)
+#define DATE_DAY       (2)
+#define DATE_ALL       (3)
+#define NUM_DATE_TYPES (4)
+
 static int
-output_finddateissued( fields *f, int level, int pos[] )
+find_datepos( fields *f, int level, unsigned char use_altnames, int datepos[NUM_DATE_TYPES] )
 {
 	char      *src_names[] = { "YEAR", "MONTH", "DAY", "DATE" };
 	char      *alt_names[] = { "PARTYEAR", "PARTMONTH", "PARTDAY", "PARTDATE" };
-	int       i, found = -1, ntypes = 4;
+	int       found = 0;
+	int       i;
 
-	for ( i=0; i<ntypes; ++i ) {
-		pos[i] = fields_find( f, src_names[i], level );
-		if ( pos[i]!=-1 ) found = pos[i];
+	for ( i=0; i<NUM_DATE_TYPES; ++i ) {
+		if ( !use_altnames )
+			datepos[i] = fields_find( f, src_names[i], level );
+		else
+			datepos[i] = fields_find( f, alt_names[i], level );
+		if ( datepos[i]!=-1 ) found = 1;
 	}
-	/* for LEVEL_MAIN, do what it takes to find a date */
-	if ( found==-1 && level==0 ) {
-		for ( i=0; i<ntypes; ++i ) {
-			pos[i] = fields_find( f, src_names[i], -1 );
-			if ( pos[i]!=-1 ) found = pos[i];
-		}
+
+	return found;
+}
+
+/* find_dateinfo()
+ *
+ *      fill datepos[] array with position indexes to date information in fields *f
+ *
+ *      when generating dates for LEVEL_MAIN, first look at level=LEVEL_MAIN, but if that
+ *      fails, use LEVEL_ANY (-1)
+ *
+ *      returns 1 if date information found, 0 otherwise
+ */
+static int
+find_dateinfo( fields *f, int level, int datepos[ NUM_DATE_TYPES ] )
+{
+	int found;
+
+	/* default to finding date information for the current level */
+	found = find_datepos( f, level, 0, datepos );
+
+	/* for LEVEL_MAIN, do whatever it takes to find a date */
+	if ( !found && level == LEVEL_MAIN ) {
+		found = find_datepos( f, -1, 0, datepos );
 	}
-	if ( found==-1 && level==0 ) {
-		for ( i=0; i<ntypes; ++i ) {
-			pos[i] = fields_find( f, alt_names[i], -1 );
-			if ( pos[i]!=-1 ) found = pos[i];
-		}
+	if ( !found && level == LEVEL_MAIN ) {
+		found = find_datepos( f, -1, 1, datepos );
 	}
+
 	return found;
 }
 
 static void
-output_datepieces( fields *f, FILE *outptr, int pos[4] )
+output_datepieces( fields *f, FILE *outptr, int pos[ NUM_DATE_TYPES ] )
 {
-	int nprinted = 0, i;
+	newstr *s;
+	int i;
+
 	for ( i=0; i<3 && pos[i]!=-1; ++i ) {
-		if ( nprinted>0 ) fprintf( outptr, "-" );
-		if ( i>0 && f->data[pos[i]].len==1 )
-			fprintf( outptr, "0" ); /*zero pad Jan,Feb,etc*/
-		fprintf( outptr,"%s",f->data[pos[i]].data );
-		nprinted++;
-		fields_setused( f, pos[i] );
+		if ( i>0 ) fprintf( outptr, "-" );
+		/* zero pad month or days written as "1", "2", "3" ... */
+		if ( i==DATE_MONTH || i==DATE_DAY ) {
+			s = fields_value( f, pos[i], FIELDS_STRP_NOUSE );
+			if ( s->len==1 ) {
+				fprintf( outptr, "0" );
+			}
+		}
+		fprintf( outptr, "%s", (char *) fields_value( f, pos[i], FIELDS_CHRP ) );
 	}
 }
 
 static void
-output_dateall( fields *f, FILE *outptr, int pos )
+output_dateissued( fields *f, FILE *outptr, int level, int pos[ NUM_DATE_TYPES ] )
 {
-	fprintf( outptr, "%s", f->data[pos].data );
-	fields_setused( f, pos );
-}
-
-static void
-output_dateissued( fields *f, FILE *outptr, int level, int pos[4] )
-{
-	output_tab1( outptr, increment_level(level,1), "<dateIssued>" );
-	if ( pos[0]!=-1 || pos[1]!=-1 || pos[2]!=-1 ) {
+	output_tag( outptr, lvl2indent(incr_level(level,1)), "dateIssued", NULL, TAG_OPEN, TAG_NONEWLINE, NULL );
+	if ( pos[ DATE_YEAR ]!=-1 || pos[ DATE_MONTH ]!=-1 || pos[ DATE_DAY ]!=-1 ) {
 		output_datepieces( f, outptr, pos );
 	} else {
-		output_dateall( f, outptr, pos[3] );
+		fprintf( outptr, "%s", (char *) fields_value( f, pos[ DATE_ALL ], FIELDS_CHRP ) );
 	}
 	fprintf( outptr, "</dateIssued>\n" );
 }
@@ -382,73 +440,83 @@ output_dateissued( fields *f, FILE *outptr, int level, int pos[4] )
 static void
 output_origin( fields *f, FILE *outptr, int level )
 {
-	convert origin[] = {
-		{ "issuance",	  "ISSUANCE",	0 },
-		{ "publisher",	  "PUBLISHER",	0 },
-		{ "place",	  "ADDRESS",	1 },
-		{ "place",	  "AUTHORADDRESS",	0 },
-		{ "edition",	  "EDITION",	0 },
-		{ "dateCaptured", "URLDATE",    0 }
+	convert parts[] = {
+		{ "issuance",	  "ISSUANCE",      0, 0 },
+		{ "publisher",	  "PUBLISHER",     0, 0 },
+		{ "place",	  "ADDRESS",       0, 1 },
+		{ "place",	  "AUTHORADDRESS", 0, 0 },
+		{ "edition",	  "EDITION",       0, 0 },
+		{ "dateCaptured", "URLDATE",       0, 0 }
 	};
-	int n, ntypes = sizeof( origin ) / sizeof ( convert );
-	int found, datefound, pos[5], date[4];
+	int nparts = sizeof( parts ) / sizeof( parts[0] );
+	int i, found, datefound, datepos[ NUM_DATE_TYPES ];
 
-	/* find all information to be outputted */
-	found = -1;
-	for ( n=0; n<ntypes; ++n ) {
-		pos[n] = fields_find( f, origin[n].internal, level );
-		if ( pos[n]!=-1 ) found = pos[n];
-	}
-	datefound = output_finddateissued( f, level, date );
-	if ( found==-1 && datefound==-1 ) return;
+	found     = convert_findallfields( f, parts, nparts, level );
+	datefound = find_dateinfo( f, level, datepos );
+	if ( !found && !datefound ) return;
 
-	output_tab1( outptr, level, "<originInfo>\n" );
-	output_fill2( outptr, increment_level(level,1), "issuance", f, pos[0], 1 );
-	if ( datefound!=-1 ) output_dateissued( f, outptr, level, date );
 
-	for ( n=1; n<ntypes; n++ ) {
-		if ( pos[n]==-1 ) continue;
-		output_tab0( outptr, increment_level(level,1) );
-		fprintf( outptr, "<%s", origin[n].mods );
-		fprintf( outptr, ">" );
-		if ( origin[n].code ) {
-			fprintf( outptr, "\n" );
-			output_fill4( outptr, increment_level(level,2), 
-				"placeTerm", "type", "text", f, pos[n], 1 );
-			output_tab0( outptr, increment_level(level,1) );
-		} else {
-			fprintf( outptr, "%s", f->data[pos[n]].data );
-			fields_setused( f, pos[n] );
+	output_tag( outptr, lvl2indent(level), "originInfo", NULL, TAG_OPEN, TAG_NEWLINE, NULL );
+
+	/* issuance must precede date */
+	if ( parts[0].pos!=-1 )
+		output_fil( outptr, lvl2indent(incr_level(level,1)), "issuance", f, parts[0].pos, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+
+	/* date */
+	if ( datefound )
+		output_dateissued( f, outptr, level, datepos );
+
+	/* rest of the originInfo elements */
+	for ( i=1; i<nparts; i++ ) {
+
+		/* skip missing originInfo elements */
+		if ( parts[i].pos==-1 ) continue;
+
+		/* normal originInfo element */
+		if ( parts[i].code==0 ) {
+			output_fil( outptr, lvl2indent(incr_level(level,1)), parts[i].mods, f, parts[i].pos, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 		}
-		fprintf( outptr, "</%s>\n", origin[n].mods );
+
+		/* originInfo with placeTerm info */
+		else {
+			output_tag( outptr, lvl2indent(incr_level(level,1)), parts[i].mods, NULL,            TAG_OPEN,      TAG_NEWLINE, NULL );
+			output_fil( outptr, lvl2indent(incr_level(level,2)), "placeTerm",   f, parts[i].pos, TAG_OPENCLOSE, TAG_NEWLINE, "type", "text", NULL );
+			output_tag( outptr, lvl2indent(incr_level(level,1)), parts[i].mods, NULL,            TAG_CLOSE,     TAG_NEWLINE, NULL );
+		}
 	}
-	output_tab1( outptr, level, "</originInfo>\n" );
+
+	output_tag( outptr, lvl2indent(level), "originInfo", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
 }
 
+/* output_language_core()
+ *
+ *      generates language output for tag="langauge" or tag="languageOfCataloging"
+ *      if possible, outputs iso639-2b code for the language
+ *
+ * <language>
+ *     <languageTerm type="text">xxx</languageTerm>
+ * </language>
+ *
+ * <language>
+ *     <languageTerm type="text">xxx</languageTerm>
+ *     <languageTerm type="code" authority="iso639-2b">xxx</languageTerm>
+ * </language>
+ *
+ */
 static void
 output_language_core( fields *f, int n, FILE *outptr, char *tag, int level )
 {
-	newstr usetag;
 	char *lang, *code;
-	lang = fields_value( f, n, FIELDS_CHRP );
+
+	lang = (char *) fields_value( f, n, FIELDS_CHRP );
 	code = iso639_2_from_language( lang );
-	newstr_init( &usetag );
-	newstr_addchar( &usetag, '<' );
-	newstr_strcat( &usetag, tag );
-	newstr_strcat( &usetag, ">\n" );
-	output_tab1( outptr, level, usetag.data );
-	output_fill4( outptr, increment_level(level,1),
-		"languageTerm", "type", "text", f, n, 1 );
+
+	output_tag( outptr, lvl2indent(level),               tag,            NULL, TAG_OPEN,      TAG_NEWLINE, NULL );
+	output_tag( outptr, lvl2indent(incr_level(level,1)), "languageTerm", lang, TAG_OPENCLOSE, TAG_NEWLINE, "type", "text", NULL );
 	if ( code ) {
-		output_tab6( outptr, increment_level(level,1),
-			"languageTerm", "type", "code", "authority", "iso639-2b",
-			code, 1 );
+		output_tag( outptr, lvl2indent(incr_level(level,1)), "languageTerm", code, TAG_OPENCLOSE, TAG_NEWLINE, "type", "code", "authority", "iso639-2b", NULL );
 	}
-	newstr_strcpy( &usetag, "</" );
-	newstr_strcat( &usetag, tag );
-	newstr_strcat( &usetag, ">\n" );
-	output_tab1( outptr, level, usetag.data );
-	newstr_free( &usetag );
+	output_tag( outptr, lvl2indent(level),               tag,            NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
 }
 
 static void
@@ -463,19 +531,29 @@ output_language( fields *f, FILE *outptr, int level )
 static void
 output_description( fields *f, FILE *outptr, int level )
 {
-	int n = fields_find( f, "DESCRIPTION", level );
+	char *val;
+	int n;
+
+	n = fields_find( f, "DESCRIPTION", level );
 	if ( n!=-1 ) {
-		output_tab1( outptr, level, "<physicalDescription>\n" );
-		output_fill2( outptr, increment_level(level,1), "note", f, n, 1 );
-		output_tab1( outptr, level, "</physicalDescription>\n" );
+		val = ( char * ) fields_value( f, n, FIELDS_CHRP );
+		output_tag( outptr, lvl2indent(level),               "physicalDescription", NULL, TAG_OPEN,      TAG_NEWLINE, NULL );
+		output_tag( outptr, lvl2indent(incr_level(level,1)), "note",                val,  TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+		output_tag( outptr, lvl2indent(level),               "physicalDescription", NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
 	}
 }
 
 static void
 output_toc( fields *f, FILE *outptr, int level )
 {
-	int n = fields_find( f, "CONTENTS", level );
-	output_fill2( outptr, level, "tableOfContents", f, n, 1 );
+	char *val;
+	int n;
+
+	n = fields_find( f, "CONTENTS", level );
+	if ( n!=-1 ) {
+		val = (char *) fields_value( f, n, FIELDS_CHRP );
+		output_tag( outptr, lvl2indent(level), "tableOfContents", val, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+	}
 }
 
 /* detail output
@@ -485,14 +563,13 @@ output_toc( fields *f, FILE *outptr, int level )
  * <detail type="volume"><number>xxx</number></detail
  */
 static void
-mods_output_detail( fields *f, FILE *outptr, int item, char *item_name,
-		int level )
+mods_output_detail( fields *f, FILE *outptr, int n, char *item_name, int level )
 {
-	if ( item==-1 ) return;
-	output_tab0( outptr, increment_level( level, 1 ) );
-	fprintf( outptr, "<detail type=\"%s\"><number>%s</number></detail>\n", 
-			item_name, f->data[item].data );
-	fields_setused( f, item );
+	if ( n!=-1 ) {
+		output_tag( outptr, lvl2indent(incr_level(level,1)), "detail", NULL,  TAG_OPEN,      TAG_NONEWLINE, "type", item_name, NULL );
+		output_fil( outptr, 0,                                "number", f, n,  TAG_OPENCLOSE, TAG_NONEWLINE, NULL );
+		output_tag( outptr, 0,                                "detail", NULL,  TAG_CLOSE,     TAG_NEWLINE,   NULL );                       
+	}
 }
 
 
@@ -504,27 +581,38 @@ mods_output_detail( fields *f, FILE *outptr, int item, char *item_name,
  * </extent>
  */
 static void
-mods_output_extents( fields *f, FILE *outptr, int start, int end,
-		int total, char *extype, int level )
+mods_output_extents( fields *f, FILE *outptr, int start, int end, int total, char *extype, int level )
 {
-	output_tab0( outptr, increment_level(level,1) );
-	fprintf( outptr, "<extent unit=\"%s\">\n", extype);
-	output_fill2( outptr, increment_level(level,2), "start", f, start, 1 );
-	output_fill2( outptr, increment_level(level,2), "end", f, end, 1 );
-	output_fill2( outptr, increment_level(level,2), "total", f, total, 1 );
-	output_tab1 ( outptr, increment_level(level,1), "</extent>\n" );
+	char *val;
+
+	output_tag( outptr, lvl2indent(incr_level(level,1)), "extent", NULL, TAG_OPEN, TAG_NEWLINE, "unit", extype, NULL );
+	if ( start!=-1 ) {
+		val = (char *) fields_value( f, start, FIELDS_CHRP );
+		output_tag( outptr, lvl2indent(incr_level(level,2)), "start", val, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+	}
+	if ( end!=-1 ) {
+		val = (char *) fields_value( f, end, FIELDS_CHRP );
+		output_tag( outptr, lvl2indent(incr_level(level,2)), "end",   val, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+	}
+	if ( total!=-1 ) {
+		val = (char *) fields_value( f, total, FIELDS_CHRP );
+		output_tag( outptr, lvl2indent(incr_level(level,2)), "total", val, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+	}
+	output_tag( outptr, lvl2indent(incr_level(level,1)), "extent", NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
 }
 
 static void
 try_output_partheader( FILE *outptr, int wrote_header, int level )
 {
-	if ( !wrote_header ) output_tab1( outptr, level, "<part>\n" );
+	if ( !wrote_header )
+		output_tag( outptr, lvl2indent(level), "part", NULL, TAG_OPEN, TAG_NEWLINE, NULL );
 }
 
 static void
 try_output_partfooter( FILE *outptr, int wrote_header, int level )
 {
-	if ( wrote_header ) output_tab1( outptr, level, "</part>\n" );
+	if ( wrote_header )
+		output_tag( outptr, lvl2indent(level), "part", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
 }
 
 /* part date output
@@ -535,33 +623,31 @@ try_output_partfooter( FILE *outptr, int wrote_header, int level )
 static int
 output_partdate( fields *f, FILE *outptr, int level, int wrote_header )
 {
-	convert parts[3] = {
-		{ "",	"PARTYEAR",                -1 },
-		{ "",	"PARTMONTH",               -1 },
-		{ "",	"PARTDAY",                 -1 },
+	convert parts[] = {
+		{ "",	"PARTYEAR",                0, 0 },
+		{ "",	"PARTMONTH",               0, 0 },
+		{ "",	"PARTDAY",                 0, 0 },
 	};
 	int nparts = sizeof(parts)/sizeof(parts[0]);
 
-	if ( !find_alltags( f, parts, nparts, level ) ) return 0;
+	if ( !convert_findallfields( f, parts, nparts, level ) ) return 0;
 
 	try_output_partheader( outptr, wrote_header, level );
-	output_tab1( outptr, increment_level(level,1), "<date>" );
 
-	if ( parts[0].code!=-1 ) {
-		fprintf( outptr, "%s", f->data[ parts[0].code ].data);
-		fields_setused( f, parts[0].code );
+	output_tag( outptr, lvl2indent(incr_level(level,1)), "date", NULL, TAG_OPEN, TAG_NONEWLINE, NULL );
+
+	if ( parts[0].pos!=-1 ) {
+		fprintf( outptr, "%s", (char *) fields_value( f, parts[0].pos, FIELDS_CHRP ) );
 	} else fprintf( outptr, "XXXX" );
 
-	if ( parts[1].code!=-1 ) {
-		fprintf( outptr, "-%s", f->data[parts[1].code].data );
-		fields_setused( f, parts[1].code );
+	if ( parts[1].pos!=-1 ) {
+		fprintf( outptr, "-%s", (char *) fields_value( f, parts[1].pos, FIELDS_CHRP ) );
 	}
 
-	if ( parts[2].code!=-1 ) {
-		if ( parts[1].code!=-1 ) fprintf( outptr, "-" );
-		else fprintf( outptr, "-XX-" );
-		fprintf( outptr, "%s", f->data[parts[2].code].data );
-		fields_setused( f, parts[2].code );
+	if ( parts[2].pos!=-1 ) {
+		if ( parts[1].pos==-1 )
+			fprintf( outptr, "-XX" );
+		fprintf( outptr, "-%s", (char *) fields_value( f, parts[2].pos, FIELDS_CHRP ) );
 	}
 
 	fprintf( outptr,"</date>\n");
@@ -572,37 +658,32 @@ output_partdate( fields *f, FILE *outptr, int level, int wrote_header )
 static int
 output_partpages( fields *f, FILE *outptr, int level, int wrote_header )
 {
-	convert parts[4] = {
-		{ "",  "PAGESTART",                -1 },
-		{ "",  "PAGEEND",                  -1 },
-		{ "",  "PAGES",                    -1 },
-		{ "",  "TOTALPAGES",               -1 }
+	convert parts[] = {
+		{ "",  "PAGESTART",                0, 0 },
+		{ "",  "PAGEEND",                  0, 0 },
+		{ "",  "PAGES",                    0, 0 },
+		{ "",  "TOTALPAGES",               0, 0 }
 	};
 	int nparts = sizeof(parts)/sizeof(parts[0]);
 
-	if ( !find_alltags( f, parts, nparts, level ) ) return 0;
+	if ( !convert_findallfields( f, parts, nparts, level ) ) return 0;
 
 	try_output_partheader( outptr, wrote_header, level );
 
-	/* If PAGESTART or PAGEEND are  undefined */
-	if ( parts[0].code==-1 || parts[1].code==-1 ) {
-		if ( parts[0].code!=-1 )
-			mods_output_detail( f, outptr, parts[0].code,
-				"page", level );
-		if ( parts[1].code!=-1 )
-			mods_output_detail( f, outptr, parts[1].code,
-				"page", level );
-		if ( parts[2].code!=-1 )
-			mods_output_detail( f, outptr, parts[2].code,
-				"page", level );
-		if ( parts[3].code!=-1 )
-			mods_output_extents( f, outptr, -1, -1,
-					parts[3].code, "page", level );
+	/* If PAGESTART or PAGEEND are undefined */
+	if ( parts[0].pos==-1 || parts[1].pos==-1 ) {
+		if ( parts[0].pos!=-1 )
+			mods_output_detail( f, outptr, parts[0].pos, "page", level );
+		if ( parts[1].pos!=-1 )
+			mods_output_detail( f, outptr, parts[1].pos, "page", level );
+		if ( parts[2].pos!=-1 )
+			mods_output_detail( f, outptr, parts[2].pos, "page", level );
+		if ( parts[3].pos!=-1 )
+			mods_output_extents( f, outptr, -1, -1, parts[3].pos, "page", level );
 	}
 	/* If both PAGESTART and PAGEEND are defined */
 	else {
-		mods_output_extents( f, outptr, parts[0].code, 
-			parts[1].code, parts[3].code, "page", level );
+		mods_output_extents( f, outptr, parts[0].pos, parts[1].pos, parts[3].pos, "page", level );
 	}
 
 	return 1;
@@ -612,34 +693,32 @@ static int
 output_partelement( fields *f, FILE *outptr, int level, int wrote_header )
 {
 	convert parts[] = {
-		{ "volume",          "VOLUME",          -1 },
-		{ "section",         "SECTION",         -1 },
-		{ "issue",           "ISSUE",           -1 },
-		{ "number",          "NUMBER",          -1 },
-		{ "publiclawnumber", "PUBLICLAWNUMBER", -1 },
-		{ "session",         "SESSION",         -1 },
-		{ "articlenumber",   "ARTICLENUMBER",   -1 },
-		{ "part",            "PART",            -1 },
-		{ "chapter",         "CHAPTER",         -1 },
-		{ "report number",   "REPORTNUMBER",    -1 },
+		{ "",                "NUMVOLUMES",      0, 0 },
+		{ "volume",          "VOLUME",          0, 0 },
+		{ "section",         "SECTION",         0, 0 },
+		{ "issue",           "ISSUE",           0, 0 },
+		{ "number",          "NUMBER",          0, 0 },
+		{ "publiclawnumber", "PUBLICLAWNUMBER", 0, 0 },
+		{ "session",         "SESSION",         0, 0 },
+		{ "articlenumber",   "ARTICLENUMBER",   0, 0 },
+		{ "part",            "PART",            0, 0 },
+		{ "chapter",         "CHAPTER",         0, 0 },
+		{ "report number",   "REPORTNUMBER",    0, 0 },
 	};
-	int i, nparts = sizeof( parts ) / sizeof( convert ), n;
+	int i, nparts = sizeof( parts ) / sizeof( convert );
 
-	n = fields_find( f, "NUMVOLUMES", level );
-	if ( !find_alltags( f, parts, nparts, level ) && n==-1 ) return 0;
+	if ( !convert_findallfields( f, parts, nparts, level ) ) return 0;
+
 	try_output_partheader( outptr, wrote_header, level );
 
-	for ( i=0; i<nparts; ++i ) {
-		if ( parts[i].code==-1 ) continue;
-		mods_output_detail( f, outptr, parts[i].code, parts[i].mods,
-				level );
+	/* start loop at 1 to skip NUMVOLUMES */
+	for ( i=1; i<nparts; ++i ) {
+		if ( parts[i].pos==-1 ) continue;
+		mods_output_detail( f, outptr, parts[i].pos, parts[i].mods, level );
 	}
 
-	if ( n!=-1 ) {
-		output_tab1( outptr, level, "<extent unit=\"volumes\">\n" );
-		output_fill2( outptr, increment_level(level,1), "total", f, n, 1 );
-		output_tab1( outptr, level, "</extent>\n" );
-	}
+	if ( parts[0].pos!=-1 )
+		mods_output_extents( f, outptr, -1, -1, parts[0].pos, "volumes", level );
 
 	return 1;
 }
@@ -660,66 +739,78 @@ output_recordInfo( fields *f, FILE *outptr, int level )
 	int n;
 	n = fields_find( f, "LANGCATALOG", level );
 	if ( n!=-1 ) {
-		output_tab1( outptr, level, "<recordInfo>\n" );
-		output_language_core( f, n, outptr, "languageOfCataloging", increment_level(level,1) );
-		output_tab1( outptr, level, "</recordInfo>\n" );
+		output_tag( outptr, lvl2indent(level), "recordInfo", NULL, TAG_OPEN, TAG_NEWLINE, NULL );
+		output_language_core( f, n, outptr, "languageOfCataloging", incr_level(level,1) );
+		output_tag( outptr, lvl2indent(level), "recordInfo", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
 	}
 }
 
+/* output_genre()
+ *
+ * <genre authority="marcgt">thesis</genre>
+ * <genre>Diploma thesis</genre>
+ */
 static void
 output_genre( fields *f, FILE *outptr, int level )
 {
-	int i, ismarc, n;
-	char *value;
+	char *value, *attr, *attrvalue="marcgt";
+	int i, n;
+
 	n = fields_num( f );
 	for ( i=0; i<n; ++i ) {
 		if ( fields_level( f, i ) != level ) continue;
-		if ( !fields_match_tag( f, i, "GENRE" ) &&
-		     !fields_match_tag( f, i, "NGENRE" ) )
-			continue;
+		if ( !fields_match_tag( f, i, "GENRE" ) && !fields_match_tag( f, i, "NGENRE" ) ) continue;
 		value = fields_value( f, i, FIELDS_CHRP );
-		if ( marc_findgenre( value )!=-1 ) ismarc = 1;
-		else ismarc = 0;
-		output_tab1( outptr, level, "<genre" );
-		if ( ismarc ) 
-			fprintf( outptr, " authority=\"marcgt\"" );
-		fprintf( outptr, ">%s</genre>\n", value );
-		fields_setused( f, i );
+		attr = ( marc_findgenre( value ) == -1 ) ? NULL : "authority";
+		output_tag( outptr, lvl2indent(level), "genre", value, TAG_OPENCLOSE, TAG_NEWLINE, attr, attrvalue, NULL );
 	}
 }
 
+/* output_resource()
+ *
+ * <typeOfResource>text</typeOfResource>
+ */
 static void
-output_typeresource( fields *f, FILE *outptr, int level )
+output_resource( fields *f, FILE *outptr, int level )
 {
-	int n, ismarc = 0;
 	char *value;
+	int n;
+
 	n = fields_find( f, "RESOURCE", level );
 	if ( n!=-1 ) {
 		value = fields_value( f, n, FIELDS_CHRP );
-		if ( marc_findresource( value )!=-1 ) ismarc = 1;
-		if ( !ismarc ) {
-			fprintf( stderr, "Illegal typeofResource = '%s'\n", value );
+		if ( marc_findresource( value )!=-1 ) {
+			output_fil( outptr, lvl2indent(level), "typeOfResource", f, n, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 		} else {
-			output_fill2( outptr, level, "typeOfResource", f, n, 1 );
+			fprintf( stderr, "Illegal typeofResource = '%s'\n", value );
 		}
-		fields_setused( f, n );
 	}
 }
 
 static void
 output_type( fields *f, FILE *outptr, int level )
 {
-	int n = fields_find( f, "INTERNAL_TYPE", 0 );
+	int n;
+
+	/* silence warnings about INTERNAL_TYPE being unused */
+	n = fields_find( f, "INTERNAL_TYPE", 0 );
 	if ( n!=-1 ) fields_setused( f, n );
-	output_typeresource( f, outptr, level );
+
+	output_resource( f, outptr, level );
 	output_genre( f, outptr, level );
 }
 
+/* output_abs()
+ *
+ * <abstract>xxxx</abstract>
+ */
 static void
 output_abs( fields *f, FILE *outptr, int level )
 {
-	int nabs = fields_find( f, "ABSTRACT", level );
-	output_fill2( outptr, level, "abstract", f, nabs, 1 );
+	int n;
+
+	n = fields_find( f, "ABSTRACT", level );
+	output_fil( outptr, lvl2indent(level), "abstract", f, n, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 }
 
 static void
@@ -727,38 +818,46 @@ output_notes( fields *f, FILE *outptr, int level )
 {
 	int i, n;
 	char *t;
+
 	n = fields_num( f );
 	for ( i=0; i<n; ++i ) {
 		if ( fields_level( f, i ) != level ) continue;
 		t = fields_tag( f, i, FIELDS_CHRP_NOUSE );
 		if ( !strcasecmp( t, "NOTES" ) )
-			output_fill2( outptr, level, "note", f, i, 1 );
+			output_fil( outptr, lvl2indent(level), "note", f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 		else if ( !strcasecmp( t, "PUBSTATE" ) )
-			output_fill4( outptr, level, "note", "type", "publication status", f, i, 1 );
+			output_fil( outptr, lvl2indent(level), "note", f, i, TAG_OPENCLOSE, TAG_NEWLINE, "type", "publication status", NULL );
 		else if ( !strcasecmp( t, "ANNOTE" ) )
-			output_fill2( outptr, level, "bibtex-annote", f, i, 1 );
+			output_fil( outptr, lvl2indent(level), "bibtex-annote", f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 		else if ( !strcasecmp( t, "TIMESCITED" ) )
-			output_fill4( outptr, level, "note", "type", "times cited", f, i, 1 );
+			output_fil( outptr, lvl2indent(level), "note", f, i, TAG_OPENCLOSE, TAG_NEWLINE, "type", "times cited", NULL );
 		else if ( !strcasecmp( t, "ANNOTATION" ) )
-			output_fill4( outptr, level, "note", "type", "annotation", f, i, 1 );
+			output_fil( outptr, lvl2indent(level), "note", f, i, TAG_OPENCLOSE, TAG_NEWLINE, "type", "annotation", NULL );
 		else if ( !strcasecmp( t, "ADDENDUM" ) )
-			output_fill4( outptr, level, "note", "type", "addendum", f, i, 1 );
+			output_fil( outptr, lvl2indent(level), "note", f, i, TAG_OPENCLOSE, TAG_NEWLINE, "type", "addendum", NULL );
 		else if ( !strcasecmp( t, "BIBKEY" ) )
-			output_fill4( outptr, level, "note", "type", "bibliography key", f, i, 1 );
+			output_fil( outptr, lvl2indent(level), "note", f, i, TAG_OPENCLOSE, TAG_NEWLINE, "type", "bibliography key", NULL );
 	}
 }
 
+/* output_key()
+ *
+ * <subject>
+ *    <topic>xxxx</topic>
+ * </subject>
+ */
 static void
 output_key( fields *f, FILE *outptr, int level )
 {
 	int i, n;
+
 	n = fields_num( f );
 	for ( i=0; i<n; ++i ) {
 		if ( fields_level( f, i ) != level ) continue;
 		if ( !strcasecmp( f->tag[i].data, "KEYWORD" ) ) {
-			output_tab1( outptr, level, "<subject>\n" );
-			output_fill2( outptr, increment_level(level,1), "topic", f, i, 1 );
-			output_tab1( outptr, level, "</subject>\n" );
+			output_tag( outptr, lvl2indent(level),               "subject", NULL, TAG_OPEN,      TAG_NEWLINE, NULL );
+			output_fil( outptr, lvl2indent(incr_level(level,1)), "topic",   f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+			output_tag( outptr, lvl2indent(level),               "subject", NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
 		}
 	}
 }
@@ -767,89 +866,89 @@ static void
 output_sn( fields *f, FILE *outptr, int level )
 {
 	convert sn_types[] = {
-		{ "isbn",      "ISBN",      0 },
-		{ "isbn",      "ISBN13",    0 },
-		{ "lccn",      "LCCN",      0 },
-		{ "issn",      "ISSN",      0 },
-		{ "citekey",   "REFNUM",    0 },
-		{ "doi",       "DOI",       0 },
-		{ "eid",       "EID",       0 },
-		{ "eprint",    "EPRINT",    0 },
-		{ "eprinttype","EPRINTTYPE",0 },
-		{ "pubmed",    "PMID",      0 },
-		{ "medline",   "MEDLINE",   0 },
-		{ "pii",       "PII",       0 },
-		{ "arXiv",     "ARXIV",     0 },
-		{ "isi",       "ISIREFNUM", 0 },
-		{ "accessnum", "ACCESSNUM", 0 },
-		{ "jstor",     "JSTOR",     0 },
-		{ "isrn",      "ISRN",      0 },
+		{ "isbn",      "ISBN",      0, 0 },
+		{ "isbn",      "ISBN13",    0, 0 },
+		{ "lccn",      "LCCN",      0, 0 },
+		{ "issn",      "ISSN",      0, 0 },
+		{ "citekey",   "REFNUM",    0, 0 },
+		{ "doi",       "DOI",       0, 0 },
+		{ "eid",       "EID",       0, 0 },
+		{ "eprint",    "EPRINT",    0, 0 },
+		{ "eprinttype","EPRINTTYPE",0, 0 },
+		{ "pubmed",    "PMID",      0, 0 },
+		{ "medline",   "MEDLINE",   0, 0 },
+		{ "pii",       "PII",       0, 0 },
+		{ "arXiv",     "ARXIV",     0, 0 },
+		{ "isi",       "ISIREFNUM", 0, 0 },
+		{ "accessnum", "ACCESSNUM", 0, 0 },
+		{ "jstor",     "JSTOR",     0, 0 },
+		{ "isrn",      "ISRN",      0, 0 },
 	};
-	int n, ntypes = sizeof( sn_types ) / sizeof( sn_types[0] );
-	int found, i, nfields;
-
-	found = fields_find ( f, "CALLNUMBER", level );
-	output_fill2( outptr, level, "classification", f, found, 1 );
-
-	for ( n=0; n<ntypes; ++n ) {
-		found = fields_find( f, sn_types[n].internal, level );
-		if ( found==-1 ) continue;
-		output_tab0( outptr, level );
-		fprintf( outptr, "<identifier type=\"%s\">%s</identifier>\n",
-				sn_types[n].mods,
-				f->data[found].data
-		       );
-		fields_setused( f, found );
-	}
-	nfields = fields_num( f );
-	for ( i=0; i<nfields; ++i ) {
-		if ( f->level[i]!=level ) continue;
-		if ( !strcasecmp( f->tag[i].data, "SERIALNUMBER" ) ) {
-			output_tab0( outptr, level );
-			fprintf( outptr, "<identifier type=\"%s\">%s</identifier>\n",
-				"serial number", f->data[i].data );
-			fields_setused( f, i );
-		}
-	}
-}
-
-static void
-output_url( fields *f, FILE *outptr, int level )
-{
-	int location = fields_find( f, "LOCATION", level );
-	int url = fields_find( f, "URL", level );
-	int fileattach = fields_find( f, "FILEATTACH", level );
-	int pdflink = fields_find( f, "PDFLINK", level );
+	int ntypes = sizeof( sn_types ) / sizeof( sn_types[0] );
 	int i, n;
-	if ( url==-1 && location==-1 && pdflink==-1 && fileattach==-1 ) return;
-	output_tab1( outptr, level, "<location>\n" );
+
+	/* output call number */
+	n = fields_find( f, "CALLNUMBER", level );
+	output_fil( outptr, lvl2indent(level), "classification", f, n, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+
+	/* output specialized serialnumber */
+	convert_findallfields( f, sn_types, ntypes, level );
+	for ( i=0; i<ntypes; ++i ) {
+		if ( sn_types[i].pos==-1 ) continue;
+		output_fil( outptr, lvl2indent(level), "identifier", f, sn_types[i].pos, TAG_OPENCLOSE, TAG_NEWLINE, "type", sn_types[i].mods, NULL );
+	}
+
+	/* output _all_ elements of type SERIALNUMBER */
 	n = fields_num( f );
 	for ( i=0; i<n; ++i ) {
 		if ( f->level[i]!=level ) continue;
-		if ( !strcasecmp( f->tag[i].data, "URL" ) ) {
-			output_fill2( outptr, increment_level(level,1), "url", f, i, 1 );
-		}
+		if ( strcasecmp( f->tag[i].data, "SERIALNUMBER" ) ) continue;
+		output_fil( outptr, lvl2indent(level), "identifier", f, i, TAG_OPENCLOSE, TAG_NEWLINE, "type", "serial number", NULL );
+	}
+}
+
+/* output_url()
+ *
+ * <location>
+ *     <url>URL</url>
+ *     <url urlType="pdf">PDFLINK</url>
+ *     <url displayLabel="Electronic full text" access="raw object">PDFLINK</url>
+ *     <physicalLocation>LOCATION</physicalLocation>
+ * </location>
+ */
+static void
+output_url( fields *f, FILE *outptr, int level )
+{
+	int location   = fields_find( f, "LOCATION",   level );
+	int url        = fields_find( f, "URL",        level );
+	int fileattach = fields_find( f, "FILEATTACH", level );
+	int pdflink    = fields_find( f, "PDFLINK",    level );
+	int i, n;
+
+	if ( url==-1 && location==-1 && pdflink==-1 && fileattach==-1 ) return;
+	output_tag( outptr, lvl2indent(level), "location", NULL, TAG_OPEN, TAG_NEWLINE, NULL );
+
+	n = fields_num( f );
+	for ( i=0; i<n; ++i ) {
+		if ( f->level[i]!=level ) continue;
+		if ( strcasecmp( f->tag[i].data, "URL" ) ) continue;
+		output_fil( outptr, lvl2indent(incr_level(level,1)), "url", f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 	}
 	for ( i=0; i<n; ++i ) {
 		if ( f->level[i]!=level ) continue;
-		if ( !strcasecmp( f->tag[i].data, "PDFLINK" ) ) {
-			output_fill2( outptr, increment_level(level,1), "url",
-				/*"urlType", "pdf",*/ f, i, 1 );
-		}
+		if ( strcasecmp( f->tag[i].data, "PDFLINK" ) ) continue;
+/*		output_fil( outptr, lvl2indent(incr_level(level,1)), "url", f, i, TAG_OPENCLOSE, TAG_NEWLINE, "urlType", "pdf", NULL ); */
+		output_fil( outptr, lvl2indent(incr_level(level,1)), "url", f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 	}
 	for ( i=0; i<n; ++i ) {
 		if ( f->level[i]!=level ) continue;
-		if ( !strcasecmp( f->tag[i].data, "FILEATTACH" ) ){
-			output_tab0( outptr, increment_level(level,1) );
-			fprintf( outptr, "<url displayLabel=\"Electronic full text\" access=\"raw object\">" );
-			fprintf( outptr, "%s</url>\n", f->data[i].data );
-			fields_setused( f, i );
-		}
+		if ( strcasecmp( f->tag[i].data, "FILEATTACH" ) ) continue;
+		output_fil( outptr, lvl2indent(incr_level(level,1)), "url", f, i, TAG_OPENCLOSE, TAG_NEWLINE, "displayLabel", "Electronic full text", "access", "raw object", NULL );
 	}
 	if ( location!=-1 )
-		output_fill2( outptr, increment_level(level,1), "physicalLocation", f, 
-				location, 1 );
-	output_tab1( outptr, level, "</location>\n" );
+		output_fil( outptr, lvl2indent(incr_level(level,1)), "physicalLocation", f, location, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
+
+	output_tag( outptr, lvl2indent(level), "location", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
 }
 
 /* refnum should start with a non-number and not include spaces -- ignore this */
@@ -913,20 +1012,16 @@ output_citeparts( fields *f, FILE *outptr, int level, int max )
 	output_description( f, outptr, level );
 
 	if ( level >= 0 && level < max ) {
-		output_tab0( outptr, level );
-		fprintf( outptr, "<relatedItem type=\"host\">\n" );
-		output_citeparts( f, outptr, increment_level(level,1), max );
-		output_tab0( outptr, level );
-		fprintf( outptr, "</relatedItem>\n");
+		output_tag( outptr, lvl2indent(level), "relatedItem", NULL, TAG_OPEN,  TAG_NEWLINE, "type", "host", NULL );
+		output_citeparts( f, outptr, incr_level(level,1), max );
+		output_tag( outptr, lvl2indent(level), "relatedItem", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
 	}
 	/* Look for original item things */
 	orig_level = original_items( f, level );
 	if ( orig_level ) {
-		output_tab0( outptr, level );
-		fprintf( outptr, "<relatedItem type=\"original\">\n" );
+		output_tag( outptr, lvl2indent(level), "relatedItem", NULL, TAG_OPEN,  TAG_NEWLINE, "type", "original", NULL );
 		output_citeparts( f, outptr, orig_level, max );
-		output_tab0( outptr, level );
-		fprintf( outptr, "</relatedItem>\n" );
+		output_tag( outptr, lvl2indent(level), "relatedItem", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
 	}
 	output_abs(        f, outptr, level );
 	output_notes(      f, outptr, level );

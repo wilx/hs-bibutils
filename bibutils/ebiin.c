@@ -1,7 +1,7 @@
 /*
  * ebiin.c
  *
- * Copyright (c) Chris Putnam 2004-2013
+ * Copyright (c) Chris Putnam 2004-2016
  *
  * Program and source code released under the GPL version 2
  *
@@ -586,7 +586,7 @@ ebiin_article( xml *node, fields *info )
 static int
 ebiin_publication( xml *node, fields *info )
 {
-	int status;
+	int status = BIBL_OK;
 	if ( node->down ) {
 		if ( xml_tagexact( node, "Article" ) )
 			status = ebiin_article( node->down, info );

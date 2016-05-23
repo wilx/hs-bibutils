@@ -1,7 +1,7 @@
 /*
  * medin.c
  *
- * Copyright (c) Chris Putnam 2004-2014
+ * Copyright (c) Chris Putnam 2004-2016
  *
  * Source code released under the GPL version 2
  *
@@ -542,7 +542,7 @@ medin_article( xml *node, fields *info )
 	}
 	if ( status!=BIBL_OK ) return status;
 	if ( node->next ) status = medin_article( node->next, info );
-	return BIBL_OK;
+	return status;
 }
 
 static int

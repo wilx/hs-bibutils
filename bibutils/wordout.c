@@ -3,7 +3,7 @@
  * 
  * (Word 2007 format)
  *
- * Copyright (c) Chris Putnam 2007-2014
+ * Copyright (c) Chris Putnam 2007-2016
  *
  * Source code released under the GPL version 2
  *
@@ -220,7 +220,7 @@ get_type_from_genre( fields *info )
 			}
 			else if ( !strcasecmp( genre, "conference publication" ) ) {
 				if ( level==0 ) type=TYPE_CONFERENCE;
-				type = TYPE_PROCEEDINGS;
+				else type = TYPE_PROCEEDINGS;
 			}
 			else if ( !strcasecmp( genre, "thesis" ) ) {
 	                        if ( type==TYPE_UNKNOWN ) type=TYPE_THESIS;
@@ -262,42 +262,67 @@ get_type( fields *info )
 }
 
 static void
-output_titleinfo( fields *info, FILE *outptr, char *tag, int level )
+output_titlebits( char *mainttl, char *subttl, FILE *outptr )
 {
-	newstr *mainttl = fields_findv( info, level, FIELDS_STRP, "TITLE" );
-	newstr *subttl  = fields_findv( info, level, FIELDS_STRP, "SUBTITLE" );
+	if ( mainttl ) fprintf( outptr, "%s", mainttl );
+	if ( subttl ) {
+		if ( mainttl ) {
+			if ( mainttl[ strlen( mainttl ) - 1 ] != '?' )
+				fprintf( outptr, ": " );
+			else fprintf( outptr, " " );
+		}
+		fprintf( outptr, "%s", subttl );
+	}
+}
+
+static void
+output_titleinfo( char *mainttl, char *subttl, FILE *outptr, char *tag, int level )
+{
 	if ( mainttl || subttl ) {
 		fprintf( outptr, "<%s>", tag );
-		if ( mainttl ) fprintf( outptr, "%s", mainttl->data );
-		if ( subttl ) {
-			if ( mainttl ) {
-				if ( mainttl->len > 0 &&
-				     mainttl->data[mainttl->len-1]!='?' )
-					fprintf( outptr, ": " );
-				else fprintf( outptr, " " );
-			}
-			fprintf( outptr, "%s", subttl->data );
-		}
+		output_titlebits( mainttl, subttl, outptr );
 		fprintf( outptr, "</%s>\n", tag );
 	}
 }
 
 static void
-output_title( fields *info, FILE *outptr, int level )
+output_generaltitle( fields *info, FILE *outptr, char *tag, int level )
 {
-	char *ttl    = fields_findv( info, level, FIELDS_CHRP, "TITLE" );
-	char *subttl = fields_findv( info, level, FIELDS_CHRP, "SUBTITLE" );
-	char *shrttl = fields_findv( info, level, FIELDS_CHRP, "SHORTTITLE" );
+	char *ttl       = fields_findv( info, level, FIELDS_CHRP, "TITLE" );
+	char *subttl    = fields_findv( info, level, FIELDS_CHRP, "SUBTITLE" );
+	char *shrttl    = fields_findv( info, level, FIELDS_CHRP, "SHORTTITLE" );
+	char *shrsubttl = fields_findv( info, level, FIELDS_CHRP, "SHORTSUBTITLE" );
 
-	output_titleinfo( info, outptr, "b:Title", level );
+	if ( ttl ) {
+		output_titleinfo( ttl, subttl, outptr, tag, level );
+	}
+	else if ( shrttl ) {
+		output_titleinfo( shrttl, shrsubttl, outptr, tag, level );
+	}
+}
 
-	/* output shorttitle if it's different from normal title */
-	if ( shrttl ) {
-		if ( !ttl || ( strcmp( shrttl, ttl ) || subttl ) ) {
-			fprintf( outptr,  " <b:ShortTitle>" );
-			fprintf( outptr, "%s", shrttl );
-			fprintf( outptr, "</b:ShortTitle>\n" );
+static void
+output_maintitle( fields *info, FILE *outptr, int level )
+{
+	char *ttl       = fields_findv( info, level, FIELDS_CHRP, "TITLE" );
+	char *subttl    = fields_findv( info, level, FIELDS_CHRP, "SUBTITLE" );
+	char *shrttl    = fields_findv( info, level, FIELDS_CHRP, "SHORTTITLE" );
+	char *shrsubttl = fields_findv( info, level, FIELDS_CHRP, "SHORTSUBTITLE" );
+
+	if ( ttl ) {
+		output_titleinfo( ttl, subttl, outptr, "b:Title", level );
+
+		/* output shorttitle if it's different from normal title */
+		if ( shrttl ) {
+			if ( !ttl || ( strcmp( shrttl, ttl ) || subttl ) ) {
+				fprintf( outptr,  " <b:ShortTitle>" );
+				output_titlebits( shrttl, shrsubttl, outptr );
+				fprintf( outptr, "</b:ShortTitle>\n" );
+			}
 		}
+	}
+	else if ( shrttl ) {
+		output_titleinfo( shrttl, shrsubttl, outptr, "b:Title", level );
 	}
 }
 
@@ -444,13 +469,13 @@ static void
 output_includedin( fields *info, FILE *outptr, int type )
 {
 	if ( type==TYPE_JOURNALARTICLE ) {
-		output_titleinfo( info, outptr, "b:JournalName", 1 );
+		output_generaltitle( info, outptr, "b:JournalName", 1 );
 	} else if ( type==TYPE_ARTICLEINAPERIODICAL ) {
-		output_titleinfo( info, outptr, "b:PeriodicalTitle", 1 );
+		output_generaltitle( info, outptr, "b:PeriodicalTitle", 1 );
 	} else if ( type==TYPE_BOOKSECTION ) {
-		output_titleinfo( info, outptr, "b:ConferenceName", 1 ); /*??*/
+		output_generaltitle( info, outptr, "b:ConferenceName", 1 ); /*??*/
 	} else if ( type==TYPE_PROCEEDINGS ) {
-		output_titleinfo( info, outptr, "b:ConferenceName", 1 );
+		output_generaltitle( info, outptr, "b:ConferenceName", 1 );
 	}
 }
 
@@ -589,7 +614,7 @@ output_citeparts( fields *info, FILE *outptr, int level, int max, int type )
 	output_list( info, outptr, parts, nparts );
 	output_pages( info, outptr, level );
 	output_names( info, outptr, level, type );
-	output_title( info, outptr, 0 );
+	output_maintitle( info, outptr, 0 );
 	output_comments( info, outptr, level );
 }
 

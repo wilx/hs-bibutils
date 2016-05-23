@@ -1,7 +1,7 @@
 /*
  * modsin.c
  *
- * Copyright (c) Chris Putnam 2004-2014
+ * Copyright (c) Chris Putnam 2004-2016
  *
  * Source code released under the GPL version 2
  *
@@ -211,7 +211,7 @@ modsin_page( xml *node, fields *info, int level )
 	}
 out:
 	newstrs_free( &sp, &ep, &tp, &lp, NULL );
-	return BIBL_OK;
+	return status;
 }
 
 static int
@@ -248,7 +248,7 @@ modsin_title( xml *node, fields *info, int level )
 	};
 	int fstatus, status = BIBL_OK;
 	newstr title, subtitle;
-	xml *dnode = node->down;
+	xml *dnode;
 	int abbr;
 
 	dnode = node->down;
@@ -287,21 +287,21 @@ static int
 modsin_marcrole_convert( newstr *s, char *suffix, newstr *out )
 {
 	convert roles[] = {
-		{ "author",              "AUTHOR" },
-		{ "aut",                 "AUTHOR" },
-		{ "aud",                 "AUTHOR" },
-		{ "aui",                 "AUTHOR" },
-		{ "aus",                 "AUTHOR" },
-		{ "creator",             "AUTHOR" },
-		{ "cre",                 "AUTHOR" },
-		{ "editor",              "EDITOR" },
-		{ "edt",                 "EDITOR" },
-		{ "degree grantor",      "DEGREEGRANTOR" },
-		{ "dgg",                 "DEGREEGRANTOR" },
-		{ "organizer of meeting","ORGANIZER" },
-		{ "orm",                 "ORGANIZER" },
-		{ "patent holder",       "ASSIGNEE" },
-		{ "pth",                 "ASSIGNEE" }
+		{ "author",              "AUTHOR",        0, 0 },
+		{ "aut",                 "AUTHOR",        0, 0 },
+		{ "aud",                 "AUTHOR",        0, 0 },
+		{ "aui",                 "AUTHOR",        0, 0 },
+		{ "aus",                 "AUTHOR",        0, 0 },
+		{ "creator",             "AUTHOR",        0, 0 },
+		{ "cre",                 "AUTHOR",        0, 0 },
+		{ "editor",              "EDITOR",        0, 0 },
+		{ "edt",                 "EDITOR",        0, 0 },
+		{ "degree grantor",      "DEGREEGRANTOR", 0, 0 },
+		{ "dgg",                 "DEGREEGRANTOR", 0, 0 },
+		{ "organizer of meeting","ORGANIZER",     0, 0 },
+		{ "orm",                 "ORGANIZER",     0, 0 },
+		{ "patent holder",       "ASSIGNEE",      0, 0 },
+		{ "pth",                 "ASSIGNEE",      0, 0 }
 	};
 	int nroles = sizeof( roles ) / sizeof( roles[0] );
 	int i, nmismatch, n = -1, status = BIBL_OK;
@@ -791,7 +791,7 @@ modsin_description( xml *node, fields *info, int level )
 	}
 out:
 	newstr_free( &s );
-	return BIBL_OK;
+	return status;
 }
 
 static int
@@ -861,21 +861,21 @@ static int
 modsin_identifier( xml *node, fields *info, int level )
 {
 	convert ids[] = {
-		{ "citekey",       "REFNUM"       },
-		{ "issn",          "ISSN"         },
-		{ "isbn",          "ISBN"         },
-		{ "doi",           "DOI"          },
-		{ "url",           "URL"          },
-		{ "uri",           "URL"          },
-		{ "pmid",          "PMID"         },
-		{ "pubmed",        "PMID"         },
-		{ "medline",       "MEDLINE"      },
-		{ "arXiv",         "ARXIV"        },
-		{ "pii",           "PII"          },
-		{ "isi",           "ISIREFNUM"    },
-		{ "serial number", "SERIALNUMBER" },
-		{ "accessnum",     "ACCESSNUM"    },
-		{ "jstor",         "JSTOR"        },
+		{ "citekey",       "REFNUM",      0, 0 },
+		{ "issn",          "ISSN",        0, 0 },
+		{ "isbn",          "ISBN",        0, 0 },
+		{ "doi",           "DOI",         0, 0 },
+		{ "url",           "URL",         0, 0 },
+		{ "uri",           "URL",         0, 0 },
+		{ "pmid",          "PMID",        0, 0 },
+		{ "pubmed",        "PMID",        0, 0 },
+		{ "medline",       "MEDLINE",     0, 0 },
+		{ "arXiv",         "ARXIV",       0, 0 },
+		{ "pii",           "PII",         0, 0 },
+		{ "isi",           "ISIREFNUM",   0, 0 },
+		{ "serial number", "SERIALNUMBER",0, 0 },
+		{ "accessnum",     "ACCESSNUM",   0, 0 },
+		{ "jstor",         "JSTOR",       0, 0 },
 	};
 	int i, fstatus, n = sizeof( ids ) / sizeof( ids[0] );
 	if ( !node->value || node->value->len==0 ) return BIBL_OK;
@@ -892,11 +892,11 @@ static int
 modsin_mods( xml *node, fields *info, int level )
 {
 	convert simple[] = {
-		{ "note",            "NOTES" },
-		{ "abstract",        "ABSTRACT" },
-		{ "bibtex-annote",   "ANNOTE" },
-		{ "typeOfResource",  "RESOURCE" },
-		{ "tableOfContents", "CONTENTS" },
+		{ "note",            "NOTES",    0, 0 },
+		{ "abstract",        "ABSTRACT", 0, 0 },
+		{ "bibtex-annote",   "ANNOTE",   0, 0 },
+		{ "typeOfResource",  "RESOURCE", 0, 0 },
+		{ "tableOfContents", "CONTENTS", 0, 0 },
 	};
 	int nsimple = sizeof( simple ) / sizeof( simple[0] );
 	int i, found = 0, status = BIBL_OK;
@@ -944,6 +944,10 @@ modsin_mods( xml *node, fields *info, int level )
 			  xml_tag_attrib( node, "relatedItem", "type", "series" ) ) {
 			if ( node->down ) status = modsin_mods( node->down, info, level+1 );
 		}
+		else if ( xml_tag_attrib( node, "relatedItem", "type", "original" ) ) {
+			if ( node->down ) status = modsin_mods( node->down, info, LEVEL_ORIG );
+		}
+
 		if ( status!=BIBL_OK ) return status;
 	}
 

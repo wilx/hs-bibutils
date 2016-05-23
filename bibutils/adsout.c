@@ -1,8 +1,8 @@
 /*
  * adsout.c
  *
- * Copyright (c) Richard Mathar 2007-2014
- * Copyright (c) Chris Putnam 2007-2014
+ * Copyright (c) Richard Mathar 2007-2016
+ * Copyright (c) Chris Putnam 2007-2016
  *
  * Program and source code released under the GPL version 2
  *
@@ -147,15 +147,18 @@ get_type( fields *info )
 	return type;
 }
 
-static void
+static int
 output_title( FILE *fp, fields *f, char *full, char *sub, char *adstag, int level )
 {
 	newstr *fulltitle, *subtitle, *vol, *iss, *sn, *en, *ar;
+	int output = 0;
 
 	fulltitle = fields_findv( f, level, FIELDS_STRP, full );
 	subtitle  = fields_findv( f, level, FIELDS_STRP, sub );
 
 	if ( fulltitle && fulltitle->len ) {
+
+		output = 1;
 
 		fprintf( fp, "%s %s", adstag, fulltitle->data );
 		if ( subtitle && subtitle->len ) {
@@ -190,6 +193,8 @@ output_title( FILE *fp, fields *f, char *full, char *sub, char *adstag, int leve
 
 		fprintf( fp, "\n" );
 	}
+
+	return output;
 }
 
 static void
@@ -395,7 +400,7 @@ output_keys( FILE *fp, fields *f, char *tag, char *adstag, int level )
 void
 adsout_write( fields *f, FILE *fp, param *p, unsigned long refnum )
 {
-	int type;
+	int type, status;
 	fields_clearused( f );
 	type = get_type( f );
 
@@ -403,8 +408,11 @@ adsout_write( fields *f, FILE *fp, param *p, unsigned long refnum )
 	output_people(  fp, f, "EDITOR", "EDITOR:ASIS", "EDITOR:CORP", "%E", LEVEL_ANY );
 	output_easy(    fp, f, "TITLE",       "%T", LEVEL_ANY );
 
-	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE )
-		output_title( fp, f, "TITLE", "SUBTITLE", "%J", LEVEL_HOST );
+	if ( type==TYPE_ARTICLE || type==TYPE_MAGARTICLE ) {
+		status = output_title( fp, f, "TITLE", "SUBTITLE", "%J", LEVEL_HOST );
+		if ( status==0 )
+			(void) output_title( fp, f, "SHORTTITLE", "SHORTSUBTITLE", "%J", LEVEL_HOST );
+	}
 
 	output_date(    fp, f,               "%D", LEVEL_ANY );
 	output_easy(    fp, f, "VOLUME",     "%V", LEVEL_ANY );

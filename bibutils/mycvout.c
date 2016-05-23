@@ -3,7 +3,7 @@
  *
  * Copyright (c) Chris Putnam 2003-2016
  *
- * Program and source code released under the GPL version 2
+ * Source code released under the GPL version 2
  *
  */
 #include <stdio.h>
@@ -15,7 +15,6 @@
 #include "utf8.h"
 #include "xml.h"
 #include "fields.h"
-#include "name.h"
 #include "bibl.h"
 #include "doi.h"
 #include "bibtexout.h"
@@ -28,8 +27,8 @@ bibtexout_initparams( param *p, const char *progname )
 	p->charsetout       = BIBL_CHARSET_DEFAULT;
 	p->charsetout_src   = BIBL_SRC_DEFAULT;
 	p->latexout         = 1;
-	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
-	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
+	p->utf8out          = 0;
+	p->utf8bom          = 0;
 	p->xmlout           = BIBL_XMLOUT_FALSE;
 	p->nosplittitle     = 0;
 	p->verbose          = 0;
@@ -115,11 +114,9 @@ bibtexout_type( fields *info, char *filename, int refnum, param *p )
 			else type = TYPE_INCOLLECTION;
 		} else if ( !strcasecmp( genre, "report" ) )
 			type = TYPE_REPORT;
-		else if ( !strcasecmp( genre, "book chapter" ) )
-			type = TYPE_INBOOK;
 		else if ( !strcasecmp( genre, "book" ) ) {
-			if ( level==0 ) type = TYPE_BOOK;
-			else type = TYPE_INBOOK;
+			if ( level==0 ) type=TYPE_BOOK;
+			else type=TYPE_INBOOK;
 		} else if ( !strcasecmp( genre, "thesis" ) ) {
 			if ( type==TYPE_UNKNOWN ) type=TYPE_PHDTHESIS;
 		} else if ( !strcasecmp( genre, "Ph.D. thesis" ) )
@@ -134,7 +131,7 @@ bibtexout_type( fields *info, char *filename, int refnum, param *p )
 			if ( strcasecmp( info->tag[i].data, "ISSUANCE" ) ) continue;
 			if ( !strcasecmp( info->data[i].data, "monographic" ) ) {
 				if ( info->level[i]==0 ) type = TYPE_BOOK;
-				else if ( info->level[i]==1 ) type=TYPE_MISC;
+				else if ( info->level[i]==1 ) type=TYPE_INBOOK;
 			}
 		}
 	}
@@ -142,7 +139,7 @@ bibtexout_type( fields *info, char *filename, int refnum, param *p )
 	/* default to BOOK type */
 	if ( type==TYPE_UNKNOWN ) {
 		maxlevel = fields_maxlevel( info );
-		if ( maxlevel > 0 ) type = TYPE_MISC;
+		if ( maxlevel > 0 ) type = TYPE_INBOOK;
 		else {
 			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
 			fprintf( stderr, "Cannot identify TYPE "
@@ -262,31 +259,9 @@ output_simpleall( FILE *fp, fields *info, char *intag, char *outtag,
 {
 	int i;
 	for ( i=0; i<info->n; ++i ) {
-		if ( fields_match_tag( info, i, intag ) )
-			output_and_use( fp, info, i, outtag, format_opts );
+		if ( strcasecmp( info->tag[i].data, intag ) ) continue;
+		output_and_use( fp, info, i, outtag, format_opts );
 	}
-}
-
-static void
-output_keywords( FILE *fp, fields *info, int format_opts )
-{
-	newstr keywords, *word;
-	vplist a;
-	int i;
-	newstr_init( &keywords );
-	vplist_init( &a );
-	fields_findv_each( info, LEVEL_ANY, FIELDS_STRP, &a, "KEYWORD" );
-	if ( a.n ) {
-		for ( i=0; i<a.n; ++i ) {
-			word = vplist_get( &a, i );
-			if ( i>0 ) newstr_strcat( &keywords, "; " );
-			newstr_newstrcat( &keywords, word );
-		}
-		output_element( fp, "keywords", keywords.data, format_opts );
-
-	}
-	newstr_free( &keywords );
-	vplist_free( &a );
 }
 
 static void
@@ -312,14 +287,30 @@ output_fileattach( FILE *fp, fields *info, int format_opts )
 }
 
 static void
+add_person( newstr *s, char *p )
+{
+	int nseps = 0, nch;
+	while ( *p ) {
+		nch = 0;
+		if ( nseps==1 ) newstr_addchar( s, ',' );
+		if ( nseps ) newstr_addchar( s, ' ' );
+		while ( *p && *p!='|' ) {
+			newstr_addchar( s, *p++ );
+			nch++;
+		}
+		if ( *p=='|' ) p++;
+		if ( nseps!=0 && nch==1 ) newstr_addchar( s, '.' );
+		nseps++;
+	}
+}
+
+static void
 output_people( FILE *fp, fields *info, unsigned long refnum, char *tag, 
 		char *ctag, char *atag, char *bibtag, int level, 
 		int format_opts )
 {
-	newstr allpeople, oneperson;
+	newstr allpeople;
 	int i, npeople, person, corp, asis;
-
-	newstrs_init( &allpeople, &oneperson, NULL );
 
 	/* primary citation authors */
 	npeople = 0;
@@ -329,81 +320,59 @@ output_people( FILE *fp, fields *info, unsigned long refnum, char *tag,
 		corp   = ( strcasecmp( info->tag[i].data, ctag ) == 0 );
 		asis   = ( strcasecmp( info->tag[i].data, atag ) == 0 );
 		if ( person || corp || asis ) {
-			if ( npeople>0 ) {
+			if ( npeople==0 ) newstr_init( &allpeople );
+			else {
 				if ( format_opts & BIBOUT_WHITESPACE )
 					newstr_strcat(&allpeople,"\n\t\tand ");
 				else newstr_strcat( &allpeople, "\nand " );
 			}
 			if ( corp ) {
 				newstr_addchar( &allpeople, '{' );
-				newstr_strcat( &allpeople, fields_value( info, i, FIELDS_CHRP ) );
+				newstr_strcat( &allpeople, info->data[i].data );
 				newstr_addchar( &allpeople, '}' );
 			} else if ( asis ) {
 				newstr_addchar( &allpeople, '{' );
-				newstr_strcat( &allpeople, fields_value( info, i, FIELDS_CHRP ) );
+				newstr_strcat( &allpeople, info->data[i].data );
 				newstr_addchar( &allpeople, '}' );
-			} else {
-				name_build_withcomma( &oneperson, fields_value( info, i, FIELDS_CHRP ) );
-				newstr_newstrcat( &allpeople, &oneperson );
-			}
+			} else add_person( &allpeople, info->data[i].data ); 
+			fields_setused( info, i );
 			npeople++;
 		}
 	}
-	if ( npeople )
+	if ( npeople ) {
 		output_element( fp, bibtag, allpeople.data, format_opts );
-
-	newstrs_free( &allpeople, &oneperson, NULL );
-}
-
-static void
-output_title_chosen( FILE *fp, fields *info, char *bibtag, int format_opts, int n1, int n2 )
-{
-	newstr title, *mainttl, *subttl;
-
-	if ( n1==-1 ) return;
-
-	newstr_init( &title );
-
-	mainttl = fields_value( info, n1, FIELDS_STRP );
-	newstr_newstrcpy( &title, mainttl );
-	fields_setused( info, n1 );
-	if ( n2!=-1 ) {
-		subttl = fields_value( info, n2, FIELDS_STRP );
-		if ( mainttl->len > 0 &&
-		     mainttl->data[mainttl->len-1]!='?' )
-			newstr_strcat( &title, ": " );
-		else newstr_addchar( &title, ' ' );
-		newstr_newstrcat( &title, subttl );
-		fields_setused( info, n2 );
+		newstr_free( &allpeople );
 	}
-	output_element( fp, bibtag, title.data, format_opts );
-
-	newstr_free( &title );
 }
 
 static void
 output_title( FILE *fp, fields *info, unsigned long refnum, char *bibtag, int level, int format_opts )
 {
-	int title = -1, short_title = -1;
-	int subtitle = -1, short_subtitle = -1;
-	int use_title = -1, use_subtitle = -1;
-
-	title          = fields_find( info, "TITLE",         level );
-	short_title    = fields_find( info, "SHORTTITLE",    level );
-	subtitle       = fields_find( info, "SUBTITLE",      level );
-	short_subtitle = fields_find( info, "SHORTSUBTITLE", level );
-
-	if ( title==-1 || ( ( format_opts & BIBOUT_SHORTTITLE ) && level==1 ) ) {
-		use_title    = short_title;
-		use_subtitle = short_subtitle;
+	newstr title;
+	int n1 = -1, n2 = -1;
+	/* Option is for short titles of journals */
+	if ( ( format_opts & BIBOUT_SHORTTITLE ) && level==1 ) {
+		n1 = fields_find( info, "SHORTTITLE", level );
+		n2 = fields_find( info, "SHORTSUBTITLE", level );
 	}
-
-	else {
-		use_title    = title;
-		use_subtitle = subtitle;
+	if ( n1==-1 ) {
+		n1 = fields_find( info, "TITLE", level );
+		n2 = fields_find( info, "SUBTITLE", level );
 	}
-
-	output_title_chosen( fp, info, bibtag, format_opts, use_title, use_subtitle );
+	if ( n1!=-1 ) {
+		newstr_init( &title );
+		newstr_newstrcpy( &title, &(info->data[n1]) );
+		fields_setused( info, n1 );
+		if ( n2!=-1 ) {
+			if ( info->data[n1].data[info->data[n1].len]!='?' )
+				newstr_strcat( &title, ": " );
+			else newstr_addchar( &title, ' ' );
+			newstr_strcat( &title, info->data[n2].data );
+			fields_setused( info, n2 );
+		}
+		output_element( fp, bibtag, title.data, format_opts );
+		newstr_free( &title );
+	}
 }
 
 static void
@@ -602,10 +571,8 @@ bibtexout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 	else if ( type==TYPE_PHDTHESIS || type==TYPE_MASTERSTHESIS ) {
 		output_title( fp, info, refnum, "series", 1, p->format_opts );
 	}
-	else if ( type==TYPE_BOOK || type==TYPE_COLLECTION || type==TYPE_PROCEEDINGS || type==TYPE_REPORT ) {
+	else if ( type==TYPE_BOOK || type==TYPE_COLLECTION || type==TYPE_PROCEEDINGS )
 		output_title( fp, info, refnum, "series", 1, p->format_opts );
-		output_title( fp, info, refnum, "series", 2, p->format_opts );
-	}
 
 	output_date( fp, info, refnum, p->format_opts );
 	output_simple( fp, info, "EDITION", "edition", p->format_opts );
@@ -616,7 +583,7 @@ bibtexout_write( fields *info, FILE *fp, param *p, unsigned long refnum )
 /*	output_simple( fp, info, "ISSUE", "issue", p->format_opts );
 	output_simple( fp, info, "NUMBER", "number", p->format_opts );s*/
 	output_pages( fp, info, refnum, p->format_opts );
-	output_keywords( fp, info, p->format_opts );
+	output_simpleall( fp, info, "KEYWORD", "keywords", p->format_opts );
 	output_simple( fp, info, "CONTENTS", "contents", p->format_opts );
 	output_simple( fp, info, "ABSTRACT", "abstract", p->format_opts );
 	output_simple( fp, info, "LOCATION", "location", p->format_opts );

@@ -1,7 +1,7 @@
 /*
  * endin.c
  *
- * Copyright (c) Chris Putnam 2003-2014
+ * Copyright (c) Chris Putnam 2003-2016
  *
  * Program and source code released under the GPL version 2
  *
@@ -602,13 +602,13 @@ endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *al
 		case TITLE:
 			ok = title_process( info, newtag, d->data, level, p->nosplittitle );
 			if ( !ok ) status = BIBL_ERR_MEMERR;
-			status = BIBL_OK;
+			else status = BIBL_OK;
 			break;
 
 		case PERSON:
 			ok = name_add( info, newtag, d->data, level, &(p->asis), &(p->corps) );
 			if ( !ok ) status = BIBL_ERR_MEMERR;
-			status = BIBL_OK;
+			else status = BIBL_OK;
 			break;
 
 		case DATE:
@@ -622,7 +622,7 @@ endin_convertf( fields *endin, fields *info, int reftype, param *p, variants *al
 		case SERIALNO:
 			ok = addsn( info, d->data, level );
 			if ( !ok ) status = BIBL_ERR_MEMERR;
-			status = BIBL_OK;
+			else status = BIBL_OK;
 			break;
 
 		case NOTES:

@@ -1,8 +1,8 @@
 /*
  * biblatexin.c
  *
- * Copyright (c) Chris Putnam 2008-2014
- * Copyright (c) Johannes Wilm 2010-2014
+ * Copyright (c) Chris Putnam 2008-2016
+ * Copyright (c) Johannes Wilm 2010-2016
  *
  * Program and source code released under the GPL version 2
  *
@@ -919,7 +919,7 @@ process_howpublished( fields *info, char *p, int level )
 static int
 process_thesistype( fields *info, char *p, int level )
 {
-	int fstatus;
+	int fstatus = FIELDS_OK;
 	/* type in the @thesis is used to distinguish Ph.D. and Master's thesis */
 	if ( !strncasecmp( p, "phdthesis", 9 ) ) {
 		fstatus = fields_replace_or_add( info, "NGENRE", "Ph.D. thesis", level );

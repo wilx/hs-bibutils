@@ -1,9 +1,9 @@
 /*
  * vplist.h
  *
- * Version: 4/08/2013
+ * Version: 11/20/2014
  *
- * Copyright (c) Chris Putnam 2011-2013
+ * Copyright (c) Chris Putnam 2011-2016
  *
  * Source code released under the GPL version 2
  *
@@ -11,6 +11,9 @@
 
 #ifndef VPLIST_H
 #define VPLIST_H
+
+#define VPLIST_ERR (1)
+#define VPLIST_OK  (0)
 
 /* vplist = void pointer list (generic container struct)
  */
@@ -28,6 +31,7 @@ extern int      vplist_copy( vplist *to, vplist *from );
 extern int      vplist_append( vplist *to, vplist *from );
 extern void *   vplist_get( vplist *vpl, int n );
 extern void     vplist_set( vplist *vpl, int n, void *v );
+extern void     vplist_swap( vplist *vpl, int n1, int n2 );
 extern void     vplist_remove( vplist *vpl, int n );
 extern void     vplist_removevp( vplist *vpl, void *v );
 extern int      vplist_find( vplist *vpl, void *v );
@@ -59,10 +63,10 @@ extern void   vplist_emptyfn( vplist *vpl, vplist_ptrfree fn );
 extern void vplist_free( vplist *vpl );
 extern void vplist_freefn( vplist *vpl, vplist_ptrfree fn );
 /*
- * vplist_destroy does vplist_free and deallocates the struct
+ * vplist_delete does vplist_free and deallocates the struct
  * vplist * and replaces with NULL.
  */
-extern void vplist_destroy( vplist **vpl );
-extern void vplist_destroyfn( vplist **vpl, vplist_ptrfree fn );
+extern void vplist_delete( vplist **vpl );
+extern void vplist_deletefn( vplist **vpl, vplist_ptrfree fn );
 
 #endif

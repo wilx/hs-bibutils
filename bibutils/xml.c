@@ -1,7 +1,7 @@
 /*
  * xml.c
  *
- * Copyright (c) Chris Putnam 2004-2013
+ * Copyright (c) Chris Putnam 2004-2016
  *
  * Source code released under the GPL version 2
  *

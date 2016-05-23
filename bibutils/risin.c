@@ -1,7 +1,7 @@
 /*
  * risin.c
  *
- * Copyright (c) Chris Putnam 2003-2014
+ * Copyright (c) Chris Putnam 2003-2016
  *
  * Source code released under the GPL version 2
  *
@@ -177,10 +177,10 @@ risin_processf( fields *risin, char *p, char *filename, long nref )
 	newstrs_init( &tag, &data, NULL );
 
 	while ( *p ) {
-		if ( risin_istag( p ) ) {
-		p = process_line( &tag, &data, p );
+		if ( risin_istag( p ) )
+			p = process_line( &tag, &data, p );
 		/* no anonymous fields allowed */
-		if ( tag.len )
+		if ( tag.len ) {
 			status = fields_add( risin, tag.data, data.data, 0 );
 			if ( status!=FIELDS_OK ) return 0;
 		} else {
@@ -232,8 +232,12 @@ risin_addnotes( fields *f, char *tag, newstr *s, int level )
 	doi = is_doi( s->data );
 	if ( doi!=-1 )
 		status = fields_add( f, "DOI", &(s->data[doi]), level );
-	else
-		status = fields_add( f, tag, s->data, level );
+	else {
+		if ( !strncasecmp( "http:", s->data, 5 ) || !strncasecmp( "https:", s->data, 6 ) )
+			status = fields_add( f, "URL", s->data, level );
+		else
+			status = fields_add( f, tag, s->data, level );
+	}
 	if ( status==FIELDS_OK ) return BIBL_OK;
 	else return BIBL_ERR_MEMERR;
 }
