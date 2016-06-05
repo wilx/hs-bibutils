@@ -30,7 +30,7 @@ Download
 
 To get the darcs source run:
 
-        darcs get http://code.haskell.org/hs-bibutils/
+        git clone https://github.com/wilx/hs-bibutils.git
 
 Installation
 ------------
@@ -89,10 +89,10 @@ Links to Related Projects
 ----------------
 
 Bibutils
-:    <http://www.scripps.edu/~cdputnam/software/bibutils/>
+:    <https://sourceforge.net/p/bibutils/home/Bibutils/>
 
 Pandoc
-:    <http://johnmacfarlane.net/pandoc/>
+:    <http://pandoc.org/>
 
 Citeproc-hs:
 :    <http://code.haskell.org/citeproc-hs/>
@@ -110,12 +110,12 @@ This is an early, "alpha" release. It carries no warranties of any kind.
 
 Copyright &copy; 2008 - 2010 Andrea Rossato
 
-[hs-bibutils]: http://code.haskell.org/hs-bibutils
-[bibutils]: http://www.scripps.edu/~cdputnam/software/bibutils/
+[hs-bibutils]: https://github.com/wilx/hs-bibutils
+[bibutils]: https://sourceforge.net/p/bibutils/home/Bibutils/
 [Hackage]: http://hackage.haskell.org/cgi-bin/hackage-scripts/package/hs-bibutils
 [citeproc-hs]: http://code.haskell.org/citeproc-hs
 [CSL]: http://citationstyles.org/
-[pandoc]: http://johnmacfarlane.net/pandoc/
+[pandoc]: http://pandoc.org/
 [Zotero]: http://www.zotero.org
 [MODS]: http://www.loc.gov/mods/
 [Bruce D'Arcus]: http://community.muohio.edu/blogs/darcusb/
