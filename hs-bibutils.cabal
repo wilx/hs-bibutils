@@ -1,6 +1,6 @@
 name:               hs-bibutils
 version:            5.7
-homepage:           http://istitutocolli.org/repos/hs-bibutils/
+homepage:           https://github.com/wilx/hs-bibutils
 
 synopsis:           Haskell bindings to bibutils, the bibliography
                     conversion utilities.
@@ -26,8 +26,8 @@ category:           Text
 license:            GPL
 license-file:       LICENSE
 author:             Andrea Rossato
-maintainer:         andrea.rossato@unitn.it
-cabal-version:      >= 1.4
+maintainer:         Václav Haisman <vhaisman@gmail.com>
+cabal-version:      >= 1.23
 build-type:         Simple
 extra-source-files:
         bibutils/adsout.c bibutils/adsout.h bibutils/adsout_journals.c
@@ -67,12 +67,13 @@ extra-source-files:
         bibutils/xml.h bibutils/xml_encoding.c bibutils/xml_encoding.h
 
 library
+    default-language: Haskell2010
     exposed-modules:  Text.Bibutils
     other-modules:
     ghc-options:      -funbox-strict-fields -Wall
-    ghc-prof-options: -prof -auto-all
+    ghc-prof-options: -auto-all
     hs-source-dirs:   src
-    extensions:       ForeignFunctionInterface
+    default-extensions:       ForeignFunctionInterface
     include-dirs:     bibutils
     includes: bibutils.h
     c-sources:
