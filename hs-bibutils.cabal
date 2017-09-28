@@ -97,3 +97,7 @@ library
        build-depends: base >= 4, syb
     else
        build-depends: base >= 3 && < 4
+
+source-repository head
+    type:     git
+    location: https://github.com/wilx/hs-bibutils
