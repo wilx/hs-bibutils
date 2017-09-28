@@ -1,7 +1,7 @@
 /*
  * isitypes.c
  *
- * Copyright (c) Chris Putnam 2004-2016
+ * Copyright (c) Chris Putnam 2004-2017
  *
  * Program and source code released under the GPL version 2
  *
@@ -24,17 +24,17 @@ static lookups article[] = {
 	{ "C1",     "ADDRESS",   SIMPLE, LEVEL_MAIN }, /* author address */
 	{ "PA",     "ADDRESS",   SIMPLE, LEVEL_HOST }, /* publisher address */
 	{ "RP",     "REPRINTADDRESS", SIMPLE, LEVEL_MAIN },
-	{ "PY",     "PARTYEAR",  SIMPLE, LEVEL_MAIN },
-	{ "PD",     "PARTMONTH", SIMPLE, LEVEL_MAIN },
+	{ "PY",     "PARTDATE:YEAR",  SIMPLE, LEVEL_MAIN },
+	{ "PD",     "PARTDATE:MONTH", SIMPLE, LEVEL_MAIN },
 	{ "VL",     "VOLUME",    SIMPLE, LEVEL_MAIN },
 	{ "AR",     "ARTICLENUMBER", SIMPLE, LEVEL_MAIN }, /* AR=article number that Phys. Rev. B uses instead of page numbers */
-	{ "BP",     "PAGESTART", SIMPLE, LEVEL_MAIN },
-	{ "EP",     "PAGEEND",   SIMPLE, LEVEL_MAIN },
-	{ "PG",     "TOTALPAGES", SIMPLE, LEVEL_MAIN },
+	{ "BP",     "PAGES:START", SIMPLE, LEVEL_MAIN },
+	{ "EP",     "PAGES:STOP",   SIMPLE, LEVEL_MAIN },
+	{ "PG",     "PAGES:TOTAL", SIMPLE, LEVEL_MAIN },
 	{ "IS",     "ISSUE",     SIMPLE, LEVEL_MAIN },
 	{ "SN",     "SERIALNUMBER", SERIALNO, LEVEL_HOST },
 	{ "AB",     "ABSTRACT",  SIMPLE, LEVEL_MAIN },
-	{ "NF",     "NOTES",     SIMPLE, LEVEL_MAIN },
+	{ "NF",     "NOTES",     NOTES,  LEVEL_MAIN },
 	{ "DE",     "KEYWORD",   KEYWORD, LEVEL_MAIN }, /* author keywords */
 	{ "ID",     "KEYWORD",   KEYWORD, LEVEL_MAIN }, /* new ISI keywords */
 	{ "LA",     "LANGUAGE",  SIMPLE, LEVEL_MAIN },
@@ -67,16 +67,16 @@ static lookups book[] = {
 	{ "C1",     "ADDRESS",   SIMPLE, LEVEL_MAIN }, /* author address */
 	{ "PA",     "ADDRESS",   SIMPLE, LEVEL_MAIN }, /* publisher address */
 	{ "RP",     "REPRINTADDRESS", SIMPLE, LEVEL_MAIN },
-	{ "PY",     "YEAR",      SIMPLE, LEVEL_MAIN },
-	{ "PD",     "MONTH",     SIMPLE, LEVEL_MAIN },
+	{ "PY",     "DATE:YEAR",      SIMPLE, LEVEL_MAIN },
+	{ "PD",     "DATE:MONTH",     SIMPLE, LEVEL_MAIN },
 	{ "VL",     "VOLUME",    SIMPLE, LEVEL_MAIN },
-	{ "BP",     "PAGESTART", SIMPLE, LEVEL_MAIN },
-	{ "EP",     "PAGEEND",   SIMPLE, LEVEL_MAIN },
-	{ "PG",     "TOTALPAGES", SIMPLE, LEVEL_MAIN },
-	{ "IS",     "ISSUE",     SIMPLE, LEVEL_MAIN },
+	{ "BP",     "PAGES:START", SIMPLE, LEVEL_MAIN },
+	{ "EP",     "PAGES:STOP",  SIMPLE, LEVEL_MAIN },
+	{ "PG",     "PAGES:TOTAL", SIMPLE, LEVEL_MAIN },
+	{ "IS",     "ISSUE",       SIMPLE, LEVEL_MAIN },
 	{ "SN",     "SERIALNUMBER", SERIALNO, LEVEL_HOST },
 	{ "AB",     "ABSTRACT",  SIMPLE, LEVEL_MAIN },
-	{ "NF",     "NOTES",     SIMPLE, LEVEL_MAIN },
+	{ "NF",     "NOTES",     NOTES,  LEVEL_MAIN },
 	{ "DE",     "KEYWORD",   KEYWORD, LEVEL_MAIN }, /* author keywords */
 	{ "ID",     "KEYWORD",   KEYWORD, LEVEL_MAIN }, /* new ISI keywords */
 	{ "LA",     "LANGUAGE",  SIMPLE, LEVEL_MAIN },
@@ -108,16 +108,16 @@ static lookups inbook[] = {
 	{ "C1",     "ADDRESS",   SIMPLE, LEVEL_MAIN }, /* author address */
 	{ "PA",     "ADDRESS",   SIMPLE, LEVEL_HOST }, /* publisher address */
 	{ "RP",     "REPRINTADDRESS", SIMPLE, LEVEL_MAIN },
-	{ "PY",     "PARTYEAR",  SIMPLE, LEVEL_MAIN },
-	{ "PD",     "PARTMONTH", SIMPLE, LEVEL_MAIN },
+	{ "PY",     "PARTDATE:YEAR",  SIMPLE, LEVEL_MAIN },
+	{ "PD",     "PARTDATE:MONTH", SIMPLE, LEVEL_MAIN },
 	{ "VL",     "VOLUME",    SIMPLE, LEVEL_MAIN },
-	{ "BP",     "PAGESTART", SIMPLE, LEVEL_MAIN },
-	{ "EP",     "PAGEEND",   SIMPLE, LEVEL_MAIN },
-	{ "PG",     "TOTALPAGES", SIMPLE, LEVEL_HOST },
-	{ "IS",     "ISSUE",     SIMPLE, LEVEL_MAIN },
+	{ "BP",     "PAGES:START", SIMPLE, LEVEL_MAIN },
+	{ "EP",     "PAGES:STOP",  SIMPLE, LEVEL_MAIN },
+	{ "PG",     "PAGES:TOTAL", SIMPLE, LEVEL_HOST },
+	{ "IS",     "ISSUE",       SIMPLE, LEVEL_MAIN },
 	{ "SN",     "SERIALNUMBER", SERIALNO, LEVEL_HOST },
 	{ "AB",     "ABSTRACT",  SIMPLE, LEVEL_MAIN },
-	{ "NF",     "NOTES",     SIMPLE, LEVEL_MAIN },
+	{ "NF",     "NOTES",     NOTES,  LEVEL_MAIN },
 	{ "DE",     "KEYWORD",   KEYWORD, LEVEL_MAIN }, /* author keywords */
 	{ "ID",     "KEYWORD",   KEYWORD, LEVEL_MAIN }, /* new ISI keywords */
 	{ "LA",     "LANGUAGE",  SIMPLE, LEVEL_MAIN },
@@ -150,16 +150,16 @@ static lookups bookinseries[] = {
 	{ "C1",     "ADDRESS",   SIMPLE, LEVEL_MAIN }, /* author address */
 	{ "PA",     "ADDRESS",   SIMPLE, LEVEL_HOST }, /* publisher address */
 	{ "RP",     "REPRINTADDRESS", SIMPLE, LEVEL_MAIN },
-	{ "PY",     "PARTYEAR",  SIMPLE, LEVEL_MAIN },
-	{ "PD",     "PARTMONTH", SIMPLE, LEVEL_MAIN },
+	{ "PY",     "PARTDATE:YEAR",  SIMPLE, LEVEL_MAIN },
+	{ "PD",     "PARTDATE:MONTH", SIMPLE, LEVEL_MAIN },
 	{ "VL",     "VOLUME",    SIMPLE, LEVEL_MAIN },
-	{ "BP",     "PAGESTART", SIMPLE, LEVEL_MAIN },
-	{ "EP",     "PAGEEND",   SIMPLE, LEVEL_MAIN },
-	{ "PG",     "TOTALPAGES", SIMPLE, LEVEL_MAIN },
+	{ "BP",     "PAGES:START", SIMPLE, LEVEL_MAIN },
+	{ "EP",     "PAGES:STOP",  SIMPLE, LEVEL_MAIN },
+	{ "PG",     "PAGES:TOTAL", SIMPLE, LEVEL_MAIN },
 	{ "IS",     "ISSUE",     SIMPLE, LEVEL_MAIN },
 	{ "SN",     "SERIALNUMBER", SERIALNO, LEVEL_HOST },
 	{ "AB",     "ABSTRACT",  SIMPLE, LEVEL_MAIN },
-	{ "NF",     "NOTES",     SIMPLE, LEVEL_MAIN },
+	{ "NF",     "NOTES",     NOTES,  LEVEL_MAIN },
 	{ "DE",     "KEYWORD",   KEYWORD, LEVEL_MAIN }, /* author keywords */
 	{ "ID",     "KEYWORD",   KEYWORD, LEVEL_MAIN }, /* new ISI keywords */
 	{ "LA",     "LANGUAGE",  SIMPLE, LEVEL_MAIN },

@@ -1,7 +1,7 @@
 /*
  * bibl.h
  *
- * Copyright (c) Chris Putnam 2005-2016
+ * Copyright (c) Chris Putnam 2005-2017
  *
  * Source code released under the GPL version 2
  *
@@ -10,7 +10,7 @@
 #define BIBL_H
 
 #include <stdio.h>
-#include "newstr.h"
+#include "str.h"
 #include "fields.h"
 #include "reftypes.h"
 

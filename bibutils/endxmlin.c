@@ -1,27 +1,36 @@
 /*
  * endxmlin.c
  *
- * Copyright (c) Chris Putnam 2006-2016
+ * Copyright (c) Chris Putnam 2006-2017
  *
  * Program and source code released under the GPL version 2
  *
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include "newstr.h"
-#include "newstr_conv.h"
+#include "str.h"
+#include "str_conv.h"
 #include "fields.h"
 #include "name.h"
 #include "xml.h"
 #include "xml_encoding.h"
 #include "reftypes.h"
-#include "endxmlin.h"
-#include "endin.h"
+#include "bibformats.h"
 
 typedef struct {
 	char *attrib;
 	char *internal;
 } attribs;
+
+extern variants end_all[];
+extern int end_nall;
+
+static int endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
+static int endxmlin_processf( fields *endin, char *p, char *filename, long nref, param *pm );
+extern int endin_typef( fields *endin, char *filename, int nrefs, param *p );
+extern int endin_convertf( fields *endin, fields *info, int reftype, param *p );
+extern int endin_cleanf( bibl *bin, param *p );
+
 
 /*****************************************************
  PUBLIC: void endxmlin_initparams()
@@ -48,8 +57,8 @@ endxmlin_initparams( param *p, const char *progname )
 	p->all      = end_all;
 	p->nall     = end_nall;
 
-	list_init( &(p->asis) );
-	list_init( &(p->corps) );
+	slist_init( &(p->asis) );
+	slist_init( &(p->corps) );
 
 	if ( !progname ) p->progname = NULL;
 	else p->progname = strdup( progname );
@@ -66,14 +75,13 @@ xml_readmore( FILE *fp, char *buf, int bufsize, int *bufpos )
 	return 1;
 }
 
-int
-endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line,
-	newstr *reference, int *fcharset )
+static int
+endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset )
 {
-	newstr tmp;
+	str tmp;
 	char *startptr = NULL, *endptr = NULL;
 	int haveref = 0, inref = 0, done = 0, file_charset = CHARSET_UNKNOWN, m;
-	newstr_init( &tmp );
+	str_init( &tmp );
 	while ( !haveref && !done ) {
 		if ( line->data ) {
 			if ( !inref ) {
@@ -90,21 +98,21 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line,
 				int n = 8;
 				char *p = &(line->data[line->len-1]);
 				while ( *p && n ) { p--; n--; }
-				newstr_segdel( line, line->data, p ); 
+				str_segdel( line, line->data, p );
 			}
 		}
 
 		if ( !startptr || !endptr ) {
 			done = xml_readmore( fp, buf, bufsize, bufpos );
-			newstr_strcat( line, buf );
+			str_strcatc( line, buf );
 		} else {
-			/* we can reallocate in the newstr_strcat, so re-find */
+			/* we can reallocate in the str_strcat, so re-find */
 			startptr = xml_findstart( line->data, "RECORD" );
 			endptr = xml_findend( line->data, "RECORD" );
-			newstr_segcpy( reference, startptr, endptr );
+			str_segcpy( reference, startptr, endptr );
 			/* clear out information in line */
-			newstr_strcpy( &tmp, endptr );
-			newstr_newstrcpy( line, &tmp );
+			str_strcpyc( &tmp, endptr );
+			str_strcpy( line, &tmp );
 			haveref = 1;
 		}
 		if ( line->data ) {
@@ -112,7 +120,7 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line,
 			if ( m!=CHARSET_UNKNOWN ) file_charset = m;
 		}
 	}
-	newstr_free( &tmp );
+	str_free( &tmp );
 	*fcharset = file_charset;
 	return haveref;
 }
@@ -139,12 +147,13 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, newstr *line,
  *   </datatype>
  */
 static int
-endxmlin_datar( xml *node, newstr *s )
+endxmlin_datar( xml *node, str *s )
 {
 	int status;
-	if ( node->value && node->value->len ) {
-		newstr_strcat( s, node->value->data );
-		if ( newstr_memerr( s ) ) return BIBL_ERR_MEMERR;
+
+	if ( str_has_value( node->value ) ) {
+		str_strcat( s, node->value );
+		if ( str_memerr( s ) ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down && xml_tagexact( node->down, "style" ) ) {
 		status = endxmlin_datar( node->down, s );
@@ -154,6 +163,7 @@ endxmlin_datar( xml *node, newstr *s )
 		status = endxmlin_datar( node->next, s );
 		if ( status!=BIBL_OK ) return status;
 	}
+
 	return BIBL_OK;
 }
 
@@ -161,15 +171,19 @@ static int
 endxmlin_data( xml *node, char *inttag, fields *info, int level )
 {
 	int status;
-	newstr s;
-	newstr_init( &s );
+	str s;
+
+	str_init( &s );
+
 	status = endxmlin_datar( node, &s );
 	if ( status!=BIBL_OK ) return status;
-	if ( s.len ) {
+
+	if ( str_has_value( &s ) ) {
 		status = fields_add( info, inttag, s.data, level );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
-	newstr_free( &s );
+
+	str_free( &s );
 	return BIBL_OK;
 }
 
@@ -190,15 +204,15 @@ endxmlin_titles( xml *node, fields *info )
 		{ "short-title", "SHORTTITLE" },
 	};
 	int i, status, n = sizeof( a ) / sizeof ( a[0] );
-	newstr title;
-	newstr_init( &title );
+	str title;
+	str_init( &title );
 	for ( i=0; i<n; ++i ) {
 		if ( xml_tagexact( node, a[i].attrib ) && node->down ) {
-			newstr_empty( &title );
+			str_empty( &title );
 			status = endxmlin_datar( node, &title );
 			if ( status!=BIBL_OK ) return BIBL_ERR_MEMERR;
-			newstr_trimstartingws( &title );
-			newstr_trimendingws( &title );
+			str_trimstartingws( &title );
+			str_trimendingws( &title );
 			status = fields_add( info, a[i].internal, title.data, 0);
 			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
@@ -207,7 +221,7 @@ endxmlin_titles( xml *node, fields *info )
 		status = endxmlin_titles( node->next, info );
 		if ( status!=BIBL_OK ) return status;
 	}
-	newstr_free( &title );
+	str_free( &title );
 	return BIBL_OK;
 }
 
@@ -410,13 +424,14 @@ static int
 endxmlin_reftype( xml *node, fields *info )
 {
 	int status;
-	newstr *s;
+	str *s;
+
 	s = xml_getattrib( node, "name" );
-	if ( s && s->len ) {
-		status = fields_add( info, "%0", s->data, 0 );
-		newstr_free( s );
+	if ( str_has_value( s ) ) {
+		status = fields_add( info, "%0", str_cstr( s ), 0 );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
+
 	return BIBL_OK;
 }
 
@@ -523,7 +538,7 @@ static int
 endxmlin_assembleref( xml *node, fields *info )
 {
 	int status;
-	if ( node->tag->len==0 ) {
+	if ( str_is_empty( node->tag ) ) {
 		if ( node->down )
 			return endxmlin_assembleref( node->down, info );
 	} else if ( xml_tagexact( node, "RECORD" ) ) {
@@ -541,8 +556,8 @@ endxmlin_assembleref( xml *node, fields *info )
  * this is necessary as the xml format is as nasty and as overloaded
  * as the tags used in the Refer format output
  */
-int
-endxmlin_processf( fields *fin, char *data, char *filename, long nref )
+static int
+endxmlin_processf( fields *fin, char *data, char *filename, long nref, param *pm )
 {
 	int status;
 	xml top;

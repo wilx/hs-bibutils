@@ -317,13 +317,13 @@ unicode_utf8_classify( char *p )
 }
 
 unsigned short
-unicode_utf8_classify_newstr( newstr *s )
+unicode_utf8_classify_str( str *s )
 {
 	unsigned int unicode_character, pos = 0;
 	unsigned short value = 0;
 	int n;
 	while ( pos < s->len ) {
-		unicode_character = utf8_decode( s->data, &pos );
+		unicode_character = utf8_decode( str_cstr( s ), &pos );
 		n = unicode_find( unicode_character );
 		if ( n==-1 ) value |= UNICODE_SYMBOL;
 		else value |= unicodeinfo[n].info;

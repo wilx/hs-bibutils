@@ -1,9 +1,9 @@
 /*
  * vplist.c
  *
- * Version: 11/20/2014
+ * Version: 1/9/2017
  *
- * Copyright (c) Chris Putnam 2011-2016
+ * Copyright (c) Chris Putnam 2011-2017
  *
  * Source code released under the GPL version 2
  *
@@ -18,6 +18,11 @@
 #define NDEBUG
 #endif
 #include <assert.h>
+
+#define VPLIST_MINALLOC (20)
+
+#define VPLIST_EXACT_SIZE  (0)
+#define VPLIST_DOUBLE_SIZE (1)
 
 void
 vplist_init( vplist *vpl )
@@ -36,158 +41,182 @@ vplist_new( void )
 	return vpl;
 }
 
-int
-vplist_find( vplist *vpl, void *v )
+static inline int
+vplist_alloc( vplist *vpl, vplist_index alloc )
 {
-	int i;
-	assert( vpl );
-	for ( i=0; i<vpl->n; ++i )
-		if ( vpl->data[i]==v ) return i;
-	return -1;
-}
-
-int
-vplist_copy( vplist *to, vplist *from )
-{
-	int i;
-	assert( to );
-	assert( from );
-	if ( from->n > to->max ) {
-		if ( to->max ) free( to->data );
-		to->data = ( void ** ) malloc( sizeof( void * ) * from->n );
-		if ( !to->data ) return VPLIST_ERR;
-		to->max = from->n;
-	}
-	for ( i=0; i<from->n; ++i )
-		to->data[i] = from->data[i];
-	to->n = from->n;
-	return VPLIST_OK;
-}
-
-int
-vplist_append( vplist *to, vplist *from )
-{
-	int i, status;
-	assert( to );
-	assert( from );
-	for ( i=0; i<from->n; ++i ) {
-		status = vplist_add( to, from->data[i] );
-		if ( status!=VPLIST_OK ) return status;
-	}
-	return VPLIST_OK;
-}
-
-static int
-vplist_validindex( vplist *vpl, int n )
-{
-	if ( n < 0 || n >= vpl->n ) return 0;
-	return 1;
-}
-
-static int
-vplist_alloc( vplist *vpl )
-{
-	int alloc = 20;
 	vpl->data = ( void ** ) malloc( sizeof( void * ) * alloc );
-	if ( !vpl->data ) return VPLIST_ERR;
+	if ( !vpl->data ) return VPLIST_MEMERR;
+
 	vpl->max = alloc;
 	vpl->n = 0;
+
 	return VPLIST_OK;
 }
 
-static int
-vplist_realloc( vplist *vpl )
+static inline int
+vplist_realloc( vplist *vpl, vplist_index alloc )
 {
 	void **more;
-	int alloc = vpl->max * 2;
+
 	more = ( void ** ) realloc( vpl->data, sizeof( void * ) * alloc );
-	if ( !more ) return VPLIST_ERR;
+	if ( !more ) return VPLIST_MEMERR;
+
 	vpl->data = more;
-	vpl->max = alloc;
+	vpl->max  = alloc;
+
 	return VPLIST_OK;
 }
 
-int
-vplist_add( vplist *vpl, void *v )
+/* vplist_ensure_space( vpl, n, mode )
+ *
+ *    Makes sure that vplist can hold at least n members, allocating memory if required.
+ *
+ *    mode
+ *       - Can either be VPLIST_DOUBLE_SIZE or VPLIST_EXACT_SIZE.
+ *       - If VPLIST_EXACT_SIZE and current size < n, size will be exactly n.
+ *       - If VPLIST_DOUBLE_SIZE and current size < n, size will be doubled (or VPLIST_MINALLOC 
+ *         if the vplist is empty) or n, whichever is bigger.
+ *
+ *    Returns VPLIST_OK or VPLIST_MEMERR.
+ */
+static int
+vplist_ensure_space( vplist *vpl, vplist_index n, unsigned char mode )
 {
+	vplist_index alloc = n;
 	int status = VPLIST_OK;
 
-	assert( vpl );
+	if ( vpl->max == 0 ) {
+		if ( mode == VPLIST_DOUBLE_SIZE && alloc < VPLIST_MINALLOC ) alloc = VPLIST_MINALLOC;
+		status = vplist_alloc( vpl, alloc );
+	}
 
-	/* ensure sufficient space */
-	if ( vpl->max==0 ) status = vplist_alloc( vpl );
-	else if ( vpl->n >= vpl->max ) status = vplist_realloc( vpl );
-
-	if ( status==VPLIST_OK ) {
-		vpl->data[vpl->n] = v;
-		vpl->n++;
+	else if ( vpl->max < n ) {
+		if ( mode == VPLIST_DOUBLE_SIZE && alloc < 2 * vpl->max ) alloc = 2 * vpl->max;
+		status = vplist_realloc( vpl, alloc );
 	}
 
 	return status;
 }
 
-void *
-vplist_get( vplist *vpl, int n )
+int
+vplist_copy( vplist *to, vplist *from )
 {
-	assert( vpl );
-	if ( !vplist_validindex( vpl, n ) ) return NULL;
-	return vpl->data[ n ];
+	vplist_index i;
+	int status;
+
+	assert( to );
+	assert( from );
+
+	status = vplist_ensure_space( to, from->n, VPLIST_EXACT_SIZE );
+
+	if ( status == VPLIST_OK ) {
+
+		for ( i=0; i<from->n; ++i )
+			to->data[i] = from->data[i];
+		to->n = from->n;
+
+	}
+
+	return status;
 }
 
-void
-vplist_set( vplist *vpl, int n, void *v )
+int
+vplist_fill( vplist *vpl, vplist_index n, void *v )
 {
-	assert( vpl );
-	assert( vplist_validindex( vpl, n ) );
+	vplist_index i;
+	int status;
 
-	vpl->data[ n ] = v;
+	assert( vpl );
+
+	status = vplist_ensure_space( vpl, n, VPLIST_EXACT_SIZE );
+
+	if ( status == VPLIST_OK ) {
+
+		for ( i=0; i<n; ++i )
+			vpl->data[i] = v;
+		vpl->n = n;
+
+	}
+
+	return status;
 }
 
-void
-vplist_swap( vplist *vpl, int n1, int n2 )
+int
+vplist_add( vplist *vpl, void *v )
 {
-	void *v1, *v2;
+	int status;
 
 	assert( vpl );
-	assert( vplist_validindex( vpl, n1 ) );
-	assert( vplist_validindex( vpl, n2 ) );
 
-	v1 = vpl->data[n1];
-	v2 = vpl->data[n2];
+	status = vplist_ensure_space( vpl, vpl->n + 1, VPLIST_DOUBLE_SIZE );
 
-	vpl->data[n1] = v2;
-	vpl->data[n2] = v1;
+	if ( status == VPLIST_OK ) {
+
+		vpl->data[vpl->n] = v;
+		vpl->n++;
+
+	}
+
+	return status;
 }
 
-void
-vplist_remove( vplist *vpl, int n )
+int
+vplist_insert_list( vplist *vpl, vplist_index pos, vplist *add )
 {
-	int i;
+	vplist_index i;
+	int status;
 
 	assert( vpl );
-	assert( vplist_validindex( vpl, n ) );
+	assert( add );
+	assert( pos <= vpl->n );
 
-	for ( i=n+1; i<vpl->n; ++i )
-		vpl->data[ i-1 ] = vpl->data[ i ];
-	vpl->n -= 1;
+	/* nothing to do here */
+	if ( add->n < 1 ) return VPLIST_OK;
+
+	status = vplist_ensure_space( vpl, vpl->n + add->n, VPLIST_DOUBLE_SIZE );
+
+	if ( status == VPLIST_OK ) {
+
+		for ( i=vpl->n-1; i>=pos; --i )
+			vpl->data[i+add->n] = vpl->data[i];
+
+		for ( i=0; i<add->n; ++i )
+			vpl->data[pos+i] = add->data[i];
+
+		vpl->n += add->n;
+	}
+
+	return status;
 }
 
-void
-vplist_removevp( vplist *vpl, void *v )
+int
+vplist_append( vplist *vpl, vplist *add )
 {
-	int n;
+	vplist_index i;
+	int status;
+
 	assert( vpl );
-	do {
-		n = vplist_find( vpl, v );
-		if ( n!=-1 ) vplist_remove( vpl, n );
-	} while ( n!=-1 );
+	assert( add );
+
+	status = vplist_ensure_space( vpl, vpl->n + add->n, VPLIST_DOUBLE_SIZE );
+
+	if ( status == VPLIST_OK ) {
+
+		for ( i=0; i<add->n; ++i )
+			vpl->data[ vpl->n + i ] = add->data[i];
+
+		vpl->n += add->n;
+
+	}
+
+	return status;
 }
 
 static void
 vplist_freemembers( vplist *vpl, vplist_ptrfree vpf )
 {
+	vplist_index i;
 	void *v;
-	int i;
 	for ( i=0; i<vpl->n; ++i ) {
 		v = vplist_get( vpl, i );
 		if ( v ) (*vpf)( v );
@@ -195,49 +224,164 @@ vplist_freemembers( vplist *vpl, vplist_ptrfree vpf )
 }
 
 void
-vplist_empty( vplist *vpl )
+vplist_emptyfn( vplist *vpl, vplist_ptrfree vpf )
 {
 	assert( vpl );
+	if ( vpf ) vplist_freemembers( vpl, vpf );
 	vpl->n = 0;
 }
 
 void
-vplist_emptyfn( vplist *vpl, vplist_ptrfree vpf )
+vplist_empty( vplist *vpl )
 {
-	assert( vpl );
-	vplist_freemembers( vpl, vpf );
-	vplist_empty( vpl );
-}
-
-void
-vplist_free( vplist *vpl )
-{
-	assert( vpl );
-	if ( vpl->data ) free( vpl->data );
-	vplist_init( vpl );
+	vplist_emptyfn( vpl, NULL );
 }
 
 void
 vplist_freefn( vplist *vpl, vplist_ptrfree vpf )
 {
 	assert( vpl );
-	vplist_freemembers( vpl, vpf );
-	vplist_free( vpl );
+	if ( vpf ) vplist_freemembers( vpl, vpf );
+	if ( vpl->data ) free( vpl->data );
+	vplist_init( vpl );
 }
 
 void
-vplist_delete( vplist **vpl )
+vplist_free( vplist *vpl )
 {
-	assert( *vpl );
-	vplist_free( *vpl );
-	free( *vpl );
-	*vpl = NULL;
+	vplist_freefn( vpl, NULL );
 }
 
 void
 vplist_deletefn( vplist **vpl, vplist_ptrfree vpf )
 {
-	assert( *vpl );
-	vplist_freemembers( *vpl, vpf );
-	vplist_delete( vpl );
+	vplist_freefn( *vpl, vpf );
+	free( *vpl );
+	*vpl = NULL;
+}
+
+void
+vplist_delete( vplist **vpl )
+{
+	vplist_deletefn( vpl, NULL );
+}
+
+static inline int
+vplist_validindex( vplist *vpl, vplist_index n )
+{
+	if ( n < 0 || n >= vpl->n ) return 0;
+	return 1;
+}
+
+void *
+vplist_get( vplist *vpl, vplist_index n )
+{
+	assert( vpl );
+	if ( !vplist_validindex( vpl, n ) ) return NULL;
+	return vpl->data[ n ];
+}
+
+void
+vplist_set( vplist *vpl, vplist_index n, void *v )
+{
+	assert( vpl );
+	assert( vplist_validindex( vpl, n ) );
+	vpl->data[ n ] = v;
+}
+
+int
+vplist_find( vplist *vpl, void *v )
+{
+	vplist_index i;
+	assert( vpl );
+	for ( i=0; i<vpl->n; ++i )
+		if ( vpl->data[i]==v ) return i;
+	return -1;
+}
+
+void
+vplist_swap( vplist *vpl, vplist_index n1, vplist_index n2 )
+{
+	void *tmp;
+
+	assert( vpl );
+	assert( vplist_validindex( vpl, n1 ) );
+	assert( vplist_validindex( vpl, n2 ) );
+
+	tmp           = vpl->data[n1];
+	vpl->data[n1] = vpl->data[n2];
+	vpl->data[n2] = tmp;
+}
+
+int
+vplist_removefn( vplist *vpl, vplist_index n, vplist_ptrfree vpf )
+{
+	vplist_index i;
+
+	assert( vpl );
+	assert( vplist_validindex( vpl, n ) );
+
+	if ( vpf ) (*vpf)( vplist_get( vpl, n ) );
+
+	for ( i=n+1; i<vpl->n; ++i )
+		vpl->data[ i-1 ] = vpl->data[ i ];
+	vpl->n -= 1;
+
+	return 1;
+}
+
+int
+vplist_remove( vplist *vpl, vplist_index n )
+{
+	return vplist_removefn( vpl, n, NULL );
+}
+
+int
+vplist_removevpfn( vplist *vpl, void *v, vplist_ptrfree vpf )
+{
+	vplist_index n;
+	int count = 0;
+
+	assert( vpl );
+
+	do {
+		n = vplist_find( vpl, v );
+		if ( vplist_found( vpl, n ) ) {
+			vplist_removefn( vpl, n, vpf );
+			count++;
+		}
+	} while ( vplist_found( vpl, n ) );
+
+	return count;
+}
+
+int
+vplist_removevp( vplist *vpl, void *v )
+{
+	return vplist_removevpfn( vpl, v, NULL );
+}
+
+void
+vplist_remove_rangefn( vplist *vpl, vplist_index start, vplist_index endplusone, vplist_ptrfree vpf )
+{
+	vplist_index i, n;
+
+	assert( endplusone <= vpl->n );
+	assert( endplusone > start );
+
+	n = endplusone - start;
+	if ( vpf ) {
+		for ( i=start; i<endplusone; ++i )
+			(*vpf)( vplist_get( vpl, i ) );
+	}
+	for ( i=endplusone; i<vpl->n; ++i ) {
+		vpl->data[i-n] = vpl->data[i];
+	}
+	vpl->n -= n;
+}
+
+void
+vplist_remove_range( vplist *vpl, vplist_index start, vplist_index endplusone )
+{
+	vplist_remove_rangefn( vpl, start, endplusone, NULL );
 }

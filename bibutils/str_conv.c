@@ -1,11 +1,11 @@
 /*
- * newstr_conv.c
+ * str_conv.c
  *
- * Copyright (c) Chris Putnam 1999-2016
+ * Copyright (c) Chris Putnam 1999-2017
  *
  * Source code released under the GPL version 2
  *
- * newstring routines for converting newstrings between character sets
+ * str routines for converting strs between character sets
  *
  */
 #include <stdio.h>
@@ -13,74 +13,73 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
-#include "newstr.h"
 #include "latex.h"
 #include "entities.h"
 #include "utf8.h"
 #include "gb18030.h"
 #include "charsets.h"
-#include "newstr_conv.h"
+#include "str_conv.h"
 
 static void
-addentity( newstr *s, unsigned int ch )
+addentity( str *s, unsigned int ch )
 {
 	char buf[512];
 	sprintf( buf, "&#%d;", ch );
-	newstr_strcat( s, buf );
+	str_strcatc( s, buf );
 }
 
 /* These are the five minimal predefined entites in XML */
 static int
-minimalxmlchars( newstr *s, unsigned int ch )
+minimalxmlchars( str *s, unsigned int ch )
 {
-	if ( ch==34 ) { newstr_strcat( s, "&quot;" ); return 1; }
-	else if ( ch==38 ) { newstr_strcat( s, "&amp;" ); return 1; }
-	else if ( ch==39 ) { newstr_strcat( s, "&apos;" ); return 1; }
-	else if ( ch==60 ) { newstr_strcat( s, "&lt;" ); return 1; }
-	else if ( ch==62 ) { newstr_strcat( s, "&gt;" ); return 1; }
+	if ( ch==34 )      { str_strcatc( s, "&quot;" ); return 1; }
+	else if ( ch==38 ) { str_strcatc( s, "&amp;" );  return 1; }
+	else if ( ch==39 ) { str_strcatc( s, "&apos;" ); return 1; }
+	else if ( ch==60 ) { str_strcatc( s, "&lt;" );   return 1; }
+	else if ( ch==62 ) { str_strcatc( s, "&gt;" );   return 1; }
 	return 0;
 }
 
 static void
-addxmlchar( newstr *s, unsigned int ch )
+addxmlchar( str *s, unsigned int ch )
 {
 	if ( minimalxmlchars( s, ch ) ) return;
 	if ( ch > 127 ) addentity( s, ch );
-	else newstr_addchar( s, ch );
+	else str_addchar( s, ch );
 }
 
 static void
-addutf8char( newstr *s, unsigned int ch, int xmlout )
+addutf8char( str *s, unsigned int ch, int xmlout )
 {
 	unsigned char code[6];
 	int nc, i;
 	if ( xmlout ) {
 		if ( minimalxmlchars( s, ch ) ) return;
-		if ( ch > 127 && xmlout == NEWSTR_CONV_XMLOUT_ENTITIES )
+		if ( ch > 127 && xmlout == STR_CONV_XMLOUT_ENTITIES )
 			{ addentity( s, ch ); return; }
 	}
 	nc = utf8_encode( ch, code );
 	for ( i=0; i<nc; ++i )
-		newstr_addchar( s, code[i] );
+		str_addchar( s, code[i] );
 }
 
 static void
-addgb18030char( newstr *s, unsigned int ch, int xmlout )
+addgb18030char( str *s, unsigned int ch, int xmlout )
 {
 	unsigned char code[4];
 	int nc, i;
 	if ( xmlout ) {
 		if ( minimalxmlchars( s, ch ) ) return;
-		if ( ch > 127 && xmlout == NEWSTR_CONV_XMLOUT_ENTITIES )
+		if ( ch > 127 && xmlout == STR_CONV_XMLOUT_ENTITIES )
 			{ addentity( s, ch ); return; }
 	}
 	nc = gb18030_encode( ch, code );
 	for ( i=0; i<nc; ++i )
-		newstr_addchar( s, code[i] );
+		str_addchar( s, code[i] );
 }
 
 static void
-addlatexchar( newstr *s, unsigned int ch, int xmlout, int utf8out )
+addlatexchar( str *s, unsigned int ch, int xmlout, int utf8out )
 {
 	char buf[512];
 	uni2latex( ch, buf, sizeof( buf ) );
@@ -91,7 +90,7 @@ addlatexchar( newstr *s, unsigned int ch, int xmlout, int utf8out )
 	if ( utf8out && !strcmp( buf, "?" ) ) {
 		addutf8char( s, ch, xmlout );
 	} else {
-		newstr_strcat( s, buf );
+		str_strcatc( s, buf );
 	}
 }
 
@@ -116,7 +115,7 @@ addlatexchar( newstr *s, unsigned int ch, int xmlout, int utf8out )
  */
 
 static unsigned int
-get_unicode( newstr *s, unsigned int *pi, int charsetin, int latexin, int utf8in, int xmlin )
+get_unicode( str *s, unsigned int *pi, int charsetin, int latexin, int utf8in, int xmlin )
 {
 	unsigned int ch;
 	int unicode = 0, err = 0;
@@ -144,7 +143,7 @@ get_unicode( newstr *s, unsigned int *pi, int charsetin, int latexin, int utf8in
 }
 
 static int
-write_unicode( newstr *s, unsigned int ch, int charsetout, int latexout,
+write_unicode( str *s, unsigned int ch, int charsetout, int latexout,
 		int utf8out, int xmlout )
 {
 	unsigned int c;
@@ -157,7 +156,7 @@ write_unicode( newstr *s, unsigned int ch, int charsetout, int latexout,
 	} else {
 		c = charset_lookupuni( charsetout, ch );
 		if ( xmlout ) addxmlchar( s, c );
-		else newstr_addchar( s, c );
+		else str_addchar( s, c );
 	}
 	return 1;
 }
@@ -166,18 +165,18 @@ write_unicode( newstr *s, unsigned int ch, int charsetout, int latexout,
  * Returns 1 on memory error condition
  */
 int
-newstr_convert( newstr *s,
+str_convert( str *s,
 	int charsetin,  int latexin,  int utf8in,  int xmlin,
 	int charsetout, int latexout, int utf8out, int xmlout )
 {
 	unsigned int pos = 0;
 	unsigned int ch;
-	newstr ns;
+	str ns;
 	int ok = 1;
 
 	if ( !s || s->len==0 ) return ok;
 
-	newstr_init( &ns );
+	str_init( &ns );
 
 	if ( charsetin==CHARSET_UNKNOWN ) charsetin = CHARSET_DEFAULT;
 	if ( charsetout==CHARSET_UNKNOWN ) charsetout = CHARSET_DEFAULT;
@@ -188,9 +187,9 @@ newstr_convert( newstr *s,
 		if ( !ok ) goto out;
 	}
 
-	newstr_swapstrings( s, &ns );
+	str_swapstrings( s, &ns );
 out:
-	newstr_free( &ns );
+	str_free( &ns );
 
 	return ok;
 }

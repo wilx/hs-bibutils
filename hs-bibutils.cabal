@@ -1,5 +1,5 @@
 name:               hs-bibutils
-version:            5.7
+version:            6.2
 homepage:           https://github.com/wilx/hs-bibutils
 
 synopsis:           Haskell bindings to bibutils, the bibliography

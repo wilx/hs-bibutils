@@ -1,7 +1,7 @@
 /*
  * bibl.c
  *
- * Copyright (c) Chris Putnam 2005-2016
+ * Copyright (c) Chris Putnam 2005-2017
  *
  * Source code released under the GPL version 2
  *
@@ -92,7 +92,7 @@ bibl_copy( bibl *bout, bibl *bin )
 			value = fields_value( refin, j, FIELDS_CHRP );
 			level = fields_level( refin, j );
 			if ( tag && value ) {
-				status = fields_add( refout, tag, value, level );
+				status = fields_add_can_dup( refout, tag, value, level );
 				if ( status!=FIELDS_OK ) return 0;
 			}
 		}

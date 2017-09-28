@@ -1,7 +1,7 @@
 /*
  * fields.h
  *
- * Copyright (c) Chris Putnam 2003-2016
+ * Copyright (c) Chris Putnam 2003-2017
  *
  * Source code released under the GPL version 2
  *
@@ -20,40 +20,51 @@
 #define LEVEL_ORIG (-2)
 
 #include <stdarg.h>
-#include "newstr.h"
+#include "str.h"
 #include "vplist.h"
 
-typedef struct {
-	newstr    *tag;
-	newstr    *data;
+typedef struct fields {
+	str       *tag;
+	str       *data;
 	int       *used;
 	int       *level;
 	int       n;
 	int       max;
 } fields;
 
-extern void fields_init( fields *f );
-extern fields *fields_new( void );
-extern void fields_free( fields *f );
+void    fields_init( fields *f );
+fields *fields_new( void );
+void    fields_free( fields *f );
 
-extern int  fields_add( fields *f, char *tag, char *data, int level );
-extern int  fields_add_tagsuffix( fields *f, char *tag, char *suffix,
-		char *data, int level );
+#define FIELDS_CAN_DUP (0)
+#define FIELDS_NO_DUPS (1)
 
-extern int  fields_maxlevel( fields *f );
-extern void fields_clearused( fields *f );
-extern void fields_setused( fields *f, int n );
-extern int  fields_replace_or_add( fields *f, char *tag, char *data, int level );
+#define fields_add( a, b, c, d )         _fields_add( a, b, c, d, FIELDS_NO_DUPS )
+#define fields_add_can_dup( a, b, c, d ) _fields_add( a, b, c, d, FIELDS_CAN_DUP )
+#define fields_add_tagsuffix( a, b, c, d, e )         _fields_add( a, b, c, d, e, FIELDS_NO_DUPS )
+#define fields_add_tagsuffix_can_dup( a, b, c, d, e ) _fields_add( a, b, c, d, e, FIELDS_CAN_DUP )
 
-extern inline int fields_num( fields *f );
-extern inline int fields_used( fields *f, int n );
-extern inline int fields_nodata( fields *f, int n );
+int  _fields_add( fields *f, char *tag, char *data, int level, int mode );
+int  _fields_add_tagsuffix( fields *f, char *tag, char *suffix,
+		char *data, int level, int mode );
 
-extern inline int fields_match_level( fields *f, int n, int level );
-extern inline int fields_match_tag( fields *f, int n, char *tag );
-extern inline int fields_match_casetag( fields *f, int n, char *tag );
-extern inline int fields_match_tag_level( fields *f, int n, char *tag, int level );
-extern inline int fields_match_casetag_level( fields *f, int n, char *tag, int level );
+int  fields_maxlevel( fields *f );
+void fields_clearused( fields *f );
+void fields_setused( fields *f, int n );
+int  fields_replace_or_add( fields *f, char *tag, char *data, int level );
+
+int fields_num( fields *f );
+int fields_used( fields *f, int n );
+int fields_notag( fields *f, int n );
+int fields_nodata( fields *f, int n );
+
+int fields_match_level( fields *f, int n, int level );
+int fields_match_tag( fields *f, int n, char *tag );
+int fields_match_casetag( fields *f, int n, char *tag );
+int fields_match_tag_level( fields *f, int n, char *tag, int level );
+int fields_match_casetag_level( fields *f, int n, char *tag, int level );
+
+void fields_report( fields *f, FILE *fp );
 
 #define FIELDS_STRP_FLAG     (2)
 #define FIELDS_POSP_FLAG     (4)
@@ -69,16 +80,16 @@ extern inline int fields_match_casetag_level( fields *f, int n, char *tag, int l
 #define FIELDS_CHRP_NOUSE  (                            0                              )
 #define FIELDS_STRP_NOUSE  (                     FIELDS_STRP_FLAG                      )
 
-extern void *fields_tag( fields *f, int n, int mode );
-extern void *fields_value( fields *f, int n, int mode );
-extern int   fields_level( fields *f, int n );
+void *fields_tag( fields *f, int n, int mode );
+void *fields_value( fields *f, int n, int mode );
+int   fields_level( fields *f, int n );
  
-extern int   fields_find( fields *f, char *searchtag, int level );
+int   fields_find( fields *f, char *searchtag, int level );
 
-extern void *fields_findv( fields *f, int level, int mode, char *tag );
-extern void *fields_findv_firstof( fields *f, int level, int mode, ... );
+void *fields_findv( fields *f, int level, int mode, char *tag );
+void *fields_findv_firstof( fields *f, int level, int mode, ... );
 
-extern void  fields_findv_each( fields *f, int level, int mode, vplist *a, char *tag );
-extern void  fields_findv_eachof( fields *f, int level, int mode, vplist *a, ... );
+void  fields_findv_each( fields *f, int level, int mode, vplist *a, char *tag );
+void  fields_findv_eachof( fields *f, int level, int mode, vplist *a, ... );
 
 #endif

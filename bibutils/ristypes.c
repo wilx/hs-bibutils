@@ -1,7 +1,7 @@
 /*
  * ristypes.c
  *
- * Copyright (c) Chris Putnam 2003-2016
+ * Copyright (c) Chris Putnam 2003-2017
  *
  * Source code released under the GPL version 2
  *
@@ -34,13 +34,13 @@ static lookups generic[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Name of Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -62,13 +62,13 @@ static lookups generic[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Resarch Notes -> Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Resarch Notes -> Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -80,11 +80,11 @@ static lookups generic[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated? */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated? */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 };
 
 static lookups article[] = {
@@ -108,13 +108,13 @@ static lookups article[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_HOST },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -136,13 +136,13 @@ static lookups article[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_HOST },   /* Publisher */
-	{ "PY", "PARTYEAR",     DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "PARTDATE:YEAR",DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_HOST },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -154,12 +154,12 @@ static lookups article[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "PARTYEAR",     DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "PARTMONTH",    SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ "  ", "INTERNAL_TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
+	{ "Y1", "PARTDATE:YEAR",DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "PARTDATE:MONTH",SIMPLE, LEVEL_MAIN },   /* Access Date */
+	{ "  ", "INTERNAL_TYPE|ARTICLE",  ALWAYS, LEVEL_MAIN },
 	{ "  ", "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
 	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|journal article",  ALWAYS, LEVEL_MAIN },
@@ -189,13 +189,13 @@ static lookups magarticle[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_HOST },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -217,13 +217,13 @@ static lookups magarticle[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_HOST },   /* Publisher */
-	{ "PY", "PARTYEAR",     DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "PARTDATE:YEAR",DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_HOST },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -235,11 +235,11 @@ static lookups magarticle[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "PARTYEAR",     DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "PARTMONTH",    SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "PARTDATE:YEAR",DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "PARTDATE:MONTH",SIMPLE, LEVEL_MAIN },   /* Access Date */
 	{ "  ", "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
 	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|periodical",       ALWAYS, LEVEL_HOST },
@@ -267,13 +267,13 @@ static lookups newsarticle[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_HOST },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -295,13 +295,13 @@ static lookups newsarticle[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_HOST },   /* Publisher */
-	{ "PY", "PARTYEAR",     DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "PARTDATE:YEAR",DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_HOST },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -313,15 +313,15 @@ static lookups newsarticle[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "PARTYEAR",     DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "PARTMONTH",    SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ "  ", "INTERNAL_TYPE|NEWSARTICLE",       ALWAYS, LEVEL_MAIN },
-	{ "  ", "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
-	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|newspaper",        ALWAYS, LEVEL_HOST }
+	{ "Y1", "PARTDATE:YEAR",DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "PARTDATE:MONTH",SIMPLE, LEVEL_MAIN },   /* Access Date */
+	{ "  ", "INTERNAL_TYPE|NEWSARTICLE", ALWAYS, LEVEL_MAIN },
+	{ "  ", "ISSUANCE|continuing",       ALWAYS, LEVEL_HOST },
+	{ "  ", "RESOURCE|text",             ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE|newspaper",           ALWAYS, LEVEL_HOST }
 };
 
 static lookups book[] = {
@@ -346,13 +346,13 @@ static lookups book[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -374,13 +374,13 @@ static lookups book[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title -- here abbreviated title for series*/
@@ -392,14 +392,14 @@ static lookups book[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ "  ", "ISSUANCE|monographic",  ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|book",    ALWAYS, LEVEL_MAIN },
-	{ "  ", "RESOURCE|text", ALWAYS, LEVEL_MAIN }
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "  ", "ISSUANCE|monographic",   ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE|book",             ALWAYS, LEVEL_MAIN },
+	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN }
 };
 
 static lookups inbook[] = {
@@ -424,13 +424,13 @@ static lookups inbook[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_HOST },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_HOST },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_HOST },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_HOST },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_HOST },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_HOST },   /* Number */
@@ -452,13 +452,13 @@ static lookups inbook[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_HOST },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_HOST },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_HOST },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_HOST },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_SERIES }, /* 'Secondary' Title -- here abbreviated title for series*/
@@ -470,11 +470,11 @@ static lookups inbook[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_HOST },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_HOST },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_HOST },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_HOST },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_HOST },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_HOST },   /* Access Date */
 	{ "  ", "GENRE|book chapter",   ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|book",           ALWAYS, LEVEL_HOST },
 	{ "  ", "ISSUANCE|monographic", ALWAYS, LEVEL_HOST },
@@ -502,13 +502,13 @@ static lookups conference[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -530,13 +530,13 @@ static lookups conference[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_HOST },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_HOST },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_HOST },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "BT", "TITLE",        SIMPLE,  LEVEL_HOST },   /* Book Title */
@@ -549,12 +549,12 @@ static lookups conference[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_HOST },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_HOST },   /* Access Date */
-	{ "  ", "INTERNAL_TYPE|CONFERENCE",       ALWAYS, LEVEL_MAIN },
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_HOST },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_HOST },   /* Access Date */
+	{ "  ", "INTERNAL_TYPE|CONFERENCE",     ALWAYS, LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",                ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|conference publication", ALWAYS, LEVEL_HOST }
 };
@@ -581,13 +581,13 @@ static lookups statute[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -609,13 +609,13 @@ static lookups statute[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -627,12 +627,12 @@ static lookups statute[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ "  ", "INTERNAL_TYPE|STATUTE",          ALWAYS, LEVEL_MAIN },
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "  ", "INTERNAL_TYPE|STATUTE", ALWAYS, LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",         ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|legislation",     ALWAYS, LEVEL_MAIN }
 };
@@ -659,13 +659,13 @@ static lookups hearing[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -687,13 +687,13 @@ static lookups hearing[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -705,11 +705,11 @@ static lookups hearing[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|HEARING", ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|hearing",         ALWAYS, LEVEL_MAIN }
 };
@@ -736,13 +736,13 @@ static lookups cases[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -764,13 +764,13 @@ static lookups cases[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -782,11 +782,11 @@ static lookups cases[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|CASE",              ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|legal case and case notes", ALWAYS, LEVEL_MAIN }
 };
@@ -813,13 +813,13 @@ static lookups communication[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -841,13 +841,13 @@ static lookups communication[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -859,11 +859,11 @@ static lookups communication[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|ARTICLE", ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|communication",   ALWAYS, LEVEL_MAIN }
 };
@@ -890,13 +890,13 @@ static lookups thesis[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -918,13 +918,13 @@ static lookups thesis[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -936,11 +936,11 @@ static lookups thesis[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|THESIS",  ALWAYS,  LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",         ALWAYS,  LEVEL_MAIN },
 	{ "  ", "GENRE|thesis",          ALWAYS,  LEVEL_MAIN },
@@ -968,13 +968,13 @@ static lookups report[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -996,13 +996,13 @@ static lookups report[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -1014,11 +1014,11 @@ static lookups report[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|REPORT",  ALWAYS,  LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",         ALWAYS,  LEVEL_MAIN },
 	{ "  ", "GENRE|report",          ALWAYS,  LEVEL_MAIN }
@@ -1046,13 +1046,13 @@ static lookups abstract[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -1074,13 +1074,13 @@ static lookups abstract[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -1092,11 +1092,11 @@ static lookups abstract[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "GENRE|abstract or summary", ALWAYS,  LEVEL_MAIN }
 };
 
@@ -1122,13 +1122,13 @@ static lookups program[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -1150,13 +1150,13 @@ static lookups program[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -1168,11 +1168,11 @@ static lookups program[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "RESOURCE|software, multimedia", ALWAYS, LEVEL_MAIN }
 };
 
@@ -1198,13 +1198,13 @@ static lookups patent[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -1226,13 +1226,13 @@ static lookups patent[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -1244,11 +1244,11 @@ static lookups patent[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "RESOURCE|text", ALWAYS, LEVEL_MAIN },
 	{ "  ", "GENRE|patent",  ALWAYS, LEVEL_MAIN }
 };
@@ -1275,13 +1275,13 @@ static lookups electric[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -1303,13 +1303,13 @@ static lookups electric[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -1321,11 +1321,11 @@ static lookups electric[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ " ",  "RESOURCE|software, multimedia", ALWAYS, LEVEL_MAIN },
 	{ " ",  "GENRE|electronic",              ALWAYS, LEVEL_MAIN },
 };
@@ -1352,13 +1352,13 @@ static lookups pamphlet[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -1380,13 +1380,13 @@ static lookups pamphlet[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -1398,11 +1398,11 @@ static lookups pamphlet[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ " ",  "RESOURCE|text",  ALWAYS, LEVEL_MAIN },
 	{ " ",  "GENRE|pamphlet", ALWAYS, LEVEL_MAIN },
 };
@@ -1429,13 +1429,13 @@ static lookups map[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Name of Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -1457,13 +1457,13 @@ static lookups map[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Resarch Notes -> Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Resarch Notes -> Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -1475,11 +1475,11 @@ static lookups map[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated? */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated? */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ " ",  "RESOURCE|cartographic",   ALWAYS, LEVEL_MAIN },
 	{ " ",  "GENRE|map",               ALWAYS, LEVEL_MAIN }
 };
@@ -1506,13 +1506,13 @@ static lookups unpublished[] = {
 	{ "CP", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CT", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "CY", "ADDRESS",      SIMPLE,  LEVEL_MAIN },   /* Place Published */
-	{ "DA", "YEAR",         DATE,    LEVEL_MAIN },   /* Date */
+	{ "DA", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Date */
 	{ "DB", "DATABASE",     SIMPLE,  LEVEL_MAIN },   /* Database */
 	{ "DI", "DOI",          DOI,     LEVEL_MAIN },   /* Deprecated? */
 	{ "DO", "DOI",          DOI,     LEVEL_MAIN },   /* DOI */
 	{ "DP", "DATABASEPROV", SIMPLE,  LEVEL_MAIN },   /* Database Provider */
 	{ "ED", "EDITOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "EP", "PAGEEND",      SIMPLE,  LEVEL_MAIN },   /* End Page */
+	{ "EP", "PAGES:STOP",   SIMPLE,  LEVEL_MAIN },   /* End Page */
 	{ "ET", "EDITION",      SIMPLE,  LEVEL_MAIN },   /* Edition */
 	{ "ID", "REFNUM",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "IS", "ISSUE",        SIMPLE,  LEVEL_MAIN },   /* Number */
@@ -1534,13 +1534,13 @@ static lookups unpublished[] = {
 	{ "NV", "NUMVOLUMES",   SIMPLE,  LEVEL_MAIN },   /* Number of Volumes */
 	{ "OP", "ORIGPUB",      SIMPLE,  LEVEL_MAIN },   /* Original Publication */
 	{ "PB", "PUBLISHER",    SIMPLE,  LEVEL_MAIN },   /* Publisher */
-	{ "PY", "YEAR",         DATE,    LEVEL_MAIN },   /* Year */
+	{ "PY", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Year */
 	{ "RI", "REVIEWEDITEM", SIMPLE,  LEVEL_MAIN },   /* Reviewed Item */
-	{ "RN", "NOTES",        SIMPLE,  LEVEL_MAIN },   /* Research Notes */
+	{ "RN", "NOTES",        NOTES,   LEVEL_MAIN },   /* Research Notes */
 	{ "RP", "REPRINTSTATUS",SIMPLE,  LEVEL_MAIN },   /* Reprint Edition */
 	{ "SE", "SECTION",      SIMPLE,  LEVEL_MAIN },   /* Section */
 	{ "SN", "SERIALNUMBER", SERIALNO,LEVEL_MAIN },   /* ISBN/ISSN */
-	{ "SP", "PAGESTART",    SIMPLE,  LEVEL_MAIN },   /* Start Page */
+	{ "SP", "PAGES:START",  SIMPLE,  LEVEL_MAIN },   /* Start Page */
 	{ "ST", "SHORTTITLE",   SIMPLE,  LEVEL_MAIN },   /* Short Title */
 	{ "T1", "TITLE",        TITLE,   LEVEL_MAIN },   /* Deprecated? */
 	{ "T2", "SHORTTITLE",   SIMPLE,  LEVEL_HOST },   /* 'Secondary' Title */
@@ -1552,13 +1552,13 @@ static lookups unpublished[] = {
 	{ "U3", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U4", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
 	{ "U5", "NOTES",        NOTES,   LEVEL_MAIN },   /* 'User' - Deprecated? */
-	{ "UR", "URL",          SIMPLE,  LEVEL_MAIN },   /* URL */
+	{ "UR", "URL",          URL,     LEVEL_MAIN },   /* URL */
 	{ "VL", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Volume */
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
-	{ "Y1", "YEAR",         DATE,    LEVEL_MAIN },   /* Deprecated */
-	{ "Y2", "MONTH",        SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ " ",         "RESOURCE|text",   ALWAYS, LEVEL_MAIN },
-	{ " ",         "GENRE|unpublished",      ALWAYS, LEVEL_MAIN }
+	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
+	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
+	{ " ",  "RESOURCE|text",     ALWAYS, LEVEL_MAIN },
+	{ " ",  "GENRE|unpublished", ALWAYS, LEVEL_MAIN }
 };
 
 #define ORIG(a) ( &(a[0]) )

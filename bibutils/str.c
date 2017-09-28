@@ -1,9 +1,9 @@
 /*
- * newstr.c
+ * str.c
  *
- * Version: 04/17/15
+ * Version: 2017-07-03
  *
- * Copyright (c) Chris Putnam 1999-2016
+ * Copyright (c) Chris Putnam 1999-2017
  *
  * Source code released under the GPL version 2
  *
@@ -17,24 +17,24 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
-#include "newstr.h"
 #include "is_ws.h"
+#include "str.h"
 
-/* Do not use asserts in NEWSTR_NOASSERT defined */
-#ifdef NEWSTR_NOASSERT
+/* Do not use asserts in STR_NOASSERT defined */
+#ifdef STR_NOASSERT
 #define NDEBUG
 #endif
 #include <assert.h>
 
-#define newstr_initlen (64)
+#define str_initlen (64)
 
 
-/* Clear memory in resize/free if NEWSTR_PARANOIA defined */
+/* Clear memory in resize/free if STR_PARANOIA defined */
 
-#ifndef NEWSTR_PARANOIA
+#ifndef STR_PARANOIA
 
 static void 
-newstr_realloc( newstr *s, unsigned long minsize )
+str_realloc( str *s, unsigned long minsize )
 {
 	char *newptr;
 	unsigned long size;
@@ -43,7 +43,7 @@ newstr_realloc( newstr *s, unsigned long minsize )
 	if (size < minsize) size = minsize;
 	newptr = (char *) realloc( s->data, sizeof( *(s->data) )*size );
 	if ( !newptr ) {
-		fprintf(stderr,"Error.  Cannot reallocate memory (%ld bytes) in newstr_realloc.\n", sizeof(*(s->data))*size);
+		fprintf(stderr,"Error.  Cannot reallocate memory (%ld bytes) in str_realloc.\n", sizeof(*(s->data))*size);
 		exit( EXIT_FAILURE );
 	}
 	s->data = newptr;
@@ -51,12 +51,12 @@ newstr_realloc( newstr *s, unsigned long minsize )
 }
 
 /* define as a no-op */
-#define newstr_nullify( s )
+#define str_nullify( s )
 
 #else
 
 static void 
-newstr_realloc( newstr *s, unsigned long minsize )
+str_realloc( str *s, unsigned long minsize )
 {
 	char *newptr;
 	unsigned long size;
@@ -66,11 +66,11 @@ newstr_realloc( newstr *s, unsigned long minsize )
 	newptr = (char *) malloc( sizeof( *(s->data) ) * size );
 	if ( !newptr ) {
 		fprintf( stderr, "Error.  Cannot reallocate memory (%d bytes)"
-			" in newstr_realloc.\n", sizeof(*(s->data))*size );
+			" in str_realloc.\n", sizeof(*(s->data))*size );
 		exit( EXIT_FAILURE );
 	}
 	if ( s->data ) {
-		newstr_nullify( s );
+		str_nullify( s );
 		free( s->data );
 	}
 	s->data = newptr;
@@ -78,7 +78,7 @@ newstr_realloc( newstr *s, unsigned long minsize )
 }
 
 static inline void
-newstr_nullify( newstr *s )
+str_nullify( str *s )
 {
 	memset( s->data, 0, s->dim );
 }
@@ -86,7 +86,7 @@ newstr_nullify( newstr *s )
 #endif
 
 void 
-newstr_init( newstr *s )
+str_init( str *s )
 {
 	assert( s );
 	s->dim = 0;
@@ -95,63 +95,86 @@ newstr_init( newstr *s )
 }
 
 void
-newstr_initstr( newstr *s, const char *initstr )
+str_initstr( str *s, str *from )
 {
 	assert( s );
-	assert( initstr );
-	newstr_init( s );
-	newstr_strcpy( s, initstr );
+	assert( from );
+	str_init( s );
+	str_strcpy( s, from );
 }
 
 void
-newstrs_init( newstr *s, ... )
+str_initstrc( str *s, const char *initstr )
 {
-	newstr *s2;
+	assert( s );
+	assert( initstr );
+	str_init( s );
+	str_strcpyc( s, initstr );
+}
+
+void
+str_initstrsc( str *s, ... )
+{
+	const char *c;
 	va_list ap;
-	newstr_init( s );
+	str_init( s );
 	va_start( ap, s );
 	do {
-		s2 = va_arg( ap, newstr * );
-		if ( s2 ) newstr_init( s2 );
+		c = va_arg( ap, const char * );
+		if ( c ) str_strcatc( s, c );
+	} while ( c );
+	va_end( ap );
+}
+
+void
+strs_init( str *s, ... )
+{
+	str *s2;
+	va_list ap;
+	str_init( s );
+	va_start( ap, s );
+	do {
+		s2 = va_arg( ap, str * );
+		if ( s2 ) str_init( s2 );
 	} while ( s2 );
 	va_end( ap );
 }
 
 /*
  * This is currently a stub. Later it will
- * report whether or not a newstr function
+ * report whether or not a str function
  * could not be performed due to a memory
  * error.
  */
 int
-newstr_memerr( newstr *s )
+str_memerr( str *s )
 {
 	return 0;
 }
 
 void
-newstr_mergestrs( newstr *s, ... )
+str_mergestrs( str *s, ... )
 {
 	va_list ap;
 	const char *cp;
-	newstr_empty( s );
+	str_empty( s );
 	va_start( ap, s );
 	do {
 		cp = va_arg( ap, const char * );
-		if ( cp ) newstr_strcat( s, cp );
+		if ( cp ) str_strcatc( s, cp );
 	} while ( cp );
 	va_end( ap );
 }
 
 static void 
-newstr_initalloc( newstr *s, unsigned long minsize )
+str_initalloc( str *s, unsigned long minsize )
 {
-	unsigned long size = newstr_initlen;
+	unsigned long size = str_initlen;
 	assert( s );
-	if ( minsize > newstr_initlen ) size = minsize;
+	if ( minsize > str_initlen ) size = minsize;
 	s->data = (char *) malloc (sizeof( *(s->data) ) * size);
 	if ( !s->data ) {
-		fprintf(stderr,"Error.  Cannot allocate memory in newstr_initalloc.\n");
+		fprintf(stderr,"Error.  Cannot allocate memory in str_initalloc.\n");
 		exit( EXIT_FAILURE );
 	}
 	s->data[0]='\0';
@@ -159,21 +182,21 @@ newstr_initalloc( newstr *s, unsigned long minsize )
 	s->len=0;
 }
 
-newstr *
-newstr_new( void )
+str *
+str_new( void )
 {
-	newstr *s = (newstr *) malloc( sizeof( *s ) );
+	str *s = (str *) malloc( sizeof( *s ) );
 	if ( s )
-		newstr_initalloc( s, newstr_initlen );
+		str_initalloc( s, str_initlen );
 	return s;
 }
 
 void 
-newstr_free( newstr *s )
+str_free( str *s )
 {
 	assert( s );
 	if ( s->data ) {
-		newstr_nullify( s );
+		str_nullify( s );
 		free( s->data );
 	}
 	s->dim = 0;
@@ -182,81 +205,66 @@ newstr_free( newstr *s )
 }
 
 void
-newstrs_free( newstr *s, ... )
+strs_free( str *s, ... )
 {
-	newstr *s2;
+	str *s2;
 	va_list ap;
-	newstr_free( s );
+	str_free( s );
 	va_start( ap, s );
 	do {
-		s2 = va_arg( ap, newstr * );
-		if ( s2 ) newstr_free( s2 );
+		s2 = va_arg( ap, str * );
+		if ( s2 ) str_free( s2 );
 	} while ( s2 );
 	va_end( ap );
 }
 
 void
-newstr_delete( newstr *s )
+str_delete( str *s )
 {
 	assert( s );
-	newstr_free( s );
+	str_free( s );
 	free( s );
 }
 
 void
-newstr_empty( newstr *s )
+str_empty( str *s )
 {
 	assert( s );
 	if ( s->data ) {
-		newstr_nullify( s );
+		str_nullify( s );
 		s->data[0] = '\0';
 	}
 	s->len = 0;
 }
 
 void
-newstrs_empty( newstr *s, ... )
+strs_empty( str *s, ... )
 {
-	newstr *s2;
+	str *s2;
 	va_list ap;
-	newstr_empty( s );
+	str_empty( s );
 	va_start( ap, s );
 	do {
-		s2 = va_arg( ap, newstr * );
-		if ( s2 ) newstr_empty( s2 );
+		s2 = va_arg( ap, str * );
+		if ( s2 ) str_empty( s2 );
 	} while ( s2 );
 	va_end( ap );
 }
 
 void
-newstr_addchar( newstr *s, char newchar )
+str_addchar( str *s, char newchar )
 {
 	assert( s );
 	if ( newchar=='\0' ) return; /* appending '\0' is a null operation */
 	if ( !s->data || s->dim==0 ) 
-		newstr_initalloc( s, newstr_initlen );
+		str_initalloc( s, str_initlen );
 	if ( s->len + 2 > s->dim ) 
-		newstr_realloc( s, s->len*2 );
+		str_realloc( s, s->len*2 );
 	s->data[s->len++] = newchar;
 	s->data[s->len] = '\0';
 }
 
-void
-newstr_fill( newstr *s, unsigned long n, char fillchar )
-{
-	unsigned long i;
-	assert( s );
-	if ( !s->data || s->dim==0 )
-		newstr_initalloc( s, n+1 );
-	if ( n + 1 > s->dim )
-		newstr_realloc( s, n+1 );
-	for ( i=0; i<n; ++i )
-		s->data[i] = fillchar;
-	s->data[n] = '\0';
-	s->len = n;
-}
-
-/* newstr_addutf8
+/* str_addutf8
  *
  * Add potential multibyte character to s starting at pointer p.
  * Multibyte Unicode characters have the high bit set.
@@ -265,39 +273,46 @@ newstr_fill( newstr *s, unsigned long n, char fillchar )
  * properly updated pointer p.
  */
 const char *
-newstr_addutf8( newstr *s, const char *p )
+str_addutf8( str *s, const char *p )
 {
 	if ( ! ((*p) & 128 ) ) {
-		newstr_addchar( s, *p );
+		str_addchar( s, *p );
 		p++;
 	} else {
 		while ( ((*p) & 128) ) {
-			newstr_addchar( s, *p );
+			str_addchar( s, *p );
 			p++;
 		}
 	}
 	return p;
 }
 
+char *
+str_cstr( str *s )
+{
+	assert( s );
+	return s->data;
+}
+
 void 
-newstr_fprintf( FILE *fp, newstr *s )
+str_fprintf( FILE *fp, str *s )
 {
 	assert( s );
 	if ( s->data ) fprintf( fp, "%s", s->data );
 }
 
 void
-newstr_prepend( newstr *s, const char *addstr )
+str_prepend( str *s, const char *addstr )
 {
 	unsigned long lenaddstr, i;
 	assert( s && addstr );
 	lenaddstr = strlen( addstr );
 	if ( lenaddstr==0 ) return;
 	if ( !s->data || !s->dim )
-		newstr_initalloc( s, lenaddstr+1 );
+		str_initalloc( s, lenaddstr+1 );
 	else {
 		if ( s->len + lenaddstr  + 1 > s->dim )
-			newstr_realloc( s, s->len + lenaddstr + 1 );
+			str_realloc( s, s->len + lenaddstr + 1 );
 		for ( i=s->len+lenaddstr-1; i>=lenaddstr; i-- )
 			s->data[i] = s->data[i-lenaddstr];
 	}
@@ -307,46 +322,46 @@ newstr_prepend( newstr *s, const char *addstr )
 }
 
 static inline void
-newstr_strcat_ensurespace( newstr *s, unsigned long n )
+str_strcat_ensurespace( str *s, unsigned long n )
 {
 	unsigned long m = s->len + n + 1;
 	if ( !s->data || !s->dim )
-		newstr_initalloc( s, m );
+		str_initalloc( s, m );
 	else if ( s->len + n + 1 > s->dim )
-		newstr_realloc( s, m );
+		str_realloc( s, m );
 }
 
 static inline void 
-newstr_strcat_internal( newstr *s, const char *addstr, unsigned long n )
+str_strcat_internal( str *s, const char *addstr, unsigned long n )
 {
-	newstr_strcat_ensurespace( s, n );
+	str_strcat_ensurespace( s, n );
 	strncat( &(s->data[s->len]), addstr, n );
 	s->len += n;
 	s->data[s->len]='\0';
 }
 
 void
-newstr_newstrcat( newstr *s, newstr *old )
+str_strcat( str *s, str *from )
 {
-	assert ( s && old );
-	if ( !old->data ) return;
-	else newstr_strcat_internal( s, old->data, old->len );
+	assert ( s && from );
+	if ( !from->data ) return;
+	else str_strcat_internal( s, from->data, from->len );
 }
 
 void
-newstr_strcat( newstr *s, const char *addstr )
+str_strcatc( str *s, const char *from )
 {
 	unsigned long n;
-	assert( s && addstr );
-	n = strlen( addstr );
-	newstr_strcat_internal( s, addstr, n );
+	assert( s && from );
+	n = strlen( from );
+	str_strcat_internal( s, from, n );
 }
 
 void
-newstr_segcat( newstr *s, const char *startat, const char *endat )
+str_segcat( str *s, char *startat, char *endat )
 {
 	unsigned long n;
-	const char *p;
+	char *p;
 
 	assert( s && startat && endat );
 	assert( (size_t) startat < (size_t) endat );
@@ -360,48 +375,43 @@ newstr_segcat( newstr *s, const char *startat, const char *endat )
 		p++;
 	}
 
-	newstr_strcat_internal( s, startat, n );
+	str_strcat_internal( s, startat, n );
 }
 
 void
-newstr_plcat( newstr *s, const char *startat, unsigned long n )
-{
-	assert( s && startat );
-	newstr_strcat_internal( s, startat, n );
-}
-
-void
-newstr_indxcat( newstr *s, char *p, unsigned long start, unsigned long stop )
+str_indxcat( str *s, char *p, unsigned long start, unsigned long stop )
 {
 	unsigned long i;
 	assert( s && p );
 	assert( start <= stop );
 	for ( i=start; i<stop; ++i )
-		newstr_addchar( s, p[i] );
+		str_addchar( s, p[i] );
 }
 
-/* newstr_cpytodelim()
+/* str_cpytodelim()
  *     term      = string of characters to be used as terminators
  *     finalstep = set to non-zero to position return value past the
  *                 terminating character
  */
 char *
-newstr_cpytodelim( newstr *s, char *p, const char *delim, unsigned char finalstep )
+str_cpytodelim( str *s, char *p, const char *delim, unsigned char finalstep )
 {
-	newstr_empty( s );
-	return newstr_cattodelim( s, p, delim, finalstep );
+	assert( s );
+	str_empty( s );
+	return str_cattodelim( s, p, delim, finalstep );
 }
 
-/* newstr_cpytodelim()
+/* str_cpytodelim()
  *     term      = string of characters to be used as terminators
  *     finalstep = set to non-zero to position return value past the
  *                 terminating character
  */
 char *
-newstr_cattodelim( newstr *s, char *p, const char *delim, unsigned char finalstep )
+str_cattodelim( str *s, char *p, const char *delim, unsigned char finalstep )
 {
+	assert( s );
 	while ( p && *p && !strchr( delim, *p ) ) {
-		newstr_addchar( s, *p );
+		str_addchar( s, *p );
 		p++;
 	}
 	if ( p && *p && finalstep ) p++;
@@ -409,54 +419,60 @@ newstr_cattodelim( newstr *s, char *p, const char *delim, unsigned char finalste
 }
 
 static inline void
-newstr_strcpy_ensurespace( newstr *s, unsigned long n )
+str_strcpy_ensurespace( str *s, unsigned long n )
 {
 	unsigned long m = n + 1;
 	if ( !s->data || !s->dim )
-		newstr_initalloc( s, m );
+		str_initalloc( s, m );
 	else if ( m > s->dim )
-		newstr_realloc( s, m );
+		str_realloc( s, m );
 }
 
 static inline void
-newstr_strcpy_internal( newstr *s, const char *p, unsigned long n )
+str_strcpy_internal( str *s, const char *p, unsigned long n )
 {
-	newstr_strcpy_ensurespace( s, n );
+	str_strcpy_ensurespace( s, n );
 	strncpy( s->data, p, n );
 	s->data[n] = '\0';
 	s->len = n;
 }
 
 void
-newstr_newstrcpy( newstr *s, newstr *old )
+str_strcpy( str *s, str *from )
 {
 	assert( s );
-	if ( s==old ) return;
-	else if ( !old || old->len==0 ) newstr_empty( s );
-	else newstr_strcpy_internal( s, old->data, old->len );
+	assert( from );
+	if ( s==from ) return;
+	else if ( !from || from->len==0 ) str_empty( s );
+	else str_strcpy_internal( s, from->data, from->len );
 }
 
 void 
-newstr_strcpy( newstr *s, const char *addstr )
+str_strcpyc( str *s, const char *from )
 {
 	unsigned long n;
-	assert( s && addstr );
-	n = strlen( addstr );
-	newstr_strcpy_internal( s, addstr, n );
+	assert( s && from );
+	n = strlen( from );
+	str_strcpy_internal( s, from, n );
 }
 
-/* newstr_segcpy( s, start, end );
+/* str_segcpy( s, start, end );
  *
  * copies [start,end) into s
  */
 void
-newstr_segcpy( newstr *s, const char *startat, const char *endat )
+str_segcpy( str *s, char *startat, char *endat )
 {
 	unsigned long n;
-	const char *p;
+	char *p;
 
 	assert( s && startat && endat );
 	assert( ((size_t) startat) <= ((size_t) endat) );
+
+	if ( startat==endat ) {
+		str_empty( s );
+		return;
+	}
 
 	n = 0;
 	p = startat;
@@ -465,73 +481,75 @@ newstr_segcpy( newstr *s, const char *startat, const char *endat )
 		n++;
 	}
 
-	newstr_strcpy_internal( s, startat, n );
-}
-
-void
-newstr_plcpy( newstr *s, const char *startat, unsigned long n )
-{
-	assert( s && startat );
-	newstr_strcpy_internal( s, startat, n );
+	str_strcpy_internal( s, startat, n );
 }
 
 /*
- * newstr_indxcpy( s, in, start, stop );
+ * str_indxcpy( s, in, start, stop );
  *
  * copies in[start,stop) (excludes stop) into s
  */
 void
-newstr_indxcpy( newstr *s, char *p, unsigned long start, unsigned long stop )
+str_indxcpy( str *s, char *p, unsigned long start, unsigned long stop )
 {
 	unsigned long i;
 	assert( s && p );
 	assert( start <= stop );
 	if ( start == stop ) {
-		newstr_empty( s );
+		str_empty( s );
 		return;
 	}
-	newstr_strcpy_ensurespace( s, stop-start+1 );
+	str_strcpy_ensurespace( s, stop-start+1 );
 	for ( i=start; i<stop; ++i )
 		s->data[i-start] = p[i];
 	s->len = stop-start;
 	s->data[s->len] = '\0';
 }
 
-newstr *
-newstr_strdup( const char *s1 )
+str *
+str_strdup( str *from )
 {
-	newstr *s2 = newstr_new();
-	if ( s2 )
-		newstr_strcpy( s2, s1 );
-	return s2;
+	str *s = str_new();
+	if ( s )
+		str_strcpy( s, from );
+	return s;
+}
+
+str *
+str_strdupc( const char *from )
+{
+	str *s = str_new();
+	if ( s )
+		str_strcpyc( s, from );
+	return s;
 }
 
 void
-newstr_segdel( newstr *s, char *p, char *q )
+str_segdel( str *s, char *p, char *q )
 {
-	newstr tmp1, tmp2;
+	str tmp1, tmp2;
 	char *r;
 	assert( s );
 	r = &(s->data[s->len]);
-	newstr_init( &tmp1 );
-	newstr_init( &tmp2 );
-	newstr_segcpy( &tmp1, s->data, p );
-	newstr_segcpy( &tmp2, q, r );
-	newstr_empty( s );
-	if ( tmp1.data ) newstr_strcat( s, tmp1.data );
-	if ( tmp2.data ) newstr_strcat( s, tmp2.data );
-	newstr_free( &tmp2 );
-	newstr_free( &tmp1 );
+	str_init( &tmp1 );
+	str_init( &tmp2 );
+	str_segcpy( &tmp1, s->data, p );
+	str_segcpy( &tmp2, q, r );
+	str_empty( s );
+	if ( tmp1.data ) str_strcat( s, &tmp1 );
+	if ( tmp2.data ) str_strcat( s, &tmp2 );
+	str_free( &tmp2 );
+	str_free( &tmp1 );
 }
 
 /*
- * newstr_findreplace()
+ * str_findreplace()
  *
  *   if replace is "" or NULL, then delete find
  */
 
 int
-newstr_findreplace( newstr *s, const char *find, const char *replace )
+str_findreplace( str *s, const char *find, const char *replace )
 {
 	long diff;
 	size_t findstart, searchstart;
@@ -556,7 +574,7 @@ newstr_findreplace( newstr *s, const char *find, const char *replace )
 		curr_len = strlen(s->data);
 		findstart=(size_t) p - (size_t) s->data;
 		minsize = curr_len + diff + 1;
-	 	if (s->dim <= minsize) newstr_realloc( s, minsize );
+		if (s->dim <= minsize) str_realloc( s, minsize );
 		if ( find_len > rep_len ) {
 			p1 = findstart + rep_len;
 			p2 = findstart + find_len;
@@ -578,21 +596,21 @@ newstr_findreplace( newstr *s, const char *find, const char *replace )
 }
 
 
-/* newstr_fget()
+/* str_fget()
  *   returns 0 if we're done, 1 if we're not done
  *   extracts line by line (regardless of end characters)
  *   and feeds from buf....
  */
 int
-newstr_fget( FILE *fp, char *buf, int bufsize, int *pbufpos, newstr *outs )
+str_fget( FILE *fp, char *buf, int bufsize, int *pbufpos, str *outs )
 {
 	int  bufpos = *pbufpos, done = 0;
 	char *ok;
 	assert( fp && outs );
-	newstr_empty( outs );
+	str_empty( outs );
 	while ( !done ) {
 		while ( buf[bufpos] && buf[bufpos]!='\r' && buf[bufpos]!='\n' )
-			newstr_addchar( outs, buf[bufpos++] );
+			str_addchar( outs, buf[bufpos++] );
 		if ( buf[bufpos]=='\0' ) {
 			ok = fgets( buf, bufsize, fp );
 			bufpos=*pbufpos=0;
@@ -611,7 +629,7 @@ newstr_fget( FILE *fp, char *buf, int bufsize, int *pbufpos, newstr *outs )
 }
 
 void
-newstr_toupper( newstr *s )
+str_toupper( str *s )
 {
 	unsigned long i;
 	assert( s );
@@ -620,7 +638,7 @@ newstr_toupper( newstr *s )
 }
 
 void
-newstr_tolower( newstr *s )
+str_tolower( str *s )
 {
 	unsigned long i;
 	assert( s );
@@ -628,12 +646,12 @@ newstr_tolower( newstr *s )
 		s->data[i] = tolower( (unsigned char)s->data[i] );
 }
 
-/* newstr_swapstrings( s1, s2 )
- * be sneaky and swap internal newstring data from one
+/* str_swapstrings( s1, s2 )
+ * be sneaky and swap internal string data from one
  * string to another
  */
 void
-newstr_swapstrings( newstr *s1, newstr *s2 )
+str_swapstrings( str *s1, str *s2 )
 {
 	char *tmpp;
 	int tmp;
@@ -657,7 +675,7 @@ newstr_swapstrings( newstr *s1, newstr *s2 )
 }
 
 void
-newstr_trimstartingws( newstr *s )
+str_trimstartingws( str *s )
 {
 	char *p, *q;
 	int n;
@@ -681,7 +699,7 @@ newstr_trimstartingws( newstr *s )
 }
 
 void
-newstr_trimendingws( newstr *s )
+str_trimendingws( str *s )
 {
 	assert( s );
 	while ( s->len > 0 && is_ws( s->data[s->len-1] ) ) {
@@ -691,7 +709,7 @@ newstr_trimendingws( newstr *s )
 }
 
 int
-newstr_match_first( newstr *s, char ch )
+str_match_first( str *s, char ch )
 {
 	assert( s );
 	if ( !s->len ) return 0;
@@ -700,7 +718,7 @@ newstr_match_first( newstr *s, char ch )
 }
 
 int
-newstr_match_end( newstr *s, char ch )
+str_match_end( str *s, char ch )
 {
 	assert( s );
 	if ( !s->len ) return 0;
@@ -709,7 +727,7 @@ newstr_match_end( newstr *s, char ch )
 }
 
 void
-newstr_trimbegin( newstr *s, unsigned long n )
+str_trimbegin( str *s, unsigned long n )
 {
 	char *p, *q;
 
@@ -718,7 +736,7 @@ newstr_trimbegin( newstr *s, unsigned long n )
 	if ( n==0 ) return;
 	if ( s->len==0 ) return;
 	if ( n >= s->len ) {
-		newstr_empty( s );
+		str_empty( s );
 		return;
 	}
 
@@ -737,13 +755,13 @@ newstr_trimbegin( newstr *s, unsigned long n )
 }
 
 void
-newstr_trimend( newstr *s, unsigned long n )
+str_trimend( str *s, unsigned long n )
 {
 	assert( s );
 
 	if ( n==0 ) return;
 	if ( n >= s->len ) {
-		newstr_empty( s );
+		str_empty( s );
 		return;
 	}
 
@@ -752,28 +770,28 @@ newstr_trimend( newstr *s, unsigned long n )
 }
 
 void
-newstr_pad( newstr *s, unsigned long len, char ch )
+str_pad( str *s, unsigned long len, char ch )
 {
 	unsigned long i;
 	assert( s );
 	for ( i=s->len; i<len; i++ )
-		newstr_addchar( s, ch );
+		str_addchar( s, ch );
 }
 
 void
-newstr_copyposlen( newstr *s, newstr *in, unsigned long pos, unsigned long len )
+str_copyposlen( str *s, str *in, unsigned long pos, unsigned long len )
 {
 	unsigned long i, max;
 	assert( s );
-	newstr_empty( s );
+	str_empty( s );
 	max = pos+len;
 	if ( max > in->len ) max = in->len;
 	for ( i=pos; i<max; ++i )
-		newstr_addchar( s, in->data[i] );
+		str_addchar( s, in->data[i] );
 }
 
 static void
-newstr_check_case( newstr *s, int *lowercase, int *uppercase )
+str_check_case( str *s, int *lowercase, int *uppercase )
 {
 	int i;
 	assert( s );
@@ -789,34 +807,34 @@ newstr_check_case( newstr *s, int *lowercase, int *uppercase )
 }
 
 int
-newstr_is_mixedcase( newstr *s )
+str_is_mixedcase( str *s )
 {
 	int lowercase, uppercase;
-	newstr_check_case( s, &lowercase, &uppercase );
+	str_check_case( s, &lowercase, &uppercase );
 	if ( lowercase > 0 && uppercase > 0 ) return 1;
 	return 0;
 }
 
 int
-newstr_is_lowercase( newstr *s )
+str_is_lowercase( str *s )
 {
 	int lowercase, uppercase;
-	newstr_check_case( s, &lowercase, &uppercase );
+	str_check_case( s, &lowercase, &uppercase );
 	if ( lowercase > 0 && uppercase == 0 ) return 1;
 	return 0;
 }
 
 int
-newstr_is_uppercase( newstr *s )
+str_is_uppercase( str *s )
 {
 	int lowercase, uppercase;
-	newstr_check_case( s, &lowercase, &uppercase );
+	str_check_case( s, &lowercase, &uppercase );
 	if ( lowercase == 0 && uppercase > 0 ) return 1;
 	return 0;
 }
 
 void
-newstr_stripws( newstr *s )
+str_stripws( str *s )
 {
 	unsigned long len = 0;
 	char *p, *q;
@@ -837,7 +855,7 @@ newstr_stripws( newstr *s )
 }
 
 int
-newstr_newstrcmp( const newstr *s, const newstr *t )
+str_strcmp( const str *s, const str *t )
 {
 	assert( s );
 	assert( t );
@@ -847,8 +865,77 @@ newstr_newstrcmp( const newstr *s, const newstr *t )
 	return strcmp( s->data, t->data );
 }
 
+int
+str_strcmpc( const str *s, const char *t )
+{
+	assert( s );
+	assert( t );
+	if ( s->len == 0 ) return strcmp( "", t );
+	return strcmp( s->data, t );
+}
+
+int
+str_strncmp( const str *s, const str *t, size_t n )
+{
+	assert( s );
+	assert( t );
+	if ( s->len == 0 && t->len == 0 ) return 0;
+	if ( s->len == 0 ) return strncmp( "", t->data, n );
+	if ( t->len == 0 ) return strncmp( s->data, "", n );
+	return strncmp( s->data, t->data, n );
+}
+
+int
+str_strncmpc( const str *s, const char *t, size_t n )
+{
+	assert( s );
+	assert( t );
+	if ( s->len == 0 ) return strncmp( "", t, n );
+	return strncmp( s->data, t, n );
+}
+
+int
+str_strcasecmp( const str *s, const str *t )
+{
+	assert( s );
+	assert( t );
+	if ( s->len == 0 && t->len == 0 ) return 0;
+	if ( s->len == 0 ) return strcasecmp( "", t->data );
+	if ( t->len == 0 ) return strcasecmp( s->data, "" );
+	return strcasecmp( s->data, t->data );
+}
+
+int
+str_strcasecmpc( const str *s, const char *t )
+{
+	assert( s );
+	assert( t );
+	if ( s->len == 0 ) return strcasecmp( "", t );
+	return strcasecmp( s->data, t );
+}
+
+char *
+str_strstr( const str *s, const str *t )
+{
+	assert( s );
+	assert( t );
+	if ( s->len == 0 && t->len == 0 ) return strstr( "", "" );
+	if ( s->len == 0 ) return strstr( "", t->data );
+	if ( t->len == 0 ) return strstr( s->data, "" );
+	return strstr( s->data, t->data );
+}
+
+char *
+str_strstrc( const str *s, const char *t )
+{
+	assert( s );
+	assert( t );
+	if ( s->len == 0 ) return strstr( "", t );
+	return strstr( s->data, t );
+}
+
 void
-newstr_reverse( newstr *s )
+str_reverse( str *s )
 {
 	unsigned long i, max;
 	char tmp;
@@ -862,12 +949,12 @@ newstr_reverse( newstr *s )
 }
 
 int
-newstr_fgetline( newstr *s, FILE *fp )
+str_fgetline( str *s, FILE *fp )
 {
 	int ch, eol = 0;
 	assert( s );
 	assert( fp );
-	newstr_empty( s );
+	str_empty( s );
 	if ( feof( fp ) ) return 0;
 	while ( !feof( fp ) && !eol ) {
 		ch = fgetc( fp );
@@ -881,7 +968,7 @@ newstr_fgetline( newstr *s, FILE *fp )
 			if ( ch != '\n' ) ungetc( ch, fp );
 			eol = 1;
 		} else {
-			newstr_addchar( s, (char) ch );
+			str_addchar( s, (char) ch );
 		}
 	}
 	return 1;
@@ -890,13 +977,13 @@ newstr_fgetline( newstr *s, FILE *fp )
 /*
  * s = "Hi!\0", s.len = 3
  *
- * newstr_char( s, 0 ) = 'H'  newstr_revchar( s, 0 ) = '!'
- * newstr_char( s, 1 ) = 'i'  newstr_revchar( s, 1 ) = 'i'
- * newstr_char( s, 2 ) = '!'  newstr_revchar( s, 2 ) = 'H'
- * newstr_char( s, 3 ) = '\0' newstr_revchar( s, 3 ) = '\0'
+ * str_char( s, 0 ) = 'H'  str_revchar( s, 0 ) = '!'
+ * str_char( s, 1 ) = 'i'  str_revchar( s, 1 ) = 'i'
+ * str_char( s, 2 ) = '!'  str_revchar( s, 2 ) = 'H'
+ * str_char( s, 3 ) = '\0' str_revchar( s, 3 ) = '\0'
  */
 char
-newstr_char( newstr *s, unsigned long n )
+str_char( str *s, unsigned long n )
 {
 	assert( s );
 	if ( s->len==0 || n >= s->len ) return '\0';
@@ -904,7 +991,7 @@ newstr_char( newstr *s, unsigned long n )
 }
 
 char
-newstr_revchar( newstr *s, unsigned long n )
+str_revchar( str *s, unsigned long n )
 {
 	assert( s );
 	if ( s->len==0 || n >= s->len ) return '\0';
@@ -912,14 +999,43 @@ newstr_revchar( newstr *s, unsigned long n )
 }
 
 void
-newstr_makepath( newstr *path, const char *dirname, const char *filename, char sep )
+str_makepath( str *path, const char *dirname, const char *filename, char sep )
 {
 	assert( path );
-	if ( dirname ) newstr_strcpy( path, dirname );
-	else newstr_empty( path );
+	if ( dirname ) str_strcpyc( path, dirname );
+	else str_empty( path );
 
 	if ( path->len && path->data[path->len-1]!=sep )
-		newstr_addchar( path, sep );
+		str_addchar( path, sep );
 
-	if ( filename ) newstr_strcat( path, filename );
+	if ( filename ) str_strcatc( path, filename );
+}
+
+void
+str_fill( str *s, unsigned long n, char fillchar )
+{
+	unsigned long i;
+	assert( s );
+	if ( !s->data || s->dim==0 )
+		str_initalloc( s, n+1 );
+	if ( n + 1 > s->dim )
+		str_realloc( s, n+1 );
+	for ( i=0; i<n; ++i )
+		s->data[i] = fillchar;
+	s->data[n] = '\0';
+	s->len = n;
+}
+
+int
+str_has_value( str *s )
+{
+	if ( !s || s->len==0 ) return 0;
+	return 1;
+}
+
+int
+str_is_empty( str *s )
+{
+	if ( !s || s->len==0 ) return 1;
+	return 0;
 }

@@ -1,7 +1,7 @@
 /*
  * modsout.c
  *
- * Copyright (c) Chris Putnam 2003-2016
+ * Copyright (c) Chris Putnam 2003-2017
  *
  * Source code released under the GPL version 2
  *
@@ -11,15 +11,19 @@
 #include <stdarg.h>
 #include <string.h>
 #include "is_ws.h"
-#include "newstr.h"
+#include "str.h"
 #include "charsets.h"
-#include "newstr_conv.h"
+#include "str_conv.h"
 #include "fields.h"
 #include "iso639_2.h"
 #include "utf8.h"
-#include "modsout.h"
 #include "modstypes.h"
 #include "marc.h"
+#include "bibformats.h"
+
+static void modsout_writeheader( FILE *outptr, param *p );
+static void modsout_writefooter( FILE *outptr );
+static int  modsout_write( fields *info, FILE *outptr, param *p, unsigned long numrefs );
 
 void
 modsout_initparams( param *p, const char *progname )
@@ -205,16 +209,16 @@ output_title( fields *f, FILE *outptr, int level )
 static void
 output_name( FILE *outptr, char *p, int level )
 {
-	newstr family, part, suffix;
+	str family, part, suffix;
 	int n=0;
 
-	newstrs_init( &family, &part, &suffix, NULL );
+	strs_init( &family, &part, &suffix, NULL );
 
-	while ( *p && *p!='|' ) newstr_addchar( &family, *p++ );
+	while ( *p && *p!='|' ) str_addchar( &family, *p++ );
 	if ( *p=='|' ) p++;
 
 	while ( *p ) {
-		while ( *p && *p!='|' ) newstr_addchar( &part, *p++ );
+		while ( *p && *p!='|' ) str_addchar( &part, *p++ );
 		/* truncate periods from "A. B. Jones" names */
 		if ( part.len ) {
 			if ( part.len==2 && part.data[1]=='.' ) {
@@ -230,9 +234,9 @@ output_name( FILE *outptr, char *p, int level )
 			p++;
 			if ( *p=='|' ) {
 				p++;
-				while ( *p && *p!='|' ) newstr_addchar( &suffix, *p++ );
+				while ( *p && *p!='|' ) str_addchar( &suffix, *p++ );
 			}
-			newstr_empty( &part );
+			str_empty( &part );
 		}
 	}
 
@@ -249,7 +253,7 @@ output_name( FILE *outptr, char *p, int level )
 		output_tag( outptr, lvl2indent(incr_level(level,1)), "namePart", suffix.data, TAG_OPENCLOSE, TAG_NEWLINE, "type", "suffix", NULL );
 	}
 
-	newstrs_free( &part, &family, &suffix, NULL );
+	strs_free( &part, &family, &suffix, NULL );
 }
 
 
@@ -306,19 +310,19 @@ output_names( fields *f, FILE *outptr, int level )
 	};
 	int i, n, nfields, ntypes = sizeof( names ) / sizeof( convert );
 	int f_asis, f_corp, f_conf;
-	newstr role;
+	str role;
 
-	newstr_init( &role );
+	str_init( &role );
 	nfields = fields_num( f );
 	for ( n=0; n<ntypes; ++n ) {
 		for ( i=0; i<nfields; ++i ) {
 			if ( fields_level( f, i )!=level ) continue;
 			if ( f->data[i].len==0 ) continue;
 			f_asis = f_corp = f_conf = 0;
-			newstr_strcpy( &role, f->tag[i].data );
-			if ( newstr_findreplace( &role, ":ASIS", "" )) f_asis=1;
-			if ( newstr_findreplace( &role, ":CORP", "" )) f_corp=1;
-			if ( newstr_findreplace( &role, ":CONF", "" )) f_conf=1;
+			str_strcpyc( &role, f->tag[i].data );
+			if ( str_findreplace( &role, ":ASIS", "" )) f_asis=1;
+			if ( str_findreplace( &role, ":CORP", "" )) f_corp=1;
+			if ( str_findreplace( &role, ":CONF", "" )) f_conf=1;
 			if ( strcasecmp( role.data, names[n].internal ) )
 				continue;
 			if ( f_asis ) {
@@ -343,14 +347,14 @@ output_names( fields *f, FILE *outptr, int level )
 			fields_setused( f, i );
 		}
 	}
-	newstr_free( &role );
+	str_free( &role );
 }
 
 /* datepos[ NUM_DATE_TYPES ]
  *     use define to ensure that the array and loops don't get out of sync
- *     datepos[0] -> YEAR/PARTYEAR
- *     datepos[1] -> MONTH/PARTMONTH
- *     datepos[2] -> DAY/PARTDAY
+ *     datepos[0] -> DATE:YEAR/PARTDATE:YEAR
+ *     datepos[1] -> DATE:MONTH/PARTDATE:MONTH
+ *     datepos[2] -> DATE:DAY/PARTDATE:DAY
  *     datepos[3] -> DATE/PARTDATE
  */
 #define DATE_YEAR      (0)
@@ -362,8 +366,8 @@ output_names( fields *f, FILE *outptr, int level )
 static int
 find_datepos( fields *f, int level, unsigned char use_altnames, int datepos[NUM_DATE_TYPES] )
 {
-	char      *src_names[] = { "YEAR", "MONTH", "DAY", "DATE" };
-	char      *alt_names[] = { "PARTYEAR", "PARTMONTH", "PARTDAY", "PARTDATE" };
+	char      *src_names[] = { "DATE:YEAR", "DATE:MONTH", "DATE:DAY", "DATE" };
+	char      *alt_names[] = { "PARTDATE:YEAR", "PARTDATE:MONTH", "PARTDATE:DAY", "PARTDATE" };
 	int       found = 0;
 	int       i;
 
@@ -409,7 +413,7 @@ find_dateinfo( fields *f, int level, int datepos[ NUM_DATE_TYPES ] )
 static void
 output_datepieces( fields *f, FILE *outptr, int pos[ NUM_DATE_TYPES ] )
 {
-	newstr *s;
+	str *s;
 	int i;
 
 	for ( i=0; i<3 && pos[i]!=-1; ++i ) {
@@ -624,9 +628,9 @@ static int
 output_partdate( fields *f, FILE *outptr, int level, int wrote_header )
 {
 	convert parts[] = {
-		{ "",	"PARTYEAR",                0, 0 },
-		{ "",	"PARTMONTH",               0, 0 },
-		{ "",	"PARTDAY",                 0, 0 },
+		{ "",	"PARTDATE:YEAR",           0, 0 },
+		{ "",	"PARTDATE:MONTH",          0, 0 },
+		{ "",	"PARTDATE:DAY",            0, 0 },
 	};
 	int nparts = sizeof(parts)/sizeof(parts[0]);
 
@@ -659,10 +663,10 @@ static int
 output_partpages( fields *f, FILE *outptr, int level, int wrote_header )
 {
 	convert parts[] = {
-		{ "",  "PAGESTART",                0, 0 },
-		{ "",  "PAGEEND",                  0, 0 },
+		{ "",  "PAGES:START",              0, 0 },
+		{ "",  "PAGES:STOP",               0, 0 },
 		{ "",  "PAGES",                    0, 0 },
-		{ "",  "TOTALPAGES",               0, 0 }
+		{ "",  "PAGES:TOTAL",              0, 0 }
 	};
 	int nparts = sizeof(parts)/sizeof(parts[0]);
 
@@ -670,7 +674,7 @@ output_partpages( fields *f, FILE *outptr, int level, int wrote_header )
 
 	try_output_partheader( outptr, wrote_header, level );
 
-	/* If PAGESTART or PAGEEND are undefined */
+	/* If PAGES:START or PAGES:STOP are undefined */
 	if ( parts[0].pos==-1 || parts[1].pos==-1 ) {
 		if ( parts[0].pos!=-1 )
 			mods_output_detail( f, outptr, parts[0].pos, "page", level );
@@ -681,7 +685,7 @@ output_partpages( fields *f, FILE *outptr, int level, int wrote_header )
 		if ( parts[3].pos!=-1 )
 			mods_output_extents( f, outptr, -1, -1, parts[3].pos, "page", level );
 	}
-	/* If both PAGESTART and PAGEEND are defined */
+	/* If both PAGES:START and PAGES:STOP are defined */
 	else {
 		mods_output_extents( f, outptr, parts[0].pos, parts[1].pos, parts[3].pos, "page", level );
 	}
@@ -859,6 +863,11 @@ output_key( fields *f, FILE *outptr, int level )
 			output_fil( outptr, lvl2indent(incr_level(level,1)), "topic",   f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 			output_tag( outptr, lvl2indent(level),               "subject", NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
 		}
+		else if ( !strcasecmp( f->tag[i].data, "EPRINTCLASS" ) ) {
+			output_tag( outptr, lvl2indent(level),               "subject", NULL, TAG_OPEN,      TAG_NEWLINE, NULL );
+			output_fil( outptr, lvl2indent(incr_level(level,1)), "topic",   f, i, TAG_OPENCLOSE, TAG_NEWLINE, "class", "primary", NULL );
+			output_tag( outptr, lvl2indent(level),               "subject", NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
+		}
 	}
 }
 
@@ -870,14 +879,17 @@ output_sn( fields *f, FILE *outptr, int level )
 		{ "isbn",      "ISBN13",    0, 0 },
 		{ "lccn",      "LCCN",      0, 0 },
 		{ "issn",      "ISSN",      0, 0 },
+		{ "coden",     "CODEN",     0, 0 },
 		{ "citekey",   "REFNUM",    0, 0 },
 		{ "doi",       "DOI",       0, 0 },
 		{ "eid",       "EID",       0, 0 },
 		{ "eprint",    "EPRINT",    0, 0 },
 		{ "eprinttype","EPRINTTYPE",0, 0 },
 		{ "pubmed",    "PMID",      0, 0 },
+		{ "MRnumber",  "MRNUMBER",  0, 0 },
 		{ "medline",   "MEDLINE",   0, 0 },
 		{ "pii",       "PII",       0, 0 },
+		{ "pmc",       "PMC",       0, 0 },
 		{ "arXiv",     "ARXIV",     0, 0 },
 		{ "isi",       "ISIREFNUM", 0, 0 },
 		{ "accessnum", "ACCESSNUM", 0, 0 },
@@ -1052,7 +1064,7 @@ modsout_report_unused_tags( fields *f, param *p, unsigned long numrefs )
 		for ( i=0; i<n; ++i ) {
 			if ( fields_level( f, i ) != 0 ) continue;
 			tag = fields_tag( f, i, FIELDS_CHRP_NOUSE );
-			if ( strncasecmp( tag, "AUTHOR", 6 ) ) continue;
+			if ( strcasecmp( tag, "AUTHOR" ) && strcasecmp( tag, "AUTHOR:ASIS" ) && strcasecmp( tag, "AUTHOR:CORP" ) ) continue;
 			value = fields_value( f, i, FIELDS_CHRP_NOUSE );
 			if ( nwritten==0 ) fprintf( stderr, "\tAuthor(s) (level=0):\n" );
 			fprintf( stderr, "\t\t'%s'\n", value );
@@ -1062,7 +1074,7 @@ modsout_report_unused_tags( fields *f, param *p, unsigned long numrefs )
 		for ( i=0; i<n; ++i ) {
 			if ( fields_level( f, i ) != 0 ) continue;
 			tag = fields_tag( f, i, FIELDS_CHRP_NOUSE );
-			if ( strcasecmp( tag, "YEAR" ) && strcasecmp( tag, "PARTYEAR" ) ) continue;
+			if ( strcasecmp( tag, "DATE:YEAR" ) && strcasecmp( tag, "PARTDATE:YEAR" ) ) continue;
 			value = fields_value( f, i, FIELDS_CHRP_NOUSE );
 			if ( nwritten==0 ) fprintf( stderr, "\tYear(s) (level=0):\n" );
 			fprintf( stderr, "\t\t'%s'\n", value );
@@ -1091,12 +1103,12 @@ modsout_report_unused_tags( fields *f, param *p, unsigned long numrefs )
 	}
 }
 
-void
+static int
 modsout_write( fields *f, FILE *outptr, param *p, unsigned long numrefs )
 {
 	int max, dropkey;
 	max = fields_maxlevel( f );
-	dropkey = ( p->format_opts & MODSOUT_DROPKEY );
+	dropkey = ( p->format_opts & BIBL_FORMAT_MODSOUT_DROPKEY );
 
 	output_head( f, outptr, dropkey, numrefs );
 	output_citeparts( f, outptr, 0, max );
@@ -1104,9 +1116,11 @@ modsout_write( fields *f, FILE *outptr, param *p, unsigned long numrefs )
 
 	fprintf( outptr, "</mods>\n" );
 	fflush( outptr );
+
+	return BIBL_OK;
 }
 
-void
+static void
 modsout_writeheader( FILE *outptr, param *p )
 {
 	if ( p->utf8bom ) utf8_writebom( outptr );
@@ -1115,7 +1129,7 @@ modsout_writeheader( FILE *outptr, param *p )
 	fprintf(outptr,"<modsCollection xmlns=\"http://www.loc.gov/mods/v3\">\n");
 }
 
-void
+static void
 modsout_writefooter( FILE *outptr )
 {
 	fprintf(outptr,"</modsCollection>\n");

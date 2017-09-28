@@ -1,7 +1,7 @@
 /*
  * latex.h
  *
- * Copyright (c) Chris Putnam 2004-2016
+ * Copyright (c) Chris Putnam 2004-2017
  *
  * Source code released under the GPL version 2
  *

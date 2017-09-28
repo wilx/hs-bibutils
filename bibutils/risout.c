@@ -1,7 +1,7 @@
 /*
  * risout.c
  *
- * Copyright (c) Chris Putnam 2003-2016
+ * Copyright (c) Chris Putnam 2003-2017
  *
  * Source code released under the GPL version 2
  *
@@ -11,12 +11,17 @@
 #include <string.h>
 #include <ctype.h>
 #include "utf8.h"
-#include "newstr.h"
+#include "str.h"
 #include "strsearch.h"
 #include "fields.h"
-#include "doi.h"
 #include "name.h"
-#include "risout.h"
+#include "title.h"
+#include "url.h"
+#include "bibformats.h"
+
+static int  risout_write( fields *info, FILE *fp, param *p, unsigned long refnum );
+static void risout_writeheader( FILE *outptr, param *p );
+
 
 void
 risout_initparams( param *p, const char *progname )
@@ -44,7 +49,7 @@ risout_initparams( param *p, const char *progname )
 }
 
 enum { 
-	TYPE_UNKNOWN,
+	TYPE_UNKNOWN = 0,
 	TYPE_STD,                /* standard/generic */
 	TYPE_ABSTRACT,           /* abstract */
 	TYPE_ARTICLE,            /* article */
@@ -55,9 +60,9 @@ enum {
 	TYPE_ELEC,               /* electronic */
 	TYPE_HEAR,               /* hearing */
 	TYPE_MAGARTICLE,         /* magazine article */
-	TYPE_NEWS,               /* newspaper */
+	TYPE_NEWSPAPER,          /* newspaper */
 	TYPE_MPCT,               /* mpct */
-	TYPE_PAMP,               /* pamphlet */
+	TYPE_PAMPHLET,           /* pamphlet */
 	TYPE_PATENT,             /* patent */
 	TYPE_PCOMM,              /* personal communication */
 	TYPE_PROGRAM,            /* program */
@@ -71,41 +76,78 @@ enum {
 	TYPE_HABILITATIONTHESIS, /* thesis */
 	TYPE_MAP,                /* map, cartographic data */
 	TYPE_UNPUBLISHED,        /* unpublished */
+	NUM_TYPES
+};
+
+static int type_is_element[ NUM_TYPES ] = {
+	[ 0 ... NUM_TYPES-1 ] = 0,
+	[ TYPE_ARTICLE      ] = 1,
+	[ TYPE_INBOOK       ] = 1,
+	[ TYPE_MAGARTICLE   ] = 1,
+	[ TYPE_NEWSPAPER    ] = 1,
+	[ TYPE_ABSTRACT     ] = 1,
+	[ TYPE_CONF         ] = 1,
+};
+
+static int type_uses_journal[ NUM_TYPES ] = {
+	[ 0 ... NUM_TYPES-1 ] = 0,
+	[ TYPE_ARTICLE      ] = 1,
+	[ TYPE_MAGARTICLE   ] = 1,
 };
 
 static void
 write_type( FILE *fp, int type )
 {
-	switch( type ) {
-	case TYPE_UNKNOWN:            fprintf( fp, "TYPE_UNKNOWN" );            break;
-	case TYPE_STD:                fprintf( fp, "TYPE_STD" );                break;
-	case TYPE_ABSTRACT:           fprintf( fp, "TYPE_ABSTRACT" );           break;
-	case TYPE_ARTICLE:            fprintf( fp, "TYPE_ARTICLE" );            break;
-	case TYPE_BOOK:               fprintf( fp, "TYPE_BOOK" );               break;
-	case TYPE_CASE:               fprintf( fp, "TYPE_CASE" );               break;
-	case TYPE_INBOOK:             fprintf( fp, "TYPE_INBOOK" );             break;
-	case TYPE_CONF:               fprintf( fp, "TYPE_CONF" );               break;
-	case TYPE_ELEC:               fprintf( fp, "TYPE_ELEC" );               break;
-	case TYPE_HEAR:               fprintf( fp, "TYPE_HEAR" );               break;
-	case TYPE_MAGARTICLE:         fprintf( fp, "TYPE_MAGARTICLE" );         break;
-	case TYPE_NEWS:               fprintf( fp, "TYPE_NEWS" );               break;
-	case TYPE_MPCT:               fprintf( fp, "TYPE_MCPT" );               break;
-	case TYPE_PAMP:               fprintf( fp, "TYPE_PAMP" );               break;
-	case TYPE_PATENT:             fprintf( fp, "TYPE_PATENT" );             break;
-	case TYPE_PCOMM:              fprintf( fp, "TYPE_PCOMM" );              break;
-	case TYPE_PROGRAM:            fprintf( fp, "TYPE_PROGRAM" );            break;
-	case TYPE_REPORT:             fprintf( fp, "TYPE_REPORT" );             break;
-	case TYPE_STATUTE:            fprintf( fp, "TYPE_STATUTE" );            break;
-	case TYPE_THESIS:             fprintf( fp, "TYPE_THESIS" );             break;
-	case TYPE_MASTERSTHESIS:      fprintf( fp, "TYPE_MASTERSTHESIS" );      break;
-	case TYPE_PHDTHESIS:          fprintf( fp, "TYPE_PHDTHESIS" );          break;
-	case TYPE_DIPLOMATHESIS:      fprintf( fp, "TYPE_DIPLOMATHESIS" );      break;
-	case TYPE_DOCTORALTHESIS:     fprintf( fp, "TYPE_DOCTORALTHESIS" );     break;
-	case TYPE_HABILITATIONTHESIS: fprintf( fp, "TYPE_HABILITATIONTHESIS" ); break;
-	case TYPE_MAP:                fprintf( fp, "TYPE_MAP" );                break;
-	case TYPE_UNPUBLISHED:        fprintf( fp, "TYPE_UNPUBLISHED" );        break;
-	default:                      fprintf( fp, "Error - type not in enum" );break;
-	}
+	const char *typenames[ NUM_TYPES ] = {
+		[ TYPE_UNKNOWN            ] = "TYPE_UNKNOWN",
+		[ TYPE_STD                ] = "TYPE_STD",
+		[ TYPE_ABSTRACT           ] = "TYPE_ABSTRACT",
+		[ TYPE_ARTICLE            ] = "TYPE_ARTICLE",
+		[ TYPE_BOOK               ] = "TYPE_BOOK",
+		[ TYPE_CASE               ] = "TYPE_CASE",
+		[ TYPE_INBOOK             ] = "TYPE_INBOOK",
+		[ TYPE_CONF               ] = "TYPE_CONF",
+		[ TYPE_ELEC               ] = "TYPE_ELEC",
+		[ TYPE_HEAR               ] = "TYPE_HEAR",
+		[ TYPE_MAGARTICLE         ] = "TYPE_MAGARTICLE",
+		[ TYPE_NEWSPAPER          ] = "TYPE_NEWSPAPER",
+		[ TYPE_MPCT               ] = "TYPE_MPCT",
+		[ TYPE_PAMPHLET           ] = "TYPE_PAMPHLET",
+		[ TYPE_PATENT             ] = "TYPE_PATENT",
+		[ TYPE_PCOMM              ] = "TYPE_PCOMM",
+		[ TYPE_PROGRAM            ] = "TYPE_PROGRAM",
+		[ TYPE_REPORT             ] = "TYPE_REPORT",
+		[ TYPE_STATUTE            ] = "TYPE_STATUTE",
+		[ TYPE_THESIS             ] = "TYPE_THESIS",
+		[ TYPE_MASTERSTHESIS      ] = "TYPE_MASTERSTHESIS",
+		[ TYPE_PHDTHESIS          ] = "TYPE_PHDTHESIS",
+		[ TYPE_DIPLOMATHESIS      ] = "TYPE_DIPLOMATHESIS",
+		[ TYPE_DOCTORALTHESIS     ] = "TYPE_DOCTORALTHESIS",
+		[ TYPE_HABILITATIONTHESIS ] = "TYPE_HABILITATIONTHESIS",
+		[ TYPE_MAP                ] = "TYPE_MAP",
+		[ TYPE_UNPUBLISHED        ] = "TYPE_UNPUBLISHED",
+	};
+
+	if ( type < 0 || type >= NUM_TYPES ) fprintf( fp, "Error - type not in enum" );
+	else fprintf( fp, "%s", typenames[ type ] );
+}
+
+static void
+verbose_type_identified( char *element_type, param *p, int type )
+{
+	if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+	fprintf( stderr, "Type from %s element: ", element_type );
+	write_type( stderr, type );
+	fprintf( stderr, "\n" );
+}
+
+static void
+verbose_type_assignment( char *tag, char *value, param *p, int type )
+{
+	if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+	fprintf( stderr, "Type from tag '%s' data '%s': ", tag, value );
+	write_type( stderr, type );
+	fprintf( stderr, "\n" );
 }
 
 typedef struct match_type {
@@ -125,7 +167,7 @@ get_type_genre( fields *f, param *p )
 		{ "journal article",           TYPE_ARTICLE },
 		{ "magazine",                  TYPE_MAGARTICLE },
 		{ "conference publication",    TYPE_CONF },
-		{ "newspaper",                 TYPE_NEWS },
+		{ "newspaper",                 TYPE_NEWSPAPER },
 		{ "legislation",               TYPE_STATUTE },
 		{ "communication",             TYPE_PCOMM },
 		{ "hearing",                   TYPE_HEAR },
@@ -144,26 +186,19 @@ get_type_genre( fields *f, param *p )
 		{ "map",                       TYPE_MAP },
 	};
 	int nmatch_genres = sizeof( match_genres ) / sizeof( match_genres[0] );
-	int type, i, j;
 	char *tag, *value;
+	int type, i, j;
 
 	type = TYPE_UNKNOWN;
 
 	for ( i=0; i<fields_num( f ); ++i ) {
-		if ( !fields_match_tag( f, i, "GENRE" ) &&
-		     !fields_match_tag( f, i, "NGENRE" ) )
-			continue;
+		tag = ( char * ) fields_tag( f, i, FIELDS_CHRP );
+		if ( strcmp( tag, "GENRE" ) && strcmp( tag, "NGENRE" ) ) continue;
 		value = ( char * ) fields_value( f, i, FIELDS_CHRP );
 		for ( j=0; j<nmatch_genres; ++j )
 			if ( !strcasecmp( match_genres[j].name, value ) )
 				type = match_genres[j].type;
-		if ( p->verbose ) {
-			tag = ( char * ) fields_tag( f, i, FIELDS_CHRP );
-			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-			fprintf( stderr, "Type from tag '%s' data '%s': ", tag, value );
-			write_type( stderr, type );
-			fprintf( stderr, "\n" );
-		}
+		if ( p->verbose ) verbose_type_assignment( tag, value, p, type );
 		if ( type==TYPE_UNKNOWN ) {
 			if ( !strcasecmp( value, "periodical" ) )
 				type = TYPE_ARTICLE;
@@ -181,12 +216,7 @@ get_type_genre( fields *f, param *p )
 
 	}
 
-	if ( p->verbose ) {
-		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-		fprintf( stderr, "Type from genre element: " );
-		write_type( stderr, type );
-		fprintf( stderr, "\n" );
-	}
+	if ( p->verbose ) verbose_type_identified( "genre", p, type );
 
 	return type;
 }
@@ -202,7 +232,8 @@ get_type_resource( fields *f, param *p )
 		{ "cartographic",              TYPE_MAP     },
 	};
 	int nmatch_res = sizeof( match_res ) / sizeof( match_res[0] );
-	int type, i, j;
+	vplist_index i;
+	int type, j;
 	char *value;
 	vplist a;
 
@@ -217,20 +248,10 @@ get_type_resource( fields *f, param *p )
 			if ( !strcasecmp( value, match_res[j].name ) )
 				type = match_res[j].type;
 		}
-		if ( p->verbose ) {
-			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-			fprintf( stderr, "Type from tag 'RESOURCE' data '%s': ", value );
-			write_type( stderr, type );
-			fprintf( stderr, "\n" );
-		}
+		if ( p->verbose ) verbose_type_assignment( "RESOURCE", value, p, type );
 	}
 
-	if ( p->verbose ) {
-		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-		fprintf( stderr, "Type from resource element: " );
-		write_type( stderr, type );
-		fprintf( stderr, "\n" );
-	}
+	if ( p->verbose ) verbose_type_identified( "resource", p, type );
 
 	vplist_free( &a );
 	return type;
@@ -245,13 +266,13 @@ get_type_issuance( fields *f, param *p )
 	int i, monographic = 0, monographic_level = 0;
 //	int text = 0;
 	for ( i=0; i<f->n; ++i ) {
-		if ( !strcasecmp( f->tag[i].data, "issuance" ) &&
-		     !strcasecmp( f->data[i].data, "MONOGRAPHIC" ) ){
+		if ( !strcasecmp( (char *) fields_tag( f, i, FIELDS_CHRP_NOUSE ), "issuance" ) &&
+		     !strcasecmp( (char *) fields_value( f, i, FIELDS_CHRP_NOUSE ), "MONOGRAPHIC" ) ){
 			monographic = 1;
 			monographic_level = f->level[i];
 		}
-//		if ( !strcasecmp( f->tag[i].data, "typeOfResource" ) &&
-//		     !strcasecmp( f->data[i].data,"text") ) {
+//		if ( !strcasecmp( (char *) fields_tag( f, i, FIELDS_CHRP_NOUSE ), "typeOfResource" ) &&
+//		     !strcasecmp( (char *) fields_value( f, i, FIELDS_CHRP_NOUSE ), "text" ) ) {
 //			text = 1;
 //		}
 	}
@@ -295,242 +316,241 @@ get_type( fields *f, param *p )
 }
 
 static void
-output_type( FILE *fp, int type, param *p )
+append_type( int type, param *p, fields *out, int *status )
 {
-	match_type tyout[] = {
-		{ "STD",  TYPE_STD },
-		{ "ABST", TYPE_ABSTRACT },
-		{ "JOUR", TYPE_ARTICLE },
-		{ "BOOK", TYPE_BOOK },
-		{ "CASE", TYPE_CASE },
-		{ "CHAP", TYPE_INBOOK },
-		{ "CONF", TYPE_CONF },
-		{ "ELEC", TYPE_ELEC },
-		{ "HEAR", TYPE_HEAR },
-		{ "MGZN", TYPE_MAGARTICLE },
-		{ "NEWS", TYPE_NEWS },
-		{ "MPCT", TYPE_MPCT },
-		{ "PAMP", TYPE_PAMP },
-		{ "PAT",  TYPE_PATENT },
-		{ "PCOMM",TYPE_PCOMM },
-		{ "COMP", TYPE_PROGRAM },
-		{ "RPRT", TYPE_REPORT },
-		{ "STAT", TYPE_STATUTE },
-		{ "THES", TYPE_THESIS },
-		{ "THES", TYPE_MASTERSTHESIS },
-		{ "THES", TYPE_PHDTHESIS },
-		{ "THES", TYPE_DIPLOMATHESIS },
-		{ "THES", TYPE_DOCTORALTHESIS },
-		{ "THES", TYPE_HABILITATIONTHESIS },
-		{ "MAP",  TYPE_MAP },
-		{ "UNPB", TYPE_UNPUBLISHED }
+	char *typenames[ NUM_TYPES ] = {
+		[ TYPE_STD                ] = "STD",
+		[ TYPE_ABSTRACT           ] = "ABST",
+		[ TYPE_ARTICLE            ] = "JOUR",
+		[ TYPE_BOOK               ] = "BOOK",
+		[ TYPE_CASE               ] = "CASE",
+		[ TYPE_INBOOK             ] = "CHAP",
+		[ TYPE_CONF               ] = "CONF",
+		[ TYPE_ELEC               ] = "ELEC",
+		[ TYPE_HEAR               ] = "HEAR",
+		[ TYPE_MAGARTICLE         ] = "MGZN",
+		[ TYPE_NEWSPAPER          ] = "NEWS",
+		[ TYPE_MPCT               ] = "MPCT",
+		[ TYPE_PAMPHLET           ] = "PAMP",
+		[ TYPE_PATENT             ] = "PAT",
+		[ TYPE_PCOMM              ] = "PCOMM",
+		[ TYPE_PROGRAM            ] = "COMP",
+		[ TYPE_REPORT             ] = "RPRT",
+		[ TYPE_STATUTE            ] = "STAT",
+		[ TYPE_THESIS             ] = "THES",
+		[ TYPE_MASTERSTHESIS      ] = "THES",
+		[ TYPE_PHDTHESIS          ] = "THES",
+		[ TYPE_DIPLOMATHESIS      ] = "THES",
+		[ TYPE_DOCTORALTHESIS     ] = "THES",
+		[ TYPE_HABILITATIONTHESIS ] = "THES",
+		[ TYPE_MAP                ] = "MAP",
+		[ TYPE_UNPUBLISHED        ] = "UNPB",
 	};
-	int ntyout = sizeof( tyout ) / sizeof( tyout[0] );
-	int i, found;
+	int fstatus;
 
-	fprintf( fp, "TY  - " );
-	found = 0;
-	for ( i=0; i<ntyout && !found ; ++i ) {
-		if ( tyout[i].type == type ) {
-			fprintf( fp, "%s", tyout[i].name );
-			found = 1;
-		}
-	}
-	/* Report internal error, default to TYPE_STD */
-	if ( !found ) {
+	if ( type < 0 || type >= NUM_TYPES ) {
 		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-		fprintf( stderr, "Internal Error: Cannot identify type %d\n",
-			type );
-		fprintf( fp, "STD" );
+		fprintf( stderr, "Internal error: Cannot recognize type %d, switching to TYPE_STD %d\n", type, TYPE_STD );
+		type = TYPE_STD;
 	}
-	fprintf( fp, "\n" );
+
+	fstatus = fields_add( out, "TY", typenames[ type ], LEVEL_MAIN );
+	if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
 }
 
 static void
-output_people( FILE *fp, fields *f, char *tag, char *ristag, int level )
+append_people( fields *f, char *tag, char *ristag, int level, fields *out, int *status )
 {
-	newstr oneperson;
+	vplist_index i;
+	str oneperson;
 	vplist people;
-	int i;
-	newstr_init( &oneperson );
+	int fstatus;
+
+	str_init( &oneperson );
 	vplist_init( &people );
 	fields_findv_each( f, level, FIELDS_CHRP, &people, tag );
 	for ( i=0; i<people.n; ++i ) {
 		name_build_withcomma( &oneperson, ( char * ) vplist_get( &people, i ) );
-		fprintf( fp, "%s  - %s\n", ristag, oneperson.data );
+		if ( str_memerr( &oneperson ) ) { *status = BIBL_ERR_MEMERR; goto out; }
+		fstatus = fields_add_can_dup( out, ristag, str_cstr( &oneperson ), LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) { *status = BIBL_ERR_MEMERR; goto out; }
 	}
+out:
 	vplist_free( &people );
-	newstr_free( &oneperson );
+	str_free( &oneperson );
 }
 
 static void
-output_date( FILE *fp, fields *f )
+append_date( fields *in, fields *out, int *status )
 {
-	char *year  = fields_findv_firstof( f, LEVEL_ANY, FIELDS_CHRP,
-			"YEAR", "PARTYEAR", NULL );
-	char *month = fields_findv_firstof( f, LEVEL_ANY, FIELDS_CHRP,
-			"MONTH", "PARTMONTH", NULL );
-	char *day   = fields_findv_firstof( f, LEVEL_ANY, FIELDS_CHRP,
-			"DAY", "PARTDAY", NULL );
-	if ( year )
-		fprintf( fp, "PY  - %s\n", year );
+	char *year, *month, *day;
+	str date;
+	int fstatus;
+
+	year  = fields_findv_firstof( in, LEVEL_ANY, FIELDS_CHRP, "DATE:YEAR",  "PARTDATE:YEAR",  NULL );
+	month = fields_findv_firstof( in, LEVEL_ANY, FIELDS_CHRP, "DATE:MONTH", "PARTDATE:MONTH", NULL );
+	day   = fields_findv_firstof( in, LEVEL_ANY, FIELDS_CHRP, "DATE:DAY",   "PARTDATE:DAY",   NULL );
+
+	if ( year ) {
+		fstatus = fields_add( out, "PY", year, LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
+
 	if ( year || month || day ) {
-		fprintf( fp, "DA  - " );
-		if ( year ) fprintf( fp, "%s", year );
-		fprintf( fp, "/" );
-		if ( month ) fprintf( fp, "%s", month );
-		fprintf( fp, "/" );
-		if ( day ) fprintf( fp, "%s", day );
-		fprintf( fp, "\n" );
+		str_init( &date );
+
+		if ( year ) str_strcatc( &date, year );
+		str_addchar( &date, '/' );
+		if ( month ) str_strcatc( &date, month );
+		str_addchar( &date, '/' );
+		if ( day ) str_strcatc( &date, day );
+
+		if ( str_memerr( &date ) ) { *status = BIBL_ERR_MEMERR; str_free( &date ); return; }
+
+		fstatus = fields_add( out, "DA", str_cstr( &date ), LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+
+		str_free( &date );
 	}
 }
 
 static void
-output_titlecore( FILE *fp, fields *f, char *ristag, int level,
-	char *maintag, char *subtag )
+append_titlecore( fields *in, char *ristag, int level, char *maintag, char *subtag, fields *out, int *status )
 {
-	newstr *mainttl = fields_findv( f, level, FIELDS_STRP, maintag );
-	newstr *subttl  = fields_findv( f, level, FIELDS_STRP, subtag );
+	str *mainttl = fields_findv( in, level, FIELDS_STRP, maintag );
+	str *subttl  = fields_findv( in, level, FIELDS_STRP, subtag );
+	str fullttl;
+	int fstatus;
 
-	if ( !mainttl ) return;
+	str_init( &fullttl );
 
-	fprintf( fp, "%s  - %s", ristag, mainttl->data );
-	if ( subttl ) {
-		if ( mainttl->len > 0 &&
-		     mainttl->data[ mainttl->len - 1 ]!='?' )
-			fprintf( fp, ":" );
-		fprintf( fp, " %s", subttl->data );
+	title_combine( &fullttl, mainttl, subttl );
+
+	if ( str_memerr( &fullttl ) ) {
+		*status = BIBL_ERR_MEMERR;
+		goto out;
 	}
-	fprintf( fp, "\n" );
-}
 
-static int
-type_is_element( int type )
-{
-	if ( type==TYPE_ARTICLE )    return 1;
-	if ( type==TYPE_INBOOK )     return 1;
-	if ( type==TYPE_MAGARTICLE ) return 1;
-	if ( type==TYPE_NEWS )       return 1;
-	if ( type==TYPE_ABSTRACT )   return 1;
-	if ( type==TYPE_CONF )       return 1;
-	return 0;
-}
+	if ( str_has_value( &fullttl ) ) {
+		fstatus = fields_add( out, ristag, str_cstr( &fullttl ), LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
 
-static int
-type_uses_journal( int type )
-{
-	if ( type==TYPE_ARTICLE )    return 1;
-	if ( type==TYPE_MAGARTICLE ) return 1;
-	return 0;
+out:
+	str_free( &fullttl );
 }
 
 static void
-output_alltitles( FILE *fp, fields *f, int type )
+append_alltitles( fields *in, int type, fields *out, int *status )
 {
-	output_titlecore( fp, f, "TI", 0, "TITLE", "SUBTITLE" );
-	output_titlecore( fp, f, "T2", -1, "SHORTTITLE", "SHORTSUBTITLE" );
-	if ( type_is_element( type ) ) {
-		if ( type_uses_journal( type ) )
-			output_titlecore( fp, f, "JO", 1, "TITLE", "SUBTITLE" );
-		else output_titlecore( fp, f, "BT", 1, "TITLE", "SUBTITLE" );
-		output_titlecore( fp, f, "T3", 2, "TITLE", "SUBTITLE" );
+	append_titlecore( in, "TI", 0, "TITLE", "SUBTITLE", out, status );
+	append_titlecore( in, "T2", -1, "SHORTTITLE", "SHORTSUBTITLE", out, status );
+	if ( type_is_element[ type ] ) {
+		if ( type_uses_journal[ type ] )
+			append_titlecore( in, "JO", 1, "TITLE", "SUBTITLE", out, status );
+		else append_titlecore( in, "BT", 1, "TITLE", "SUBTITLE", out, status );
+		append_titlecore( in, "T3", 2, "TITLE", "SUBTITLE", out, status );
 	} else {
-		output_titlecore( fp, f, "T3", 1, "TITLE", "SUBTITLE" );
+		append_titlecore( in, "T3", 1, "TITLE", "SUBTITLE", out, status );
 	}
 }
 
 static void
-output_pages( FILE *fp, fields *f )
+append_pages( fields *in, fields *out, int *status )
 {
-	char *sn = fields_findv( f, LEVEL_ANY, FIELDS_CHRP, "PAGESTART" );
-	char *en = fields_findv( f, LEVEL_ANY, FIELDS_CHRP, "PAGEEND" );
-	char *ar;
+	char *sn, *en, *ar;
+	int fstatus;
+
+	sn = fields_findv( in, LEVEL_ANY, FIELDS_CHRP, "PAGES:START" );
+	en = fields_findv( in, LEVEL_ANY, FIELDS_CHRP, "PAGES:STOP" );
 
 	if ( sn || en ) {
-		if ( sn ) fprintf( fp, "SP  - %s\n", sn );
-		if ( en ) fprintf( fp, "EP  - %s\n", en );
+		if ( sn ) {
+			fstatus = fields_add( out, "SP", sn, LEVEL_MAIN );
+			if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+		}
+		if ( en ) {
+			fstatus = fields_add( out, "EP", en, LEVEL_MAIN );
+			if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+		}
 	} else {
-		ar = fields_findv( f, LEVEL_ANY, FIELDS_CHRP, "ARTICLENUMBER" );
-		if ( ar ) fprintf( fp, "SP  - %s\n", ar );
+		ar = fields_findv( in, LEVEL_ANY, FIELDS_CHRP, "ARTICLENUMBER" );
+		if ( ar ) {
+			fstatus = fields_add( out, "SP", ar, LEVEL_MAIN );
+			if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+		}
 	}
 }
 
 static void
-output_keywords( FILE *fp, fields *f )
+append_keywords( fields *in, fields *out, int *status )
 {
+	vplist_index i;
+	int fstatus;
 	vplist vpl;
-	int i;
+
 	vplist_init( &vpl );
-	fields_findv_each( f, LEVEL_ANY, FIELDS_CHRP, &vpl, "KEYWORD" );
-	for ( i=0; i<vpl.n; ++i )
-		fprintf( fp, "KW  - %s\n", ( char * ) vplist_get( &vpl, i ) );
+	fields_findv_each( in, LEVEL_ANY, FIELDS_CHRP, &vpl, "KEYWORD" );
+	for ( i=0; i<vpl.n; ++i ) {
+		fstatus = fields_add( out, "KW", ( char * ) vplist_get( &vpl, i ), LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
 	vplist_free( &vpl );
 }
 
 static void
-output_pmid( FILE *fp, fields *f )
+append_urls( fields *in, fields *out, int *status )
 {
-	newstr s;
-	int i;
-	newstr_init( &s );
-	for ( i=0; i<fields_num( f ); ++i ) {
-		if ( !fields_match_tag( f, i, "PMID" ) ) continue;
-		pmid_to_url( f, i, "URL", &s );
-		if ( s.len )
-			fprintf( fp, "UR  - %s\n", s.data );
+	int lstatus;
+	slist types;
+
+	lstatus = slist_init_valuesc( &types, "URL", "DOI", "PMID", "PMC", "ARXIV", "JSTOR", "MRNUMBER", NULL );
+	if ( lstatus!=SLIST_OK ) {
+		*status = BIBL_ERR_MEMERR;
+		return;
 	}
-	newstr_free( &s );
+
+	*status = urls_merge_and_add( in, LEVEL_ANY, out, "UR", LEVEL_MAIN, &types );
+
+	slist_free( &types );
+
 }
 
 static void
-output_arxiv( FILE *fp, fields *f )
+append_thesishint( int type, fields *out, int *status )
 {
-	newstr s;
-	int i;
-	newstr_init( &s );
-	for ( i=0; i<fields_num( f ); ++i ) {
-		if ( !fields_match_tag( f, i, "ARXIV" ) ) continue;
-		arxiv_to_url( f, i, "URL", &s );
-		if ( s.len )
-			fprintf( fp, "UR  - %s\n", s.data );
-	}
-	newstr_free( &s );
-}
+	int fstatus;
 
-static void
-output_jstor( FILE *fp, fields *f )
-{
-	newstr s;
-	int i;
-	newstr_init( &s );
-	for ( i=0; i<fields_num( f ); ++i ) {
-		if ( !fields_match_tag( f, i, "JSTOR" ) ) continue;
-		jstor_to_url( f, i, "URL", &s );
-		if ( s.len )
-			fprintf( fp, "UR  - %s\n", s.data );
+	if ( type==TYPE_MASTERSTHESIS ) {
+		fstatus = fields_add( out, "U1", "Masters thesis", LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
 	}
-	newstr_free( &s );
-}
 
-static void
-output_thesishint( FILE *fp, int type )
-{
-	if ( type==TYPE_MASTERSTHESIS )
-		fprintf( fp, "%s  - %s\n", "U1", "Masters thesis" );
-	else if ( type==TYPE_PHDTHESIS )
-		fprintf( fp, "%s  - %s\n", "U1", "Ph.D. thesis" );
-	else if ( type==TYPE_DIPLOMATHESIS )
-		fprintf( fp, "%s  - %s\n", "U1", "Diploma thesis" );
-	else if ( type==TYPE_DOCTORALTHESIS )
-		fprintf( fp, "%s  - %s\n", "U1", "Doctoral thesis" );
-	else if ( type==TYPE_HABILITATIONTHESIS )
-		fprintf( fp, "%s  - %s\n", "U1", "Habilitation thesis" );
+	else if ( type==TYPE_PHDTHESIS ) {
+		fstatus = fields_add( out, "U1", "Ph.D. thesis", LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
+
+	else if ( type==TYPE_DIPLOMATHESIS ) {
+		fstatus = fields_add( out, "U1", "Diploma thesis", LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
+
+	else if ( type==TYPE_DOCTORALTHESIS ) {
+		fstatus = fields_add( out, "U1", "Doctoral thesis", LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
+
+	else if ( type==TYPE_HABILITATIONTHESIS ) {
+		fstatus = fields_add( out, "U1", "Habilitation thesis", LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
 }
 
 static int
 is_uri_scheme( char *p )
 {
-	char *scheme[] = { "http:", "file:", "ftp:", "git:", "gopher:" };
+	char *scheme[] = { "http:", "https:", "file:", "ftp:", "git:", "gopher:" };
 	int i, len, nschemes = sizeof( scheme ) / sizeof( scheme[0] );
 	for ( i=0; i<nschemes; ++i ) {
 		len = strlen( scheme[i] );
@@ -541,120 +561,164 @@ is_uri_scheme( char *p )
 
 
 static void
-output_file( FILE *fp, fields *f, char *tag, char *ristag, int level )
+append_file( fields *in, char *tag, char *ristag, int level, fields *out, int *status )
 {
+	vplist_index i;
+	str filename;
+	int fstatus;
 	vplist a;
 	char *fl;
-	int i;
+
+	str_init( &filename );
 	vplist_init( &a );
-	fields_findv_each( f, level, FIELDS_CHRP, &a, tag );
+	fields_findv_each( in, level, FIELDS_CHRP, &a, tag );
 	for ( i=0; i<a.n; ++i ) {
-		fprintf( fp, "%s  - ", ristag );
 		fl = ( char * ) vplist_get( &a, i );
-		if ( !is_uri_scheme( fl ) )
-			fprintf( fp, "file:" );
-		fprintf( fp, "%s\n", fl );
+		str_empty( &filename );
+		if ( !is_uri_scheme( fl ) ) str_strcatc( &filename, "file:" );
+		str_strcatc( &filename, fl );
+		if ( str_memerr( &filename ) ) { *status = BIBL_ERR_MEMERR; goto out; }
+		fstatus = fields_add( out, ristag, str_cstr( &filename ), LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) { *status = BIBL_ERR_MEMERR; goto out; }
 	}
+out:
 	vplist_free( &a );
+	str_free( &filename );
 }
 
 static void
-output_easy( FILE *fp, fields *f, char *tag, char *ristag, int level )
+append_easy( fields *in, char *tag, char *ristag, int level, fields *out, int *status )
 {
-	char *value = fields_findv( f, level, FIELDS_CHRP, tag );
-	if ( value ) fprintf( fp, "%s  - %s\n", ristag, value );
+	char *value;
+	int fstatus;
+
+	value = fields_findv( in, level, FIELDS_CHRP, tag );
+	if ( value ) {
+		fstatus = fields_add( out, ristag, value, LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
 }
 
 static void
-output_easyall( FILE *fp, fields *f, char *tag, char *ristag, int level )
+append_easyall( fields *in, char *tag, char *ristag, int level, fields *out, int *status )
 {
+	vplist_index i;
+	int fstatus;
 	vplist a;
-	int i;
+
 	vplist_init( &a );
-	fields_findv_each( f, level, FIELDS_CHRP, &a, tag );
-	for ( i=0; i<a.n; ++i )
-		fprintf( fp, "%s  - %s\n", ristag, (char *) vplist_get( &a, i ) );
+	fields_findv_each( in, level, FIELDS_CHRP, &a, tag );
+	for ( i=0; i<a.n; ++i ) {
+		fstatus = fields_add( out, ristag, (char *) vplist_get( &a, i ), LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
 	vplist_free( &a );
 }
 
 static void
-output_allpeople( FILE *fp, fields *f, int type )
+append_allpeople( fields *in, int type, fields *out, int *status )
 {
-	output_people(  fp, f, "AUTHOR",      "AU", LEVEL_MAIN   );
-	output_easyall( fp, f, "AUTHOR:CORP", "AU", LEVEL_MAIN   );
-	output_easyall( fp, f, "AUTHOR:ASIS", "AU", LEVEL_MAIN   );
-	output_people(  fp, f, "AUTHOR",      "A2", LEVEL_HOST   );
-	output_easyall( fp, f, "AUTHOR:CORP", "A2", LEVEL_HOST   );
-	output_easyall( fp, f, "AUTHOR:ASIS", "A2", LEVEL_HOST   );
-	output_people(  fp, f, "AUTHOR",      "A3", LEVEL_SERIES );
-	output_easyall( fp, f, "AUTHOR:CORP", "A3", LEVEL_SERIES );
-	output_easyall( fp, f, "AUTHOR:ASIS", "A3", LEVEL_SERIES );
-	output_people(  fp, f, "EDITOR",      "ED", LEVEL_MAIN   );
-	output_easyall( fp, f, "EDITOR:CORP", "ED", LEVEL_MAIN   );
-	output_easyall( fp, f, "EDITOR:ASIS", "ED", LEVEL_MAIN   );
-	if ( type_is_element( type ) ) {
-		output_people(  fp, f, "EDITOR",      "ED", LEVEL_HOST   );
-		output_easyall( fp, f, "EDITOR:CORP", "ED", LEVEL_HOST   );
-		output_easyall( fp, f, "EDITOR:ASIS", "ED", LEVEL_HOST   );
+	append_people ( in, "AUTHOR",      "AU", LEVEL_MAIN,   out, status );
+	append_easyall( in, "AUTHOR:CORP", "AU", LEVEL_MAIN,   out, status );
+	append_easyall( in, "AUTHOR:ASIS", "AU", LEVEL_MAIN,   out, status );
+	append_people ( in, "AUTHOR",      "A2", LEVEL_HOST,   out, status );
+	append_easyall( in, "AUTHOR:CORP", "A2", LEVEL_HOST,   out, status );
+	append_easyall( in, "AUTHOR:ASIS", "A2", LEVEL_HOST,   out, status );
+	append_people ( in, "AUTHOR",      "A3", LEVEL_SERIES, out, status );
+	append_easyall( in, "AUTHOR:CORP", "A3", LEVEL_SERIES, out, status );
+	append_easyall( in, "AUTHOR:ASIS", "A3", LEVEL_SERIES, out, status );
+	append_people ( in, "EDITOR",      "ED", LEVEL_MAIN,   out, status );
+	append_easyall( in, "EDITOR:CORP", "ED", LEVEL_MAIN,   out, status );
+	append_easyall( in, "EDITOR:ASIS", "ED", LEVEL_MAIN,   out, status );
+	if ( type_is_element[ type ] ) {
+		append_people ( in, "EDITOR",      "ED", LEVEL_HOST, out, status );
+		append_easyall( in, "EDITOR:CORP", "ED", LEVEL_HOST, out, status );
+		append_easyall( in, "EDITOR:ASIS", "ED", LEVEL_HOST, out, status );
 	} else {
-		output_people(  fp, f, "EDITOR",      "A3", LEVEL_HOST   );
-		output_easyall( fp, f, "EDITOR:CORP", "A3", LEVEL_HOST   );
-		output_easyall( fp, f, "EDITOR:ASIS", "A3", LEVEL_HOST   );
+		append_people ( in, "EDITOR",      "A3", LEVEL_HOST, out, status );
+		append_easyall( in, "EDITOR:CORP", "A3", LEVEL_HOST, out, status );
+		append_easyall( in, "EDITOR:ASIS", "A3", LEVEL_HOST, out, status );
 	}
-	output_people(  fp, f, "EDITOR",      "A3", LEVEL_SERIES );
-	output_easyall( fp, f, "EDITOR:CORP", "A3", LEVEL_SERIES );
-	output_easyall( fp, f, "EDITOR:ASIS", "A3", LEVEL_SERIES );
+	append_people ( in, "EDITOR",      "A3", LEVEL_SERIES, out, status );
+	append_easyall( in, "EDITOR:CORP", "A3", LEVEL_SERIES, out, status );
+	append_easyall( in, "EDITOR:ASIS", "A3", LEVEL_SERIES, out, status );
 }
 
-void
-risout_write( fields *f, FILE *fp, param *p, unsigned long refnum )
+static void
+output( FILE *fp, fields *out )
 {
-	int type;
-	type = get_type( f, p );
-	output_type( fp, type, p );
+	char *tag, *value;
+	int i;
 
-	output_allpeople( fp, f, type );
+	for ( i=0; i<out->n; ++i ) {
+		tag   = fields_tag( out, i, FIELDS_CHRP );
+		value = fields_value( out, i, FIELDS_CHRP );
+		fprintf( fp, "%s  - %s\n", tag, value );
+	}
 
-	output_date( fp, f );
-
-	output_alltitles( fp, f, type );
-
-	output_pages( fp, f );
-	output_easy( fp, f, "VOLUME",             "VL", LEVEL_ANY );
-	output_easy( fp, f, "ISSUE",              "IS", LEVEL_ANY );
-	output_easy( fp, f, "NUMBER",             "IS", LEVEL_ANY );
-	output_easy( fp, f, "EDITION",            "ET", LEVEL_ANY );
-	output_easy( fp, f, "NUMVOLUMES",         "NV", LEVEL_ANY );
-	output_easy( fp, f, "AUTHORADDRESS",      "AD", LEVEL_ANY );
-	output_easy( fp, f, "PUBLISHER",          "PB", LEVEL_ANY );
-	output_easy( fp, f, "DEGREEGRANTOR",      "PB", LEVEL_ANY );
-	output_easy( fp, f, "DEGREEGRANTOR:ASIS", "PB", LEVEL_ANY );
-	output_easy( fp, f, "DEGREEGRANTOR:CORP", "PB", LEVEL_ANY );
-	output_easy( fp, f, "ADDRESS",            "CY", LEVEL_ANY );
-	output_keywords( fp, f );
-	output_easy( fp, f, "ABSTRACT",           "AB", LEVEL_ANY );
-	output_easy( fp, f, "CALLNUMBER",         "CN", LEVEL_ANY );
-	output_easy( fp, f, "ISSN",               "SN", LEVEL_ANY );
-	output_easy( fp, f, "ISBN",               "SN", LEVEL_ANY );
-	output_easyall( fp, f, "URL",             "UR", LEVEL_ANY );
-	output_easyall( fp, f, "DOI",             "DO", LEVEL_ANY );
-	output_file(    fp, f, "FILEATTACH",      "L1", LEVEL_ANY );
-	output_file(    fp, f, "FIGATTACH",       "L4", LEVEL_ANY );
-	output_easy( fp, f, "CAPTION",            "CA", LEVEL_ANY );
-	output_pmid( fp, f );
-	output_arxiv( fp, f );
-	output_jstor( fp, f );
-	output_easy( fp, f, "LANGUAGE",           "LA", LEVEL_ANY );
-	output_easy( fp, f, "NOTES",              "N1", LEVEL_ANY );
-	output_easy( fp, f, "REFNUM",             "ID", LEVEL_ANY );
-	output_thesishint( fp, type );
 	fprintf( fp, "ER  - \n" );
 	fflush( fp );
 }
 
-void
+static int
+append_data( fields *in, param *p, fields *out )
+{
+	int type, status = BIBL_OK;
+
+	type = get_type( in, p );
+
+	append_type      ( type, p, out, &status );
+	append_allpeople ( in, type, out, &status );
+	append_date      ( in, out, &status );
+	append_alltitles ( in, type, out, &status );
+	append_pages     ( in, out, &status );
+	append_easy      ( in, "VOLUME",             "VL", LEVEL_ANY, out, &status );
+	append_easy      ( in, "ISSUE",              "IS", LEVEL_ANY, out, &status );
+	append_easy      ( in, "NUMBER",             "IS", LEVEL_ANY, out, &status );
+	append_easy      ( in, "EDITION",            "ET", LEVEL_ANY, out, &status );
+	append_easy      ( in, "NUMVOLUMES",         "NV", LEVEL_ANY, out, &status );
+	append_easy      ( in, "AUTHORADDRESS",      "AD", LEVEL_ANY, out, &status );
+	append_easy      ( in, "PUBLISHER",          "PB", LEVEL_ANY, out, &status );
+	append_easy      ( in, "DEGREEGRANTOR",      "PB", LEVEL_ANY, out, &status );
+	append_easy      ( in, "DEGREEGRANTOR:ASIS", "PB", LEVEL_ANY, out, &status );
+	append_easy      ( in, "DEGREEGRANTOR:CORP", "PB", LEVEL_ANY, out, &status );
+	append_easy      ( in, "ADDRESS",            "CY", LEVEL_ANY, out, &status );
+	append_keywords  ( in, out, &status );
+	append_easy      ( in, "ABSTRACT",           "AB", LEVEL_ANY, out, &status );
+	append_easy      ( in, "CALLNUMBER",         "CN", LEVEL_ANY, out, &status );
+	append_easy      ( in, "ISSN",               "SN", LEVEL_ANY, out, &status );
+	append_easy      ( in, "ISBN",               "SN", LEVEL_ANY, out, &status );
+	append_file      ( in, "FILEATTACH",         "L1", LEVEL_ANY, out, &status );
+	append_file      ( in, "FIGATTACH",          "L4", LEVEL_ANY, out, &status );
+	append_easy      ( in, "CAPTION",            "CA", LEVEL_ANY, out, &status );
+	append_urls      ( in, out, &status );
+	append_easyall   ( in, "DOI",                "DO", LEVEL_ANY, out, &status );
+	append_easy      ( in, "LANGUAGE",           "LA", LEVEL_ANY, out, &status );
+	append_easy      ( in, "NOTES",              "N1", LEVEL_ANY, out, &status );
+	append_easy      ( in, "REFNUM",             "ID", LEVEL_ANY, out, &status );
+	append_thesishint( type, out, &status );
+
+	return status;
+}
+
+static int
+risout_write( fields *in, FILE *fp, param *p, unsigned long refnum )
+{
+	int status;
+	fields out;
+
+	fields_init( &out );
+
+	status = append_data( in, p, &out );
+	if ( status==BIBL_OK ) output( fp, &out );
+
+	fields_free( &out );
+
+	return status;
+}
+
+static void
 risout_writeheader( FILE *outptr, param *p )
 {
 	if ( p->utf8bom ) utf8_writebom( outptr );
 }
-

@@ -3,7 +3,7 @@
  *
  * mangle names w/ and w/o commas
  *
- * Copyright (c) Chris Putnam 2004-2016
+ * Copyright (c) Chris Putnam 2004-2017
  *
  * Source code released under the GPL version 2
  *
@@ -14,9 +14,9 @@
 #include "utf8.h"
 #include "unicode.h"
 #include "is_ws.h"
-#include "newstr.h"
+#include "str.h"
 #include "fields.h"
-#include "list.h"
+#include "slist.h"
 #include "intlist.h"
 #include "name.h"
 
@@ -26,12 +26,12 @@
  * to 'family suffix, given given
  */
 void
-name_build_withcomma( newstr *s, char *p )
+name_build_withcomma( str *s, char *p )
 {
 	int nseps = 0, nch;
 	char *suffix, *stopat;
 
-	newstr_empty( s );
+	str_empty( s );
 
 	suffix = strstr( p, "||" );
 	if ( suffix ) stopat = suffix;
@@ -41,18 +41,18 @@ name_build_withcomma( newstr *s, char *p )
 		nch = 0;
 		if ( nseps==1 ) {
 			if ( suffix ) {
-				newstr_addchar( s, ' ' );
-				newstr_strcat( s, suffix+2 );
+				str_addchar( s, ' ' );
+				str_strcatc( s, suffix+2 );
 			}
-			newstr_addchar( s, ',' );
+			str_addchar( s, ',' );
 		}
-		if ( nseps ) newstr_addchar( s, ' ' );
+		if ( nseps ) str_addchar( s, ' ' );
 		while ( p!=stopat && *p!='|' ) {
-			newstr_addchar( s, *p++ );
+			str_addchar( s, *p++ );
 			nch++;
 		}
 		if ( p!=stopat && *p=='|' ) p++;
-		if ( nseps!=0 && nch==1 ) newstr_addchar( s, '.' );
+		if ( nseps!=0 && nch==1 ) str_addchar( s, '.' );
 		nseps++;
 	}
 }
@@ -63,14 +63,14 @@ name_build_withcomma( newstr *s, char *p )
  * of name lists.
  */
 int
-name_findetal( list *tokens )
+name_findetal( slist *tokens )
 {
-	newstr *s1, *s2;
+	str *s1, *s2;
 
 	if ( tokens->n==0 ) return 0;
 
 	/* ...check last entry for full 'et al.' or variant */
-	s2 = list_get( tokens, tokens->n - 1 );
+	s2 = slist_str( tokens, tokens->n - 1 );
 	if ( !strcasecmp( s2->data, "et alia" ) ||
 	     !strcasecmp( s2->data, "et al." )  ||
 	     !strcasecmp( s2->data, "et al.," )  ||
@@ -84,7 +84,7 @@ name_findetal( list *tokens )
 	if ( tokens->n==1 ) return 0;
 
 	/* ...check last two entries for full 'et' and 'al.' */
-	s1 = list_get( tokens, tokens->n - 2 );
+	s1 = slist_str( tokens, tokens->n - 2 );
 	if ( !strcasecmp( s1->data, "et" ) ) {
 		if ( !strcasecmp( s2->data, "alia" ) ||
 		     !strcasecmp( s2->data, "al." )  ||
@@ -134,13 +134,13 @@ identify_suffix( char *p )
 }
 
 static int
-has_suffix( list *tokens, int begin, int end, int *suffixpos )
+has_suffix( slist *tokens, int begin, int end, int *suffixpos )
 {
 	int i, ret;
-	newstr *s;
+	str *s;
 
 	/* ...check last element, e.g. "H. F. Author, Sr." */
-	s = list_get( tokens, end - 1 );
+	s = slist_str( tokens, end - 1 );
 	ret = identify_suffix( s->data );
 	if ( ret ) {
 		*suffixpos = end - 1;
@@ -149,9 +149,9 @@ has_suffix( list *tokens, int begin, int end, int *suffixpos )
 
 	/* ...try to find one after a comma, e.g. "Author, Sr., H. F." */
 	for ( i=begin; i<end-1; ++i ) {
-		s = list_get( tokens, i );
+		s = slist_str( tokens, i );
 		if ( s->len && s->data[ s->len - 1 ]==',' ) {
-			s = list_get( tokens, i+1 );
+			s = slist_str( tokens, i+1 );
 			ret = identify_suffix( s->data );
 			if ( ret ) {
 				*suffixpos = i+1;
@@ -164,7 +164,7 @@ has_suffix( list *tokens, int begin, int end, int *suffixpos )
 }
 
 static int
-add_given_split( newstr *name, newstr *s )
+add_given_split( str *name, str *s )
 {
 	unsigned int unicode_char;
 	unsigned int pos = 0;
@@ -174,49 +174,49 @@ add_given_split( newstr *name, newstr *s )
 		if ( is_ws( (char) unicode_char ) ) continue;
 		else if ( unicode_char==(unsigned int)'.' ) {
 			if ( s->data[pos]=='-' ) {
-				newstr_strcat( name, ".-" );
+				str_strcatc( name, ".-" );
 				pos += 1;
 				unicode_char = utf8_decode( s->data, &pos );
 				utf8_encode_str( unicode_char, utf8s );
-				newstr_strcat( name, utf8s );
-				newstr_addchar( name, '.' );
+				str_strcatc( name, utf8s );
+				str_addchar( name, '.' );
 			}
 		} else if ( unicode_char==(unsigned int)'-' ) {
-			newstr_strcat( name, ".-" );
+			str_strcatc( name, ".-" );
 			unicode_char = utf8_decode( s->data, &pos );
 			utf8_encode_str( unicode_char, utf8s );
-			newstr_strcat( name, utf8s );
-			newstr_addchar( name, '.' );
+			str_strcatc( name, utf8s );
+			str_addchar( name, '.' );
 		} else if ( unicode_char==(unsigned int)',' ) { /* nothing */
 		} else {
-			newstr_addchar( name, '|' );
+			str_addchar( name, '|' );
 			utf8_encode_str( unicode_char, utf8s );
-			newstr_strcat( name, utf8s );
+			str_strcatc( name, utf8s );
 		}
 	}
 	return 1;
 }
 
 static unsigned char
-token_has_no_upper( list *tokens, int n )
+token_has_no_upper( slist *tokens, int n )
 {
 	unsigned short m;
-	newstr *s;
-	s = list_get( tokens, n );
-	m = unicode_utf8_classify_newstr( s );
+	str *s;
+	s = slist_str( tokens, n );
+	m = unicode_utf8_classify_str( s );
 	if ( m & UNICODE_UPPER ) return 0;
 	else return 1;
 }
 
 static unsigned char
-token_has_upper( list *tokens, int n )
+token_has_upper( slist *tokens, int n )
 {
 	if ( token_has_no_upper( tokens, n ) ) return 0;
 	else return 1;
 }
 
 static int
-name_multielement_nocomma( intlist *given, intlist *family, list *tokens, int begin, int end, int suffixpos )
+name_multielement_nocomma( intlist *given, intlist *family, slist *tokens, int begin, int end, int suffixpos )
 {
 	int family_start, family_end;
 	int i, n;
@@ -253,9 +253,9 @@ name_multielement_nocomma( intlist *given, intlist *family, list *tokens, int be
 }
 
 static int
-name_multielement_comma( intlist *given, intlist *family, list *tokens, int begin, int end, int comma, int suffixpos )
+name_multielement_comma( intlist *given, intlist *family, slist *tokens, int begin, int end, int comma, int suffixpos )
 {
-	newstr *s;
+	str *s;
 	int i;
 
 	/* ...family names */
@@ -263,8 +263,8 @@ name_multielement_comma( intlist *given, intlist *family, list *tokens, int begi
 		if ( i==suffixpos ) continue;
 		intlist_add( family, i );
 	}
-	s = list_get( tokens, comma );
-	newstr_trimend( s, 1 ); /* remove comma */
+	s = slist_str( tokens, comma );
+	str_trimend( s, 1 ); /* remove comma */
 	intlist_add( family, comma );
 
 	/* ...given names */
@@ -277,26 +277,26 @@ name_multielement_comma( intlist *given, intlist *family, list *tokens, int begi
 }
 
 static int
-name_mutlielement_build( newstr *name, intlist *given, intlist *family, list *tokens )
+name_mutlielement_build( str *name, intlist *given, intlist *family, slist *tokens )
 {
 	unsigned short case_given = 0, case_family = 0, should_split = 0;
-	newstr *s;
+	str *s;
 	int i, m;
 
 	/* ...copy and analyze family name */
 	for ( i=0; i<family->n; ++i ) {
 		m = intlist_get( family, i );
-		s = list_get( tokens, m );
-		if ( i ) newstr_addchar( name, ' '  );
-		newstr_newstrcat( name, s );
-		case_family |= unicode_utf8_classify_newstr( s );
+		s = slist_str( tokens, m );
+		if ( i ) str_addchar( name, ' '  );
+		str_strcat( name, s );
+		case_family |= unicode_utf8_classify_str( s );
 	}
 
 	/* ...check given name case */
 	for ( i=0; i<given->n; ++i ) {
 		m = intlist_get( given, i );
-		s = list_get( tokens, m );
-		case_given |= unicode_utf8_classify_newstr( s );
+		s = slist_str( tokens, m );
+		case_given |= unicode_utf8_classify_str( s );
 	}
 
 	if ( ( ( case_family & UNICODE_MIXEDCASE ) == UNICODE_MIXEDCASE ) &&
@@ -306,35 +306,35 @@ name_mutlielement_build( newstr *name, intlist *given, intlist *family, list *to
 
 	for ( i=0; i<given->n; ++i ) {
 		m = intlist_get( given, i );
-		s = list_get( tokens, m );
+		s = slist_str( tokens, m );
 		if ( !should_split ) {
-			newstr_addchar( name, '|' );
-			newstr_newstrcat( name, s );
+			str_addchar( name, '|' );
+			str_strcat( name, s );
 		} else add_given_split( name, s );
 	}
 	return 1;
 }
 
 static int
-name_construct_multi( newstr *outname, list *tokens, int begin, int end )
+name_construct_multi( str *outname, slist *tokens, int begin, int end )
 {
 	int i, suffix, suffixpos=-1, comma=-1;
 	intlist given, family;
-	newstr *s;
+	str *s;
 
 	intlist_init( &family );
 	intlist_init( &given );
 
-	newstr_empty( outname );
+	str_empty( outname );
 
 	suffix = has_suffix( tokens, begin, end, &suffixpos );
 
 	for ( i=begin; i<end && comma==-1; i++ ) {
 		if ( i==suffixpos ) continue;
-		s = list_get( tokens, i );
+		s = slist_str( tokens, i );
 		if ( s->data[ s->len -1 ] == ',' ) {
 			if ( suffix && i==suffixpos-1 && !(suffix&WITHCOMMA) )
-				newstr_trimend( s, 1 );
+				str_trimend( s, 1 );
 			else
 				comma = i;
 		}
@@ -348,10 +348,10 @@ name_construct_multi( newstr *outname, list *tokens, int begin, int end )
 	name_mutlielement_build( outname, &given, &family, tokens );
 
 	if ( suffix ) {
-		if ( suffix & JUNIOR ) newstr_strcat( outname, "||Jr." );
-		if ( suffix & SENIOR ) newstr_strcat( outname, "||Sr." );
-		if ( suffix & THIRD  ) newstr_strcat( outname, "||III" );
-		if ( suffix & FOURTH ) newstr_strcat( outname, "||IV"  );
+		if ( suffix & JUNIOR ) str_strcatc( outname, "||Jr." );
+		if ( suffix & SENIOR ) str_strcatc( outname, "||Sr." );
+		if ( suffix & THIRD  ) str_strcatc( outname, "||III" );
+		if ( suffix & FOURTH ) str_strcatc( outname, "||IV"  );
 	}
 
 	intlist_free( &given );
@@ -361,18 +361,18 @@ name_construct_multi( newstr *outname, list *tokens, int begin, int end )
 }
 
 int
-name_addmultielement( fields *info, char *tag, list *tokens, int begin, int end, int level )
+name_addmultielement( fields *info, char *tag, slist *tokens, int begin, int end, int level )
 {
 	int status, ok = 1;
-	newstr name;
+	str name;
 
-	newstr_init( &name );
+	str_init( &name );
 
 	name_construct_multi( &name, tokens, begin, end );
-	status = fields_add( info, tag, name.data, level );
+	status = fields_add_can_dup( info, tag, name.data, level );
 	if ( status!=FIELDS_OK ) ok = 0;
 
-	newstr_free( &name );
+	str_free( &name );
 
 	return ok;
 }
@@ -388,14 +388,14 @@ int
 name_addsingleelement( fields *info, char *tag, char *name, int level, int corp )
 {
 	int status, ok = 1;
-	newstr outtag;
-	newstr_init( &outtag );
-	newstr_strcpy( &outtag, tag );
-	if ( !corp ) newstr_strcat( &outtag, ":ASIS" );
-	else newstr_strcat( &outtag, ":CORP" );
-	status = fields_add( info, outtag.data, name, level );
+	str outtag;
+	str_init( &outtag );
+	str_strcpyc( &outtag, tag );
+	if ( !corp ) str_strcatc( &outtag, ":ASIS" );
+	else str_strcatc( &outtag, ":CORP" );
+	status = fields_add_can_dup( info, outtag.data, name, level );
 	if ( status!=FIELDS_OK ) ok = 0;
-	newstr_free( &outtag );
+	str_free( &outtag );
 	return ok;
 }
 
@@ -409,31 +409,31 @@ name_addsingleelement( fields *info, char *tag, char *name, int level, int corp 
  * Returns 3 on ok and name in corps list
  */
 int
-name_parse( newstr *outname, newstr *inname, list *asis, list *corps )
+name_parse( str *outname, str *inname, slist *asis, slist *corps )
 {
-	list tokens;
+	slist tokens;
 	int ret = 1;
 
-	newstr_empty( outname );
+	str_empty( outname );
 	if ( !inname || !inname->len ) return ret;
 
-	list_init( &tokens );
+	slist_init( &tokens );
 
-	if ( asis && list_find( asis, inname->data ) !=-1 ) {
-		newstr_newstrcpy( outname, inname );
+	if ( asis && slist_find( asis, inname ) !=-1 ) {
+		str_strcpy( outname, inname );
 		ret = 2;
 		goto out;
-	} else if ( corps && list_find( corps, inname->data ) != -1 ) {
-		newstr_newstrcpy( outname, inname );
+	} else if ( corps && slist_find( corps, inname ) != -1 ) {
+		str_strcpy( outname, inname );
 		ret = 3;
 		goto out;
 	}
 
-	newstr_findreplace( inname, ",", ", " );
-	list_tokenize( &tokens, inname, " ", 1 );
+	str_findreplace( inname, ",", ", " );
+	slist_tokenize( &tokens, inname, " ", 1 );
 
 	if ( tokens.n==1 ) {
-		newstr_newstrcpy( outname, inname );
+		str_strcpy( outname, inname );
 		ret = 2;
 	} else {
 		name_construct_multi( outname, &tokens, 0, tokens.n );
@@ -442,17 +442,17 @@ name_parse( newstr *outname, newstr *inname, list *asis, list *corps )
 
 out:
 
-	list_free( &tokens );
+	slist_free( &tokens );
 
 	return ret;
 }
 
 static char *
-name_copy( newstr *name, char *p )
+name_copy( str *name, char *p )
 {
 	char *start, *end, *q;
 
-	newstr_empty( name );
+	str_empty( name );
 
 	start = p = skip_ws( p );
 
@@ -465,7 +465,7 @@ name_copy( newstr *name, char *p )
 	if ( *p=='|' ) p++;
 
 	for ( q=start; q<=end; q++ )
-		newstr_addchar( name, *q );
+		str_addchar( name, *q );
 
 	return p;
 }
@@ -486,16 +486,16 @@ name_copy( newstr *name, char *p )
  * "Author, H. F."
  */
 int
-name_add( fields *info, char *tag, char *q, int level, list *asis, list *corps )
+name_add( fields *info, char *tag, char *q, int level, slist *asis, slist *corps )
 {
 	int ok, status, nametype, ret = 1;
-	newstr inname, outname;
-	list tokens;
+	str inname, outname;
+	slist tokens;
 
 	if ( !q ) return 0;
 
-	list_init( &tokens );
-	newstrs_init( &inname, &outname, NULL );
+	slist_init( &tokens );
+	strs_init( &inname, &outname, NULL );
 
 	while ( *q ) {
 
@@ -505,7 +505,7 @@ name_add( fields *info, char *tag, char *q, int level, list *asis, list *corps )
 		if ( !nametype ) { ret = 0; goto out; }
 
 		if ( nametype==1 ) {
-			status = fields_add( info, tag, outname.data, level );
+			status = fields_add_can_dup( info, tag, outname.data, level );
 			ok = ( status==FIELDS_OK ) ? 1 : 0;
 		}
 		else if ( nametype==2 )
@@ -518,8 +518,8 @@ name_add( fields *info, char *tag, char *q, int level, list *asis, list *corps )
 	}
 
 out:
-	newstrs_free( &inname, &outname, NULL );
-	list_free( &tokens );
+	strs_free( &inname, &outname, NULL );
+	slist_free( &tokens );
 
 	return ret;
 }

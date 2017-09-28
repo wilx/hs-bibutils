@@ -3,7 +3,7 @@
  * 
  * (Word 2007 format)
  *
- * Copyright (c) Chris Putnam 2007-2016
+ * Copyright (c) Chris Putnam 2007-2017
  *
  * Source code released under the GPL version 2
  *
@@ -11,10 +11,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "newstr.h"
+#include "str.h"
 #include "fields.h"
 #include "utf8.h"
-#include "wordout.h"
+#include "bibformats.h"
+
+static void wordout_writeheader( FILE *outptr, param *p );
+static void wordout_writefooter( FILE *outptr );
+static int  wordout_write( fields *info, FILE *outptr, param *p, unsigned long numrefs );
 
 void
 wordout_initparams( param *p, const char *progname )
@@ -41,8 +45,9 @@ wordout_initparams( param *p, const char *progname )
 }
 
 typedef struct convert {
-	char oldtag[25];
-	char newtag[25];
+	char *oldtag;
+	char *newtag;
+	char *prefix;
 	int  code;
 } convert;
 
@@ -102,24 +107,28 @@ enum {
  * fixed output
  */
 static void
-output_fixed( FILE *outptr, char *tag, char *data, int level )
+output_fixed( FILE *outptr, char *tag, char *value, int level )
 {
 	int i;
 	for ( i=0; i<level; ++i ) fprintf( outptr, " " );
-	fprintf( outptr, "<%s>%s</%s>\n", tag, data, tag );
+	fprintf( outptr, "<%s>%s</%s>\n", tag, value, tag );
 }
 
 /* detail output
  *
  */
 static void
-output_item( fields *info, FILE *outptr, char *tag, int item, int level )
+output_item( fields *info, FILE *outptr, char *tag, char *prefix, int item, int level )
 {
 	int i;
 	if ( item==-1 ) return;
 	for ( i=0; i<level; ++i ) fprintf( outptr, " " );
-	fprintf( outptr, "<%s>%s</%s>\n", tag, info->data[item].data, tag );
-	fields_setused( info, item );
+	fprintf( outptr, "<%s>%s%s</%s>\n",
+		tag,
+		prefix,
+		(char*) fields_value( info, item, FIELDS_CHRP ),
+		tag
+	);
 }
 
 static void
@@ -157,7 +166,7 @@ output_list( fields *info, FILE *outptr, convert *c, int nc )
         int i, n;
         for ( i=0; i<nc; ++i ) {
                 n = fields_find( info, c[i].oldtag, c[i].code );
-                if ( n!=-1 ) output_item( info, outptr, c[i].newtag, n, 0 );
+                if ( n!=-1 ) output_item( info, outptr, c[i].newtag, c[i].prefix, n, 0 );
         }
 
 }
@@ -195,11 +204,11 @@ static int
 get_type_from_genre( fields *info )
 {
 	int type = TYPE_UNKNOWN, i, j, level;
-	char *genre;
+	char *genre, *tag;
 	for ( i=0; i<info->n; ++i ) {
-		if ( strcasecmp( info->tag[i].data, "GENRE" ) &&
-			strcasecmp( info->tag[i].data, "NGENRE" ) ) continue;
-		genre = info->data[i].data;
+		tag = (char *) fields_tag( info, i, FIELDS_CHRP );
+		if ( strcasecmp( tag, "GENRE" ) && strcasecmp( tag, "NGENRE" ) ) continue;
+		genre = (char *) fields_value( info, i, FIELDS_CHRP );
 		for ( j=0; j<ngenres; ++j ) {
 			if ( !strcasecmp( genres[j].out, genre ) )
 				type = genres[j].value;
@@ -240,11 +249,11 @@ static int
 get_type_from_resource( fields *info )
 {
 	int type = TYPE_UNKNOWN, i;
-	char *resource;
+	char *tag, *resource;
 	for ( i=0; i<info->n; ++i ) {
-		if ( strcasecmp( info->tag[i].data, "GENRE" )!=0 &&
-			strcasecmp( info->tag[i].data, "NGENRE" )!=0 ) continue;
-		resource = info->data[i].data;
+		tag = (char *) fields_tag( info, i, FIELDS_CHRP );
+		if ( strcasecmp( tag, "GENRE" ) && strcasecmp( tag, "NGENRE" ) ) continue;
+		resource = (char *) fields_value( info, i, FIELDS_CHRP );
 		if ( !strcasecmp( resource, "moving image" ) )
 			type = TYPE_FILM;
 	}
@@ -337,40 +346,39 @@ output_name_nomangle( FILE *outptr, char *p )
 static void
 output_name( FILE *outptr, char *p )
 {
-	newstr family, part;
+	str family, part;
 	int n=0, npart=0;
 
-	newstr_init( &family );
-	while ( *p && *p!='|' ) newstr_addchar( &family, *p++ );
+	str_init( &family );
+	while ( *p && *p!='|' ) str_addchar( &family, *p++ );
 	if ( *p=='|' ) p++;
-	if ( family.len ) {
+	if ( str_has_value( &family ) ) {
 		fprintf( outptr, "<b:Person>" );
-		fprintf( outptr, "<b:Last>%s</b:Last>",family.data );
+		fprintf( outptr, "<b:Last>%s</b:Last>", str_cstr( &family ) );
 		n++;
 	}
-	newstr_free( &family );
+	str_free( &family );
 
-	newstr_init( &part );
+	str_init( &part );
 	while ( *p ) {
-		while ( *p && *p!='|' ) newstr_addchar( &part, *p++ );
-		if ( part.len ) {
+		while ( *p && *p!='|' ) str_addchar( &part, *p++ );
+		if ( str_has_value( &part ) ) {
 			if ( n==0 ) fprintf( outptr, "<b:Person>" );
 			if ( npart==0 ) 
-				fprintf( outptr, "<b:First>%s</b:First>",
-					part.data );
-			else fprintf( outptr, "<b:Middle>%s</b:Middle>",
-					part.data );
+				fprintf( outptr, "<b:First>%s</b:First>", str_cstr( &part ) );
+			else
+				fprintf( outptr, "<b:Middle>%s</b:Middle>", str_cstr( &part ) );
 			n++;
 			npart++;
 		}
 		if ( *p=='|' ) {
 			p++;
-			newstr_empty( &part );
+			str_empty( &part );
 		}
 	}
 	if ( n ) fprintf( outptr, "</b:Person>\n" );
 
-	newstr_free( &part );
+	str_free( &part );
 }
 
 
@@ -379,12 +387,12 @@ output_name( FILE *outptr, char *p )
 #define NAME_CORP (4)
 
 static int
-extract_name_and_info( newstr *outtag, newstr *intag )
+extract_name_and_info( str *outtag, str *intag )
 {
 	int code = NAME;
-	newstr_newstrcpy( outtag, intag );
-	if ( newstr_findreplace( outtag, ":ASIS", "" ) ) code = NAME_ASIS;
-	if ( newstr_findreplace( outtag, ":CORP", "" ) ) code = NAME_CORP;
+	str_strcpy( outtag, intag );
+	if ( str_findreplace( outtag, ":ASIS", "" ) ) code = NAME_ASIS;
+	if ( str_findreplace( outtag, ":CORP", "" ) ) code = NAME_CORP;
 	return code;
 }
 
@@ -392,25 +400,24 @@ static void
 output_name_type( fields *info, FILE *outptr, int level, 
 			char *map[], int nmap, char *tag )
 {
-	newstr ntag;
+	str ntag;
 	int i, j, n=0, code, nfields;
-	newstr_init( &ntag );
+	str_init( &ntag );
 	nfields = fields_num( info );
 	for ( j=0; j<nmap; ++j ) {
 		for ( i=0; i<nfields; ++i ) {
 			code = extract_name_and_info( &ntag, &(info->tag[i]) );
-			if ( strcasecmp( ntag.data, map[j] ) ) continue;
+			if ( strcasecmp( str_cstr( &ntag ), map[j] ) ) continue;
 			if ( n==0 )
 				fprintf( outptr, "<%s><b:NameList>\n", tag );
 			if ( code != NAME )
-				output_name_nomangle( outptr, info->data[i].data );
+				output_name_nomangle( outptr, (char *) fields_value( info, i, FIELDS_CHRP ) );
 			else 
-				output_name( outptr, info->data[i].data );
-			fields_setused( info, i );
+				output_name( outptr, (char *) fields_value( info, i, FIELDS_CHRP ) );
 			n++;
 		}
 	}
-	newstr_free( &ntag );
+	str_free( &ntag );
 	if ( n )
 		fprintf( outptr, "</b:NameList></%s>\n", tag );
 }
@@ -443,11 +450,11 @@ static void
 output_date( fields *info, FILE *outptr, int level )
 {
 	char *year  = fields_findv_firstof( info, level, FIELDS_CHRP,
-			"PARTYEAR", "YEAR", NULL );
+			"PARTDATE:YEAR", "DATE:YEAR", NULL );
 	char *month = fields_findv_firstof( info, level, FIELDS_CHRP,
-			"PARTMONTH", "MONTH", NULL );
+			"PARTDATE:MONTH", "DATE:MONTH", NULL );
 	char *day   = fields_findv_firstof( info, level, FIELDS_CHRP,
-			"PARTDAY", "DAY", NULL );
+			"PARTDATE:DAY", "DATE:DAY", NULL );
 	if ( year )  output_itemv( outptr, "b:Year", year, 0 );
 	if ( month ) output_itemv( outptr, "b:Month", month, 0 );
 	if ( day )   output_itemv( outptr, "b:Day", day, 0 );
@@ -456,8 +463,8 @@ output_date( fields *info, FILE *outptr, int level )
 static void
 output_pages( fields *info, FILE *outptr, int level )
 {
-	char *sn = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGESTART" );
-	char *en = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGEEND" );
+	char *sn = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGES:START" );
+	char *en = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGES:STOP" );
 	char *ar = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "ARTICLENUMBER" );
 	if ( sn || en )
 		output_range( outptr, "b:Pages", sn, en, level );
@@ -508,7 +515,7 @@ output_thesisdetails( fields *info, FILE *outptr, int type )
 			strcasecmp( tag, "DEGREEGRANTOR:ASIS") &
 			strcasecmp( tag, "DEGREEGRANTOR:CORP"))
 				continue;
-		output_item( info, outptr, "b:Institution", i, 0 );
+		output_item( info, outptr, "b:Institution", "", i, 0 );
 	}
 }
 
@@ -559,9 +566,9 @@ output_type( fields *info, FILE *outptr, int type )
 static void
 output_comments( fields *info, FILE *outptr, int level )
 {
+	vplist_index i;
 	vplist notes;
 	char *abs;
-	int i;
 
 	vplist_init( &notes );
 
@@ -589,20 +596,26 @@ static void
 output_citeparts( fields *info, FILE *outptr, int level, int max, int type )
 {
 	convert origin[] = {
-		{ "ADDRESS",	"b:City",	LEVEL_ANY },
-		{ "PUBLISHER",	"b:Publisher",	LEVEL_ANY },
-		{ "EDITION",	"b:Edition",	LEVEL_ANY }
+		{ "ADDRESS",	"b:City",	"", LEVEL_ANY },
+		{ "PUBLISHER",	"b:Publisher",	"", LEVEL_ANY },
+		{ "EDITION",	"b:Edition",	"", LEVEL_ANY }
 	};
 	int norigin = sizeof( origin ) / sizeof ( convert );
 	
 	convert parts[] = {
-		{ "VOLUME",          "b:Volume",  LEVEL_ANY },
-		{ "SECTION",         "b:Section", LEVEL_ANY },
-		{ "ISSUE",           "b:Issue",   LEVEL_ANY },
-		{ "NUMBER",          "b:Issue",   LEVEL_ANY },
-		{ "PUBLICLAWNUMBER", "b:Volume",  LEVEL_ANY },
-		{ "SESSION",         "b:Issue",   LEVEL_ANY },
-		{ "URL",             "b:Url",     LEVEL_ANY },
+		{ "VOLUME",          "b:Volume",  "", LEVEL_ANY },
+		{ "SECTION",         "b:Section", "", LEVEL_ANY },
+		{ "ISSUE",           "b:Issue",   "", LEVEL_ANY },
+		{ "NUMBER",          "b:Issue",   "", LEVEL_ANY },
+		{ "PUBLICLAWNUMBER", "b:Volume",  "", LEVEL_ANY },
+		{ "SESSION",         "b:Issue",   "", LEVEL_ANY },
+		{ "URL",             "b:Url",     "", LEVEL_ANY },
+		{ "JSTOR",           "b:Url",     "http://www.jstor.org/stable/", LEVEL_ANY },
+		{ "ARXIV",           "b:Url",     "http://arxiv.org/abs/",        LEVEL_ANY },
+		{ "PMID",            "b:Url",     "http://www.ncbi.nlm.nih.gov/pubmed/", LEVEL_ANY },
+		{ "PMC",             "b:Url",     "http://www.ncbi.nlm.nih.gov/pmc/articles/", LEVEL_ANY },
+		{ "DOI",             "b:Url",     "https://doi.org/", LEVEL_ANY },
+		{ "MRNUMBER",        "b:Url",     "http://www.ams.org/mathscinet-getitem?mr=", LEVEL_ANY },
 	};
 	int nparts=sizeof(parts)/sizeof(convert);
 	
@@ -618,7 +631,7 @@ output_citeparts( fields *info, FILE *outptr, int level, int max, int type )
 	output_comments( info, outptr, level );
 }
 
-void
+static int
 wordout_write( fields *info, FILE *outptr, param *p, unsigned long numrefs )
 {
 	int max = fields_maxlevel( info );
@@ -629,9 +642,11 @@ wordout_write( fields *info, FILE *outptr, param *p, unsigned long numrefs )
 	fprintf( outptr, "</b:Source>\n" );
 
 	fflush( outptr );
+
+	return BIBL_OK;
 }
 
-void
+static void
 wordout_writeheader( FILE *outptr, param *p )
 {
 	if ( p->utf8bom ) utf8_writebom( outptr );
@@ -641,7 +656,7 @@ wordout_writeheader( FILE *outptr, param *p )
 		" xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/bibliography\" >\n");
 }
 
-void
+static void
 wordout_writefooter( FILE *outptr )
 {
 	fprintf(outptr,"</b:Sources>\n");
