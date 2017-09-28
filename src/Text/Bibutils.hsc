@@ -98,7 +98,6 @@ module Text.Bibutils
     , bibout_uppercase
     , bibout_strictkey
     , modsout_dropkey
-    , wordout_dropkey
 
     -- * Charsets
     , Charset
@@ -403,19 +402,16 @@ newtype BiblioOut = BiblioOut { unBiblioOut :: CInt }
 
 newtype FormatOpt = FormatOpt { unFormatOpt :: CInt }
 
-#include "bibtexout.h"
-#include "modsout.h"
-#include "wordout.h"
+#include "bibutils.h"
 
 #{enum FormatOpt, FormatOpt
- , bibout_finalcomma = BIBOUT_FINALCOMMA
- , bibout_singledash = BIBOUT_SINGLEDASH
- , bibout_whitespace = BIBOUT_WHITESPACE
- , bibout_brackets   = BIBOUT_BRACKETS
- , bibout_uppercase  = BIBOUT_UPPERCASE
- , bibout_strictkey  = BIBOUT_STRICTKEY
- , modsout_dropkey   = MODSOUT_DROPKEY
- , wordout_dropkey   = WORDOUT_DROPKEY
+ , bibout_finalcomma = BIBL_FORMAT_BIBOUT_FINALCOMMA
+ , bibout_singledash = BIBL_FORMAT_BIBOUT_SINGLEDASH
+ , bibout_whitespace = BIBL_FORMAT_BIBOUT_WHITESPACE
+ , bibout_brackets   = BIBL_FORMAT_BIBOUT_BRACKETS
+ , bibout_uppercase  = BIBL_FORMAT_BIBOUT_UPPERCASE
+ , bibout_strictkey  = BIBL_FORMAT_BIBOUT_STRICTKEY
+ , modsout_dropkey   = BIBL_FORMAT_MODSOUT_DROPKEY
  }
 
 newtype Status = Status { status :: CInt }
