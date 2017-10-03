@@ -9,15 +9,12 @@ description:        Haskell bindings to Chris Putnam's bibutils, a
                     library that interconverts between various
                     bibliography formats using a common MODS-format
                     XML intermediate.
-		    .
+                    .
                     hs-bibutils is available under the GNU GPL license. See
                     the LICENSE file for details.
                     .
                     For more details about bibutils, please check:
-		    <http://sourceforge.net/p/bibutils/home/Bibutils/>.
-                    .
-                    The original API documentation is available here:
-                    <http://www.scripps.edu/~cdputnam/software/bibutils/library_specs.html>.
+                    <http://sourceforge.net/p/bibutils/home/Bibutils/>.
                     .
                     The package release number refers to the release number of
                     the included bibutils library.
