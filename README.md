@@ -17,39 +17,6 @@ facility.
 formatting, similar in principle to BibTeX `.bst` files or the binary
 style files in commercial products like Endnote or Reference Manager.
 
-Download
---------
-
-[hs-bibutils] can be downloaded from [Hackage]:
-
-<http://hackage.haskell.org/package/hs-bibutils>
-
-To get source run:
-
-        git clone https://github.com/wilx/hs-bibutils.git
-
-Installation
-------------
-
-[hs-bibutils] does not require [bibutils] to be installed, since it
-ships with its one version of the library. To build and install
-[hs-bibutils] unpack the tar archive, in the source directory run:
-
-        runhaskell Setup.lhs configure
-        runhaskell Setup.lhs build
-        runhaskell Setup.lhs install
-
-This last step requires `root` privileges.
-
-If you don't have `root` privileges you can install [hs-bibutils]
-locally with these commands:
-
-        runhaskell Setup.lhs configure --user --prefix=$HOME
-        runhaskell Setup.lhs build
-        runhaskell Setup.lhs install --user
-
-[hs-bibutils] should be compatible with cabal-install.
-
 Documentation
 -------------
 
