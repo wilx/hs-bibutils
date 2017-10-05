@@ -39,7 +39,7 @@ char *   xml_value       ( xml *node );
 char *   xml_tag         ( xml *node );
 int      xml_tagwithvalue( xml *node, char *tag );
 
-char *   xml_pns; /* global Namespace */
+extern char *   xml_pns; /* global Namespace */
 
 #endif
 
