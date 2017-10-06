@@ -69,7 +69,7 @@ library
     includes: bibutils.h
     c-sources:
         cbits/stub.c
-        bibutils/adsout.c bibutils/adsout_journals.c bibutils/bibcore.c
+        bibutils/adsout.c bibutils/bibcore.c
         bibutils/biblatexin.c bibutils/bibl.c bibutils/bibtexin.c
         bibutils/bibtexout.c bibutils/bibtextypes.c bibutils/bibutils.c
         bibutils/bltypes.c bibutils/charsets.c bibutils/copacin.c
