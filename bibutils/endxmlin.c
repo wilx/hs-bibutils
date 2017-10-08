@@ -406,7 +406,7 @@ endxmlin_dates( xml *node, fields *info )
 			}
 			if ( xml_tagexact( node->down, "pub-dates" ) ) {
 				status = endxmlin_pubdates( node->down, info );
-				if ( status!=BIBL_OK );
+				if ( status!=BIBL_OK ) return status;
 			}
 		}
 	}
