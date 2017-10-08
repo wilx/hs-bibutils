@@ -78,6 +78,9 @@ module Text.Bibutils
     , medline_in
     , biblatex_in
     , endnotexml_in
+    , ebi_in
+    , word_in
+    , nbib_in
 
     -- * Output Formats
     , BiblioOut
@@ -97,6 +100,8 @@ module Text.Bibutils
     , bibout_brackets
     , bibout_uppercase
     , bibout_strictkey
+    , bibout_shorttitle
+    , bibout_dropkey
     , modsout_dropkey
 
     -- * Charsets
@@ -105,6 +110,8 @@ module Text.Bibutils
     , bibl_charset_unicode
     , bibl_charset_gb18030
     , bibl_charset_default
+    , bibl_charset_utf8_default
+    , bibl_charset_bom_default
 
     -- * Return Status
     , Status
@@ -385,6 +392,9 @@ newtype BiblioIn  = BiblioIn  { unBiblioIn  :: CInt }
  , medline_in    = BIBL_MEDLINEIN
  , endnotexml_in = BIBL_ENDNOTEXMLIN
  , biblatex_in   = BIBL_BIBLATEXIN
+ , ebi_in        = BIBL_EBIIN
+ , word_in       = BIBL_WORDIN
+ , nbib_in       = BIBL_NBIBIN
  }
 
 newtype BiblioOut = BiblioOut { unBiblioOut :: CInt }
@@ -411,6 +421,8 @@ newtype FormatOpt = FormatOpt { unFormatOpt :: CInt }
  , bibout_brackets   = BIBL_FORMAT_BIBOUT_BRACKETS
  , bibout_uppercase  = BIBL_FORMAT_BIBOUT_UPPERCASE
  , bibout_strictkey  = BIBL_FORMAT_BIBOUT_STRICTKEY
+ , bibout_shorttitle = BIBL_FORMAT_BIBOUT_SHORTTITLE
+ , bibout_dropkey    = BIBL_FORMAT_BIBOUT_DROPKEY
  , modsout_dropkey   = BIBL_FORMAT_MODSOUT_DROPKEY
  }
 
@@ -427,10 +439,12 @@ newtype Status = Status { status :: CInt }
 newtype Charset = Charset { charset :: CInt } deriving ( Eq )
 
 #{enum Charset, Charset
-, bibl_charset_unknown = BIBL_CHARSET_UNKNOWN
-, bibl_charset_unicode = BIBL_CHARSET_UNICODE
-, bibl_charset_gb18030 = BIBL_CHARSET_GB18030
-, bibl_charset_default = BIBL_CHARSET_DEFAULT
+ , bibl_charset_unknown      = BIBL_CHARSET_UNKNOWN
+ , bibl_charset_unicode      = BIBL_CHARSET_UNICODE
+ , bibl_charset_gb18030      = BIBL_CHARSET_GB18030
+ , bibl_charset_default      = BIBL_CHARSET_DEFAULT
+ , bibl_charset_utf8_default = BIBL_CHARSET_UTF8_DEFAULT
+ , bibl_charset_bom_default  = BIBL_CHARSET_BOM_DEFAULT
  }
 
 -- Combine a list of options into a single option, using bitwise (.|.)
