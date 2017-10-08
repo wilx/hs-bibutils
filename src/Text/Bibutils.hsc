@@ -66,6 +66,7 @@ module Text.Bibutils
     , unsetSinglerefperfile
     , setOutputRawOpts
     , setVerbose
+    , setVerboseLevel
     , unsetVerbose
 
     -- * Input Formats
@@ -326,6 +327,11 @@ setOutputRawOpts p os
 setVerbose ::  ForeignPtr Param -> IO ()
 setVerbose p
     = setParam p $ \param -> param { verbose = 1 }
+
+-- | Verbose output.
+setVerboseLevel ::  ForeignPtr Param -> Int -> IO ()
+setVerboseLevel p v
+    = setParam p $ \param -> param { verbose = toEnum v }
 
 -- | Suppress verbose output.
 unsetVerbose ::  ForeignPtr Param -> IO ()
