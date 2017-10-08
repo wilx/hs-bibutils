@@ -43,6 +43,7 @@ report_params( FILE *fp, const char *f, param *p )
 		case BIBL_BIBLATEXIN:   fprintf( fp, " (BIBL_BIBLATEXIN)\n" );   break;
 		case BIBL_EBIIN:        fprintf( fp, " (BIBL_EBIIN)\n" );        break;
 		case BIBL_WORDIN:       fprintf( fp, " (BIBL_WORDIN)\n" );       break;
+		case BIBL_NBIBIN:       fprintf( fp, " (BIBL_NBIBIN)\n" );       break;
 		default:                fprintf( fp, " (Illegal)\n" );           break;
 	}
 	fprintf( fp, "\tcharsetin=%d\n", p->charsetin );
@@ -274,7 +275,7 @@ bibl_reporterr( int err )
 		case BIBL_ERR_CANTOPEN:
 			fprintf( stderr, "Can't open." ); break;
 		default:
-			fprintf( stderr, "Cannot identify error code."); break;
+			fprintf( stderr, "Cannot identify error code: %d", err); break;
 	}
 	fprintf( stderr, "\n" );
 }
@@ -836,6 +837,11 @@ bibl_read( bibl *b, FILE *fp, char *filename, param *p )
 	if ( !b )  return BIBL_ERR_BADINPUT;
 	if ( !fp ) return BIBL_ERR_BADINPUT;
 	if ( !p )  return BIBL_ERR_BADINPUT;
+
+	if ( debug_set( p ) ) {
+		fflush( stdout );
+		report_params( stderr, "bibl_read", p );
+	}
 
 	if ( bibl_illegalinmode( p->readformat ) ) return BIBL_ERR_BADINPUT;
 
