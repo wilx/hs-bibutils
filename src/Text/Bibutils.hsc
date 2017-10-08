@@ -64,6 +64,7 @@ module Text.Bibutils
     , unsetAddcount
     , setSinglerefperfile
     , unsetSinglerefperfile
+    , setOutputRawOpts
     , setVerbose
     , unsetVerbose
 
@@ -119,6 +120,11 @@ module Text.Bibutils
     , bibl_err_badinput
     , bibl_err_memerr
     , bibl_err_cantopen
+
+    -- * Raw
+    , Raw
+    , bibl_raw_with_charset_convert
+    , bibl_raw_with_make_ref_id
 
     ) where
 
@@ -311,6 +317,11 @@ unsetSinglerefperfile ::  ForeignPtr Param -> IO ()
 unsetSinglerefperfile p
     = setParam p $ \param -> param { singlerefperfile = 0 }
 
+-- | Set the output charset.
+setOutputRawOpts ::  ForeignPtr Param -> [Raw] -> IO ()
+setOutputRawOpts p os
+    = setParam p $ \param -> param { output_raw = unRaw $ combineRawOpts os }
+
 -- | Verbose output.
 setVerbose ::  ForeignPtr Param -> IO ()
 setVerbose p
@@ -436,6 +447,14 @@ newtype Status = Status { status :: CInt }
  , bibl_err_cantopen = BIBL_ERR_CANTOPEN
  }
 
+newtype Raw = Raw { unRaw :: CUChar }
+    deriving ( Eq, Show )
+
+#{enum Raw, Raw
+ , bibl_raw_with_charset_convert = BIBL_RAW_WITHCHARCONVERT
+ , bibl_raw_with_make_ref_id     = BIBL_RAW_WITHMAKEREFID
+ }
+
 newtype Charset = Charset { charset :: CInt } deriving ( Eq )
 
 #{enum Charset, Charset
@@ -446,6 +465,10 @@ newtype Charset = Charset { charset :: CInt } deriving ( Eq )
  , bibl_charset_utf8_default = BIBL_CHARSET_UTF8_DEFAULT
  , bibl_charset_bom_default  = BIBL_CHARSET_BOM_DEFAULT
  }
+
+-- Combine a list of output options into a single option, using bitwise (.|.)
+combineRawOpts :: [Raw] -> Raw
+combineRawOpts = Raw . foldr ((.|.) . unRaw) 0
 
 -- Combine a list of options into a single option, using bitwise (.|.)
 combineFormatOpts :: [FormatOpt] -> FormatOpt
