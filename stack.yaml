@@ -1,5 +1,3 @@
 packages:
 - '.'
-extra-deps:
-- syb-0.7
-resolver: lts-9.1
+resolver: lts-9.6
