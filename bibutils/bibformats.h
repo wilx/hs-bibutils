@@ -1,7 +1,7 @@
 /*
  * bibformats.h
  *
- * Copyright (c) Chris Putnam 2007-2017
+ * Copyright (c) Chris Putnam 2007-2018
  *
  * Source code released under the GPL version 2
  *

@@ -1,7 +1,7 @@
 /*
  * fields.c
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Source code released under the GPL version 2
  *
@@ -45,6 +45,13 @@ fields_free( fields *f )
 	if ( f->level ) free( f->level );
 
 	fields_init( f );
+}
+
+void
+fields_delete( fields *f )
+{
+	fields_free( f );
+	free( f );
 }
 
 static int
@@ -108,6 +115,7 @@ int
 _fields_add( fields *f, char *tag, char *data, int level, int mode )
 {
 	int i, n, status;
+	str *t, *d;
 
 	if ( !tag || !data ) return FIELDS_OK;
 
@@ -122,9 +130,11 @@ _fields_add( fields *f, char *tag, char *data, int level, int mode )
 	/* Don't duplicate identical entries if FIELDS_NO_DUPS */
 	if ( mode == FIELDS_NO_DUPS ) {
 		for ( i=0; i<f->n; i++ ) {
+			t = &(f->tag[i]);
+			d = &(f->data[i]);
 			if ( f->level[i]==level &&
-			     !strcasecmp( f->tag[i].data, tag ) &&
-			     !strcasecmp( f->data[i].data, data ) )
+			     !strcasecmp( str_cstr( t ), tag ) &&
+			     !strcasecmp( str_cstr( d ), data ) )
 				return FIELDS_OK;
 		}
 	}
@@ -209,7 +219,7 @@ fields_match_casetag_level( fields *info, int n, char *tag, int level )
 /* fields_find()
  *
  * Return position [0,f->n) for match of the tag.
- * Return -1 if tag isn't found.
+ * Return FIELDS_NOTFOUND if tag isn't found.
  */
 int
 fields_find( fields *f, char *tag, int level )
@@ -227,7 +237,7 @@ fields_find( fields *f, char *tag, int level )
 		}
 	}
 
-	return -1;
+	return FIELDS_NOTFOUND;
 }
 
 int
@@ -270,7 +280,7 @@ int
 fields_replace_or_add( fields *f, char *tag, char *data, int level )
 {
 	int n = fields_find( f, tag, level );
-	if ( n==-1 ) return fields_add( f, tag, data, level );
+	if ( n==FIELDS_NOTFOUND ) return fields_add( f, tag, data, level );
 	else {
 		str_strcpyc( &(f->data[n]), data );
 		if ( str_memerr( &(f->data[n]) ) ) return FIELDS_ERR;
@@ -381,10 +391,10 @@ fields_level( fields *f, int n )
 void *
 fields_findv( fields *f, int level, int mode, char *tag )
 {
-	int i, found = -1;
+	int i, found = FIELDS_NOTFOUND;
 	intptr_t retn;
 
-	for ( i=0; i<f->n && found==-1; ++i ) {
+	for ( i=0; i<f->n && found==FIELDS_NOTFOUND; ++i ) {
 
 		if ( !fields_match_level( f, i, level ) ) continue;
 		if ( !fields_match_casetag( f, i, tag ) ) continue;
@@ -399,7 +409,7 @@ fields_findv( fields *f, int level, int mode, char *tag )
 		}
 	}
 
-	if ( found==-1 ) return NULL;
+	if ( found==FIELDS_NOTFOUND ) return NULL;
 
 	if ( mode & FIELDS_SETUSE_FLAG )
 		fields_setused( f, found );
@@ -432,30 +442,35 @@ fields_findv_firstof( fields *f, int level, int mode, ... )
 	return NULL;
 }
 
-static void
+static int
 fields_findv_each_add( fields *f, int mode, int n, vplist *a )
 {
-	intptr_t retn;
+	int status;
+	void *v;
 
-	if ( n<0 || n>= f->n ) return;
+	if ( n<0 || n>= f->n ) return FIELDS_OK;
 
 	if ( mode & FIELDS_SETUSE_FLAG )
 		fields_setused( f, n );
 
 	if ( mode & FIELDS_STRP_FLAG ) {
-		vplist_add( a, (void *) &(f->data[n]) );
+		v = ( void * ) &( f->data[n] );
 	} else if ( mode & FIELDS_POSP_FLAG ) {
-		retn = n;
-		vplist_add( a, (void *) retn );
+		v = ( void * )( (long) n );
 	} else {
-		vplist_add( a, (void *) f->data[n].data );
+		v = ( void * ) str_cstr( &( f->data[n] ) );
 	}
+
+	status = vplist_add( a, v );
+
+	if ( status==VPLIST_OK ) return FIELDS_OK;
+	else return FIELDS_ERR;
 }
 
-void
+int
 fields_findv_each( fields *f, int level, int mode, vplist *a, char *tag )
 {
-	int i;
+	int i, status;
 
 	for ( i=0; i<f->n; ++i ) {
 
@@ -463,59 +478,80 @@ fields_findv_each( fields *f, int level, int mode, vplist *a, char *tag )
 		if ( !fields_match_casetag( f, i, tag ) ) continue;
 
 		if ( f->data[i].len!=0 ) {
-			fields_findv_each_add( f, mode, i, a );
+			status = fields_findv_each_add( f, mode, i, a );
+			if ( status!=FIELDS_OK ) return status;
 		} else {
 			if ( mode & FIELDS_NOLENOK_FLAG ) {
-				fields_findv_each_add( f, mode, i, a );
+				status = fields_findv_each_add( f, mode, i, a );
+				if ( status!=FIELDS_OK ) return status;
 			} else {
 				f->used[i] = 1; /* Suppress "noise" of unused */
 			}
 		}
 
 	}
+
+	return FIELDS_OK;
 }
 
-void
+static int
+fields_build_tags( va_list argp, vplist *tags )
+{
+	int status;
+	char *tag;
+
+	while ( ( tag = ( char * ) va_arg( argp, char * ) ) ) {
+		status = vplist_add( tags, tag );
+		if ( status!=VPLIST_OK ) return FIELDS_ERR;
+	}
+
+	return FIELDS_OK;
+}
+
+static int
+fields_match_casetags( fields *f, int n, vplist *tags )
+{
+	int i;
+
+	for ( i=0; i<tags->n; ++i )
+		if ( fields_match_casetag( f, n, vplist_get( tags, i ) ) ) return 1;
+
+	return 0;
+}
+
+int
 fields_findv_eachof( fields *f, int level, int mode, vplist *a, ... )
 {
+	int i, status;
 	va_list argp;
 	vplist tags;
-	char *tag;
-	int i, j, found;
 
 	vplist_init( &tags );
 
 	/* build list of tags to search for */
 	va_start( argp, a );
-	while ( ( tag = ( char * ) va_arg( argp, char * ) ) )
-		vplist_add( &tags, tag );
+	status = fields_build_tags( argp, &tags );
 	va_end( argp );
+	if ( status!=FIELDS_OK ) goto out;
 
 	/* search list */
 	for ( i=0; i<f->n; ++i ) {
 
 		if ( !fields_match_level( f, i, level ) ) continue;
+		if ( !fields_match_casetags( f, i, &tags ) ) continue;
 
-		found = 0;
-		for ( j=0; j<tags.n && !found; ++j ) {
-			if ( fields_match_casetag( f, i, vplist_get( &tags, j ) ) )
-				found = 1;
-		}
-		if ( !found ) continue;
-
-		if ( f->data[i].len!=0 ) {
-			fields_findv_each_add( f, mode, i, a );
+		if ( f->data[i].len!=0 || ( mode & FIELDS_NOLENOK_FLAG ) ) {
+			status = fields_findv_each_add( f, mode, i, a );
+			if ( status!=FIELDS_OK ) goto out;
 		} else {
-			if ( mode & FIELDS_NOLENOK_FLAG ) {
-				fields_findv_each_add( f, mode, i, a );
-			} else {
-				f->used[i] = 1; /* Suppress "noise" of unused */
-			}
+			f->used[i] = 1; /* Suppress "noise" of unused */
 		}
 
 	}
 
+out:
 	vplist_free( &tags );
+	return status;
 }
 
 void

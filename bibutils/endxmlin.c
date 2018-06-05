@@ -1,7 +1,7 @@
 /*
  * endxmlin.c
  *
- * Copyright (c) Chris Putnam 2006-2017
+ * Copyright (c) Chris Putnam 2006-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -85,10 +85,10 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *r
 	while ( !haveref && !done ) {
 		if ( line->data ) {
 			if ( !inref ) {
-				startptr = xml_findstart( line->data, "RECORD" );
+				startptr = xml_find_start( line->data, "RECORD" );
 				if ( startptr ) inref = 1;
 			} else
-				endptr = xml_findend( line->data, "RECORD" );
+				endptr = xml_find_end( line->data, "RECORD" );
 		}
 
 		/* If no <record> tag, we can trim up to last 8 bytes */
@@ -107,8 +107,8 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *r
 			str_strcatc( line, buf );
 		} else {
 			/* we can reallocate in the str_strcat, so re-find */
-			startptr = xml_findstart( line->data, "RECORD" );
-			endptr = xml_findend( line->data, "RECORD" );
+			startptr = xml_find_start( line->data, "RECORD" );
+			endptr = xml_find_end( line->data, "RECORD" );
 			str_segcpy( reference, startptr, endptr );
 			/* clear out information in line */
 			str_strcpyc( &tmp, endptr );
@@ -151,15 +151,15 @@ endxmlin_datar( xml *node, str *s )
 {
 	int status;
 
-	if ( str_has_value( node->value ) ) {
-		str_strcat( s, node->value );
+	if ( xml_has_value( node ) ) {
+		str_strcat( s, &(node->value) );
 		if ( str_memerr( s ) ) return BIBL_ERR_MEMERR;
 	}
-	if ( node->down && xml_tagexact( node->down, "style" ) ) {
+	if ( node->down && xml_tag_matches( node->down, "style" ) ) {
 		status = endxmlin_datar( node->down, s );
 		if ( status!=BIBL_OK ) return status;
 	}
-	if ( xml_tagexact( node, "style" ) && node->next ) {
+	if ( xml_tag_matches( node, "style" ) && node->next ) {
 		status = endxmlin_datar( node->next, s );
 		if ( status!=BIBL_OK ) return status;
 	}
@@ -207,7 +207,7 @@ endxmlin_titles( xml *node, fields *info )
 	str title;
 	str_init( &title );
 	for ( i=0; i<n; ++i ) {
-		if ( xml_tagexact( node, a[i].attrib ) && node->down ) {
+		if ( xml_tag_matches( node, a[i].attrib ) && node->down ) {
 			str_empty( &title );
 			status = endxmlin_datar( node, &title );
 			if ( status!=BIBL_OK ) return BIBL_ERR_MEMERR;
@@ -271,7 +271,7 @@ endxmlin_contributors( xml *node, fields *info )
 	};
 	int i, status, n = sizeof( a ) / sizeof ( a[0] );
 	for ( i=0; i<n; ++i ) {
-		if ( xml_tagexact( node, a[i].attrib ) && node->down ) {
+		if ( xml_tag_matches( node, a[i].attrib ) && node->down ) {
 			status = endxmlin_contributor( node->down, info, a[i].internal, 0 );
 			if ( status!=BIBL_OK ) return status;
 		}
@@ -287,7 +287,7 @@ static int
 endxmlin_keyword( xml *node, fields *info )
 {
 	int status;
-	if ( xml_tagexact( node, "keyword" ) ) {
+	if ( xml_tag_matches( node, "keyword" ) ) {
 		status = endxmlin_data( node, "%K", info, 0 );
 		if ( status!=BIBL_OK ) return status;
 	}
@@ -301,7 +301,7 @@ endxmlin_keyword( xml *node, fields *info )
 static int
 endxmlin_keywords( xml *node, fields *info )
 {
-	if ( node->down && xml_tagexact( node->down, "keyword" ) )
+	if ( node->down && xml_tag_matches( node->down, "keyword" ) )
 		return endxmlin_keyword( node->down, info );
 	return BIBL_OK;
 }
@@ -313,7 +313,7 @@ endxmlin_keywords( xml *node, fields *info )
 static int
 endxmlin_ern( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "electronic-resource-num" ) )
+	if ( xml_tag_matches( node, "electronic-resource-num" ) )
 		return endxmlin_data( node, "DOI", info, 0 );
 	return BIBL_OK;
 }
@@ -321,7 +321,7 @@ endxmlin_ern( xml *node, fields *info )
 static int
 endxmlin_language( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "language" ) )
+	if ( xml_tag_matches( node, "language" ) )
 		return endxmlin_data( node, "%G", info, 0 );
 	return BIBL_OK;
 }
@@ -337,7 +337,7 @@ static int
 endxmlin_fileattach( xml *node, fields *info )
 {
 	int status;
-	if ( xml_tagexact( node, "url" ) ) {
+	if ( xml_tag_matches( node, "url" ) ) {
 		status = endxmlin_data( node, "FILEATTACH", info, 0 );
 		if ( status!=BIBL_OK ) return status;
 	}
@@ -356,17 +356,17 @@ static int
 endxmlin_urls( xml *node, fields *info )
 {
 	int status;
-	if ( xml_tagexact( node, "pdf-urls" ) && node->down ) {
+	if ( xml_tag_matches( node, "pdf-urls" ) && node->down ) {
 		status = endxmlin_fileattach( node->down, info );
 		if ( status!=BIBL_OK ) return status;
-	} else if ( xml_tagexact( node, "url" ) ) {
+	} else if ( xml_tag_matches( node, "url" ) ) {
 		status = endxmlin_data( node, "%U", info, 0 );
 		if ( status!=BIBL_OK ) return status;
 	} else {
 		if ( node->down ) {
-			if ( xml_tagexact( node->down, "related-urls" ) ||
-			     xml_tagexact( node->down, "pdf-urls" ) ||
-			     xml_tagexact( node->down, "url" ) ) {
+			if ( xml_tag_matches( node->down, "related-urls" ) ||
+			     xml_tag_matches( node->down, "pdf-urls" ) ||
+			     xml_tag_matches( node->down, "url" ) ) {
 				status = endxmlin_urls( node->down, info );
 				if ( status!=BIBL_OK ) return status;
 			}
@@ -382,10 +382,10 @@ endxmlin_urls( xml *node, fields *info )
 static int
 endxmlin_pubdates( xml *node, fields *info )
 {
-	if ( xml_tagexact( node, "date" ) )
+	if ( xml_tag_matches( node, "date" ) )
 		return endxmlin_data( node, "%8", info, 0 );
 	else {
-		if ( node->down && xml_tagexact( node->down, "date" ) )
+		if ( node->down && xml_tag_matches( node->down, "date" ) )
 			return endxmlin_pubdates( node->down, info );
 	}
 	return BIBL_OK;
@@ -395,16 +395,16 @@ static int
 endxmlin_dates( xml *node, fields *info )
 {
 	int status;
-	if ( xml_tagexact( node, "year" ) ) {
+	if ( xml_tag_matches( node, "year" ) ) {
 		status = endxmlin_data( node, "%D", info, 0 );
 		if ( status!=BIBL_OK ) return status;
 	} else {
 		if ( node->down ) {
-			if ( xml_tagexact( node->down, "year" ) ) {
+			if ( xml_tag_matches( node->down, "year" ) ) {
 				status = endxmlin_dates( node->down, info );
 				if ( status!=BIBL_OK ) return status;
 			}
-			if ( xml_tagexact( node->down, "pub-dates" ) ) {
+			if ( xml_tag_matches( node->down, "pub-dates" ) ) {
 				status = endxmlin_pubdates( node->down, info );
 				if ( status!=BIBL_OK ) return status;
 			}
@@ -426,7 +426,7 @@ endxmlin_reftype( xml *node, fields *info )
 	int status;
 	str *s;
 
-	s = xml_getattrib( node, "name" );
+	s = xml_attribute( node, "name" );
 	if ( str_has_value( s ) ) {
 		status = fields_add( info, "%0", str_cstr( s ), 0 );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
@@ -465,63 +465,63 @@ endxmlin_record( xml *node, fields *info )
 		{ "custom6", "%$" },
 	};
 	int i, status, n = sizeof ( a ) / sizeof( a[0] );
-	if ( xml_tagexact( node, "DATABASE" ) ) {
-	} else if ( xml_tagexact( node, "SOURCE-APP" ) ) {
-	} else if ( xml_tagexact( node, "REC-NUMBER" ) ) {
-	} else if ( xml_tagexact( node, "ref-type" ) ) {
+	if ( xml_tag_matches( node, "DATABASE" ) ) {
+	} else if ( xml_tag_matches( node, "SOURCE-APP" ) ) {
+	} else if ( xml_tag_matches( node, "REC-NUMBER" ) ) {
+	} else if ( xml_tag_matches( node, "ref-type" ) ) {
 		status = endxmlin_reftype( node, info );
 		if ( status!=BIBL_OK ) return status;
-	} else if ( xml_tagexact( node, "contributors" ) ) {
+	} else if ( xml_tag_matches( node, "contributors" ) ) {
 		if ( node->down ) {
 			status = endxmlin_contributors( node->down, info );
 			if ( status!=BIBL_OK ) return status;
 		}
-	} else if ( xml_tagexact( node, "titles" ) ) {
+	} else if ( xml_tag_matches( node, "titles" ) ) {
 		if ( node->down ) endxmlin_titles( node->down, info );
-	} else if ( xml_tagexact( node, "keywords" ) ) {
+	} else if ( xml_tag_matches( node, "keywords" ) ) {
 		status = endxmlin_keywords( node, info );
 		if ( status!=BIBL_OK ) return status;
-	} else if ( xml_tagexact( node, "urls" ) ) {
+	} else if ( xml_tag_matches( node, "urls" ) ) {
 		status = endxmlin_urls( node, info );
 		if ( status!=BIBL_OK ) return status;
-	} else if ( xml_tagexact( node, "electronic-resource-num" ) ) {
+	} else if ( xml_tag_matches( node, "electronic-resource-num" ) ) {
 		status = endxmlin_ern( node, info );
 		if ( status!=BIBL_OK ) return status;
-	} else if ( xml_tagexact( node, "dates" ) ) {
+	} else if ( xml_tag_matches( node, "dates" ) ) {
 		status = endxmlin_dates( node, info );
 		if ( status!=BIBL_OK ) return status;
-	} else if ( xml_tagexact( node, "language" ) ) {
+	} else if ( xml_tag_matches( node, "language" ) ) {
 		status = endxmlin_language( node, info );
 		if ( status!=BIBL_OK ) return status;
-	} else if ( xml_tagexact( node, "periodical" ) ) {
-	} else if ( xml_tagexact( node, "secondary-volume" ) ) {
-	} else if ( xml_tagexact( node, "secondary-issue" ) ) {
-	} else if ( xml_tagexact( node, "reprint-status" ) ) {
-	} else if ( xml_tagexact( node, "orig-pub" ) ) {
-	} else if ( xml_tagexact( node, "report-id" ) ) {
-	} else if ( xml_tagexact( node, "coden" ) ) {
-	} else if ( xml_tagexact( node, "caption" ) ) {
-	} else if ( xml_tagexact( node, "research-notes" ) ) {
-	} else if ( xml_tagexact( node, "work-type" ) ) {
-	} else if ( xml_tagexact( node, "reviewed-item" ) ) {
-	} else if ( xml_tagexact( node, "availability" ) ) {
-	} else if ( xml_tagexact( node, "remote-source" ) ) {
-	} else if ( xml_tagexact( node, "meeting-place" ) ) {
-	} else if ( xml_tagexact( node, "work-location" ) ) {
-	} else if ( xml_tagexact( node, "work-extent" ) ) {
-	} else if ( xml_tagexact( node, "pack-method" ) ) {
-	} else if ( xml_tagexact( node, "size" ) ) {
-	} else if ( xml_tagexact( node, "repro-ratio" ) ) {
-	} else if ( xml_tagexact( node, "remote-database-name" ) ) {
-	} else if ( xml_tagexact( node, "remote-database-provider" ) ) {
-	} else if ( xml_tagexact( node, "access-date" ) ) {
-	} else if ( xml_tagexact( node, "modified-data" ) ) {
-	} else if ( xml_tagexact( node, "misc1" ) ) {
-	} else if ( xml_tagexact( node, "misc2" ) ) {
-	} else if ( xml_tagexact( node, "misc3" ) ) {
+	} else if ( xml_tag_matches( node, "periodical" ) ) {
+	} else if ( xml_tag_matches( node, "secondary-volume" ) ) {
+	} else if ( xml_tag_matches( node, "secondary-issue" ) ) {
+	} else if ( xml_tag_matches( node, "reprint-status" ) ) {
+	} else if ( xml_tag_matches( node, "orig-pub" ) ) {
+	} else if ( xml_tag_matches( node, "report-id" ) ) {
+	} else if ( xml_tag_matches( node, "coden" ) ) {
+	} else if ( xml_tag_matches( node, "caption" ) ) {
+	} else if ( xml_tag_matches( node, "research-notes" ) ) {
+	} else if ( xml_tag_matches( node, "work-type" ) ) {
+	} else if ( xml_tag_matches( node, "reviewed-item" ) ) {
+	} else if ( xml_tag_matches( node, "availability" ) ) {
+	} else if ( xml_tag_matches( node, "remote-source" ) ) {
+	} else if ( xml_tag_matches( node, "meeting-place" ) ) {
+	} else if ( xml_tag_matches( node, "work-location" ) ) {
+	} else if ( xml_tag_matches( node, "work-extent" ) ) {
+	} else if ( xml_tag_matches( node, "pack-method" ) ) {
+	} else if ( xml_tag_matches( node, "size" ) ) {
+	} else if ( xml_tag_matches( node, "repro-ratio" ) ) {
+	} else if ( xml_tag_matches( node, "remote-database-name" ) ) {
+	} else if ( xml_tag_matches( node, "remote-database-provider" ) ) {
+	} else if ( xml_tag_matches( node, "access-date" ) ) {
+	} else if ( xml_tag_matches( node, "modified-data" ) ) {
+	} else if ( xml_tag_matches( node, "misc1" ) ) {
+	} else if ( xml_tag_matches( node, "misc2" ) ) {
+	} else if ( xml_tag_matches( node, "misc3" ) ) {
 	} else {
 		for ( i=0; i<n; ++i ) {
-			if ( xml_tagexact( node, a[i].attrib ) ) {
+			if ( xml_tag_matches( node, a[i].attrib ) ) {
 				status = endxmlin_data( node, a[i].internal, info, 0 );
 				if ( status!=BIBL_OK ) return status;
 			}
@@ -538,10 +538,10 @@ static int
 endxmlin_assembleref( xml *node, fields *info )
 {
 	int status;
-	if ( str_is_empty( node->tag ) ) {
+	if ( str_is_empty( &(node->tag) ) ) {
 		if ( node->down )
 			return endxmlin_assembleref( node->down, info );
-	} else if ( xml_tagexact( node, "RECORD" ) ) {
+	} else if ( xml_tag_matches( node, "RECORD" ) ) {
 		if ( node->down ) {
 			status = endxmlin_record( node->down, info );
 			if ( status!=BIBL_OK ) return status;
@@ -563,7 +563,7 @@ endxmlin_processf( fields *fin, char *data, char *filename, long nref, param *pm
 	xml top;
 
 	xml_init( &top );
-	xml_tree( data, &top );
+	xml_parse( data, &top );
 	status = endxmlin_assembleref( &top, fin );
 	xml_free( &top );
 

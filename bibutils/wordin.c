@@ -1,7 +1,7 @@
 /*
  * wordin.c
  *
- * Copyright (c) Chris Putnam 2010-2017
+ * Copyright (c) Chris Putnam 2010-2018
  *
  * Source code released under the GPL version 2
  *
@@ -61,15 +61,13 @@ wordin_initparams( param *p, const char *progname )
 static char *
 wordin_findstartwrapper( char *buf, int *ntype )
 {
-	char *startptr = xml_findstart( buf, "b:Source" );
-	return startptr;
+	return xml_find_start( buf, "b:Source" );
 }
 
 static char *
 wordin_findendwrapper( char *buf, int ntype )
 {
-	char *endptr = xml_findend( buf, "b:Source" );
-	return endptr;
+	return xml_find_end( buf, "b:Source" );
 }
 
 static int
@@ -128,10 +126,10 @@ typedef struct xml_convert {
 static int
 wordin_person_last( xml *node, str *name )
 {
-	while ( node && !xml_tagexact( node, "b:Last" ) )
+	while ( node && !xml_tag_matches( node, "b:Last" ) )
 		node = node->next;
-	if ( node && str_has_value( node->value ) ) {
-		str_strcpyc( name, xml_value( node ) );
+	if ( xml_has_value( node ) ) {
+		str_strcpy( name, xml_value( node ) );
 		if ( str_memerr( name ) ) return BIBL_ERR_MEMERR;
 	}
 	return BIBL_OK;
@@ -148,10 +146,10 @@ static int
 wordin_person_first( xml *node, str *name )
 {
 	for ( ; node; node=node->next ) {
-		if ( !xml_tagexact( node, "b:First" ) ) continue;
-		if ( str_has_value( node->value ) ) {
+		if ( !xml_tag_matches( node, "b:First" ) ) continue;
+		if ( xml_has_value( node ) ) {
 			if ( str_has_value( name ) ) str_addchar( name, '|' );
-			str_strcatc( name, xml_value( node ) );
+			str_strcat( name, xml_value( node ) );
 			if ( str_memerr( name ) ) return BIBL_ERR_MEMERR;
 		}
 	}
@@ -189,11 +187,11 @@ static int
 wordin_people( xml *node, fields *info, char *type )
 {
 	int ret = BIBL_OK;
-	if ( xml_tagexact( node, "b:Author" ) && node->down ) {
+	if ( xml_tag_matches( node, "b:Author" ) && node->down ) {
 		ret = wordin_people( node->down, info, type );
-	} else if ( xml_tagexact( node, "b:NameList" ) && node->down ) {
+	} else if ( xml_tag_matches( node, "b:NameList" ) && node->down ) {
 		ret = wordin_people( node->down, info, type );
-	} else if ( xml_tagexact( node, "b:Person" ) ) {
+	} else if ( xml_tag_matches( node, "b:Person" ) ) {
 		if ( node->down ) ret = wordin_person( node->down, info, type );
 		if ( ret!=BIBL_OK ) return ret;
 		if ( node->next ) ret = wordin_people( node->next, info, type );
@@ -210,7 +208,7 @@ wordin_pages( xml *node, fields *info )
 
 	strs_init( &sp, &ep, NULL );
 
-	p = xml_value( node );
+	p = xml_value_cstr( node );
 	while ( *p && *p!='-' )
 		str_addchar( &sp, *p++ );
 	if ( str_memerr( &sp ) ) {
@@ -256,34 +254,34 @@ static int
 wordin_reference( xml *node, fields *info )
 {
 	int status, ret = BIBL_OK;
-	if ( xml_hasvalue( node ) ) {
-		if ( xml_tagexact( node, "b:Tag" ) ) {
-			status = fields_add( info, "REFNUM", xml_value( node ), 0 );
+	if ( xml_has_value( node ) ) {
+		if ( xml_tag_matches( node, "b:Tag" ) ) {
+			status = fields_add( info, "REFNUM", xml_value_cstr( node ), 0 );
 			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-		} else if ( xml_tagexact( node, "b:SourceType" ) ) {
-		} else if ( xml_tagexact( node, "b:City" ) ) {
-			status = fields_add( info, "ADDRESS", xml_value( node ), 0 );
+		} else if ( xml_tag_matches( node, "b:SourceType" ) ) {
+		} else if ( xml_tag_matches( node, "b:City" ) ) {
+			status = fields_add( info, "ADDRESS", xml_value_cstr( node ), 0 );
 			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-		} else if ( xml_tagexact( node, "b:Publisher" ) ) {
-			status = fields_add( info, "PUBLISHER", xml_value( node ), 0 );
+		} else if ( xml_tag_matches( node, "b:Publisher" ) ) {
+			status = fields_add( info, "PUBLISHER", xml_value_cstr( node ), 0 );
 			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-		} else if ( xml_tagexact( node, "b:Title" ) ) {
-			status = fields_add( info, "TITLE", xml_value( node ), 0 );
+		} else if ( xml_tag_matches( node, "b:Title" ) ) {
+			status = fields_add( info, "TITLE", xml_value_cstr( node ), 0 );
 			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-		} else if ( xml_tagexact( node, "b:JournalName" ) ) {
-			status = fields_add( info, "TITLE", xml_value( node ), 1 );
+		} else if ( xml_tag_matches( node, "b:JournalName" ) ) {
+			status = fields_add( info, "TITLE", xml_value_cstr( node ), 1 );
 			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-		} else if ( xml_tagexact( node, "b:Volume" ) ) {
-			status = fields_add( info, "VOLUME", xml_value( node ), 1 );
+		} else if ( xml_tag_matches( node, "b:Volume" ) ) {
+			status = fields_add( info, "VOLUME", xml_value_cstr( node ), 1 );
 			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-		} else if ( xml_tagexact( node, "b:Comments" ) ) {
-			status = fields_add( info, "NOTES", xml_value( node ), 0 );
+		} else if ( xml_tag_matches( node, "b:Comments" ) ) {
+			status = fields_add( info, "NOTES", xml_value_cstr( node ), 0 );
 			if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-		} else if ( xml_tagexact( node, "b:Pages" ) ) {
+		} else if ( xml_tag_matches( node, "b:Pages" ) ) {
 			ret = wordin_pages( node, info );
-		} else if ( xml_tagexact( node, "b:Author" ) && node->down ) {
+		} else if ( xml_tag_matches( node, "b:Author" ) && node->down ) {
 			ret = wordin_people( node->down, info, "AUTHOR" );
-		} else if ( xml_tagexact( node, "b:Editor" ) && node->down ) {
+		} else if ( xml_tag_matches( node, "b:Editor" ) && node->down ) {
 			ret = wordin_people( node->down, info, "EDITOR" );
 		}
 	}
@@ -295,9 +293,9 @@ static int
 wordin_assembleref( xml *node, fields *info )
 {
 	int ret = BIBL_OK;
-	if ( xml_tagexact( node, "b:Source" ) ) {
+	if ( xml_tag_matches( node, "b:Source" ) ) {
 		if ( node->down ) ret = wordin_reference( node->down, info );
-	} else if ( str_is_empty( node->tag ) && node->down ) {
+	} else if ( str_is_empty( &(node->tag) ) && node->down ) {
 		ret = wordin_assembleref( node->down, info );
 	}
 	return ret;
@@ -310,7 +308,7 @@ wordin_processf( fields *wordin, char *data, char *filename, long nref, param *p
 	xml top;
 
 	xml_init( &top );
-	xml_tree( data, &top );
+	xml_parse( data, &top );
 	status = wordin_assembleref( &top, wordin );
 	xml_free( &top );
 

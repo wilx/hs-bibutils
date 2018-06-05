@@ -1,8 +1,8 @@
 /*
  * biblatexin.c
  *
- * Copyright (c) Chris Putnam 2008-2017
- * Copyright (c) Johannes Wilm 2010-2017
+ * Copyright (c) Chris Putnam 2008-2018
+ * Copyright (c) Johannes Wilm 2010-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -417,7 +417,7 @@ process_string( char *p, long nref, param *pm )
 	strs_init( &s1, &s2, NULL );
 	while ( *p && *p!='{' && *p!='(' ) p++;
 	if ( *p=='{' || *p=='(' ) p++;
-	p = process_biblatexline( skip_ws( p ), &s1, &s2, 0, nref, pm );
+	(void) process_biblatexline( skip_ws( p ), &s1, &s2, 0, nref, pm );
 	if ( str_has_value( &s2 ) ) {
 		str_findreplace( &s2, "\\ ", " " );
 		if ( str_memerr( &s2 ) ) { status = BIBL_ERR_MEMERR; goto out; }
@@ -605,7 +605,7 @@ biblatexin_addtitleurl( fields *info, str *in )
 		goto out;
 	}
 
-	p = str_cpytodelim( &s, p, "", 0 );
+	(void) str_cpytodelim( &s, p, "", 0 );
 	if ( str_memerr( &s ) ) {
 		status = BIBL_ERR_MEMERR;
 		goto out;
@@ -686,8 +686,8 @@ biblatexin_findref( bibl *bin, char *citekey )
 	int n;
 	long i;
 	for ( i=0; i<bin->nrefs; ++i ) {
-		n = fields_find( bin->ref[i], "refnum", -1 );
-		if ( n==-1 ) continue;
+		n = fields_find( bin->ref[i], "refnum", LEVEL_ANY );
+		if ( n==FIELDS_NOTFOUND ) continue;
 		if ( !strcmp( bin->ref[i]->data[n].data, citekey ) ) return i;
 	}
 	return -1;
@@ -696,13 +696,11 @@ biblatexin_findref( bibl *bin, char *citekey )
 static void
 biblatexin_nocrossref( bibl *bin, long i, int n, param *p )
 {
-	int n1 = fields_find( bin->ref[i], "REFNUM", -1 );
+	int n1 = fields_find( bin->ref[i], "REFNUM", LEVEL_ANY );
 	if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-	fprintf( stderr, "Cannot find cross-reference '%s'", 
-			bin->ref[i]->data[n].data);
-	if ( n1!=-1 )
-		fprintf( stderr, " for reference '%s'\n", 
-				bin->ref[i]->data[n1].data );
+	fprintf( stderr, "Cannot find cross-reference '%s'", bin->ref[i]->data[n].data);
+	if ( n1!=FIELDS_NOTFOUND )
+		fprintf( stderr, " for reference '%s'", bin->ref[i]->data[n1].data );
 	fprintf( stderr, "\n" );
 }
 
@@ -711,7 +709,7 @@ biblatexin_crossref_oneref( fields *ref, fields *cross )
 {
 	int j, nl, ntype, fstatus;
 	char *type, *nt, *nd;
-	ntype = fields_find( ref, "INTERNAL_TYPE", -1 );
+	ntype = fields_find( ref, "INTERNAL_TYPE", LEVEL_ANY );
 	type = ( char * ) fields_value( ref, ntype, FIELDS_CHRP_NOUSE );
 	for ( j=0; j<cross->n; ++j ) {
 		nt = ( char * ) fields_tag( cross, j, FIELDS_CHRP_NOUSE );
@@ -738,8 +736,8 @@ biblatexin_crossref( bibl *bin, param *p )
 	long i;
         for ( i=0; i<bin->nrefs; ++i ) {
 		ref = bin->ref[i];
-		n = fields_find( ref, "CROSSREF", -1 );
-		if ( n==-1 ) continue;
+		n = fields_find( ref, "CROSSREF", LEVEL_ANY );
+		if ( n==FIELDS_NOTFOUND ) continue;
 		fields_setused( ref, n );
 		ncross = biblatexin_findref(bin, (char*)fields_value(ref,n, FIELDS_CHRP_NOUSE));
 		if ( ncross==-1 ) {
@@ -803,8 +801,8 @@ biblatexin_typef( fields *bibin, char *filename, int nrefs, param *p )
 
 	ntypename = fields_find( bibin, "INTERNAL_TYPE", LEVEL_MAIN );
 	nrefname  = fields_find( bibin, "REFNUM",        LEVEL_MAIN );
-	if ( nrefname!=-1 )  refname  = fields_value( bibin, nrefname,  FIELDS_CHRP_NOUSE );
-        if ( ntypename!=-1 ) typename = fields_value( bibin, ntypename, FIELDS_CHRP_NOUSE );
+	if ( nrefname!=FIELDS_NOTFOUND )  refname  = fields_value( bibin, nrefname,  FIELDS_CHRP_NOUSE );
+        if ( ntypename!=FIELDS_NOTFOUND ) typename = fields_value( bibin, ntypename, FIELDS_CHRP_NOUSE );
 
 	return get_reftype( typename, nrefs, p->progname, p->all, p->nall, refname, &is_default, REFTYPE_CHATTY );
 }
@@ -1055,14 +1053,14 @@ biblatexin_bltsubtype( fields *bibin, int n, str *intag, str *invalue, int level
 	int fstatus1, fstatus2;
 
 	if ( !strcasecmp( str_cstr( invalue ), "magazine" ) ) {
-		fstatus1 = fields_add( bibout, "NGENRE", "magazine article", LEVEL_MAIN );
-		fstatus2 = fields_add( bibout, "NGENRE", "magazine",         LEVEL_HOST );
+		fstatus1 = fields_add( bibout, "GENRE:BIBUTILS", "magazine article", LEVEL_MAIN );
+		fstatus2 = fields_add( bibout, "GENRE:BIBUTILS", "magazine",         LEVEL_HOST );
 		if ( fstatus1!=FIELDS_OK || fstatus2!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 
 	else if ( !strcasecmp( str_cstr( invalue ), "newspaper" ) ) {
-		fstatus1 = fields_add( bibout, "NGENRE", "newspaper article", LEVEL_MAIN );
-		fstatus2 = fields_add( bibout, "GENRE",  "newspaper",         LEVEL_HOST );
+		fstatus1 = fields_add( bibout, "GENRE:BIBUTILS", "newspaper article", LEVEL_MAIN );
+		fstatus2 = fields_add( bibout, "GENRE:MARC",     "newspaper",         LEVEL_HOST );
 		if ( fstatus1!=FIELDS_OK || fstatus2!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 
@@ -1074,7 +1072,7 @@ static int
 biblatexin_bltschool( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout )
 {
 	int fstatus;
-	if ( fields_find( bibin, "institution", LEVEL_ANY ) != -1 )
+	if ( fields_find( bibin, "institution", LEVEL_ANY ) != FIELDS_NOTFOUND )
 		return BIBL_OK;
 	else {
 		fstatus = fields_add( bibout, outtag, str_cstr( invalue ), level );
@@ -1090,15 +1088,15 @@ biblatexin_bltthesistype( fields *bibin, int n, str *intag, str *invalue, int le
 	int fstatus = FIELDS_OK;
 	/* type in the @thesis is used to distinguish Ph.D. and Master's thesis */
 	if ( !strncasecmp( p, "phdthesis", 9 ) ) {
-		fstatus = fields_replace_or_add( bibout, "NGENRE", "Ph.D. thesis", level );
+		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Ph.D. thesis", level );
 	} else if ( !strncasecmp( p, "mastersthesis", 13 ) || !strncasecmp( p, "masterthesis", 12 ) ) {
-		fstatus = fields_replace_or_add( bibout, "NGENRE", "Masters thesis", level );
+		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Masters thesis", level );
 	} else if ( !strncasecmp( p, "mathesis", 8 ) ) {
-		fstatus = fields_replace_or_add( bibout, "NGENRE", "Masters thesis", level );
+		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Masters thesis", level );
 	} else if ( !strncasecmp( p, "diploma", 7 ) ) {
-		fstatus = fields_replace_or_add( bibout, "NGENRE", "Diploma thesis", level );
+		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Diploma thesis", level );
 	} else if ( !strncasecmp( p, "habilitation", 12 ) ) {
-		fstatus = fields_replace_or_add( bibout, "NGENRE", "Habilitation thesis", level );
+		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Habilitation thesis", level );
 	}
 	if ( fstatus==FIELDS_OK ) return BIBL_OK;
 	else return BIBL_ERR_MEMERR;
@@ -1110,11 +1108,11 @@ biblatexin_bteprint( fields *bibin, int n, str *intag, str *invalue, int level, 
 	int neprint, netype, fstatus;
 	char *eprint = NULL, *etype = NULL;
 
-	neprint = fields_find( bibin, "eprint", -1 );
-	netype  = fields_find( bibin, "eprinttype", -1 );
+	neprint = fields_find( bibin, "eprint",     LEVEL_ANY );
+	netype  = fields_find( bibin, "eprinttype", LEVEL_ANY );
 
-	if ( neprint!=-1 ) eprint = bibin->data[neprint].data;
-	if ( netype!=-1 )  etype =  bibin->data[netype].data;
+	if ( neprint!=FIELDS_NOTFOUND ) eprint = bibin->data[neprint].data;
+	if ( netype!=FIELDS_NOTFOUND )  etype =  bibin->data[netype].data;
 
 	if ( eprint && etype ) {
 		if ( !strncasecmp( etype, "arxiv", 5 ) ) {
@@ -1152,7 +1150,7 @@ biblatexin_bteprint( fields *bibin, int n, str *intag, str *invalue, int level, 
 static int
 biblatexin_btgenre( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout )
 {
-	if ( fields_add( bibout, "NGENRE", str_cstr( invalue ), level ) == FIELDS_OK ) return BIBL_OK;
+	if ( fields_add( bibout, "GENRE:BIBUTILS", str_cstr( invalue ), level ) == FIELDS_OK ) return BIBL_OK;
 	else return BIBL_ERR_MEMERR;
 }
 
@@ -1174,9 +1172,9 @@ biblatexin_howpublished( fields *bibin, int n, str *intag, str *invalue, int lev
 	int fstatus;
 
         if ( !strncasecmp( str_cstr( invalue ), "Diplom", 6 ) )
-                fstatus = fields_replace_or_add( bibout, "NGENRE", "Diploma thesis", level );
+                fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Diploma thesis", level );
         else if ( !strncasecmp( str_cstr( invalue ), "Habilitation", 13 ) )
-                fstatus = fields_replace_or_add( bibout, "NGENRE", "Habilitation thesis", level );
+                fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Habilitation thesis", level );
         else
 		fstatus = fields_add( bibout, "PUBLISHER", str_cstr( invalue ), level );
 
@@ -1216,7 +1214,7 @@ biblatexin_blteditor( fields *bibin, int m, str *intag, str *invalue, int level,
 	for ( i=1; i<neditors; ++i )
 		if ( !strcasecmp( intag->data, editor_fields[i] ) ) n = i;
 	ntype = fields_find( bibin, editor_types[n], LEVEL_ANY );
-	if ( ntype!=-1 ) {
+	if ( ntype!=FIELDS_NOTFOUND ) {
 		type = fields_value( bibin, ntype, FIELDS_CHRP_NOUSE );
 		if ( !strcasecmp( type, "collaborator" ) )  usetag = "COLLABORATOR";
 		else if ( !strcasecmp( type, "compiler" ) ) usetag = "COMPILER";
@@ -1255,7 +1253,7 @@ biblatexin_convertf( fields *bibin, fields *bibout, int reftype, param *p )
 		[ BLT_EDITOR      ] = biblatexin_blteditor,
 		[ HOWPUBLISHED    ] = biblatexin_howpublished,
 		[ URL             ] = generic_url,
-		[ BT_GENRE        ] = biblatexin_btgenre,
+		[ GENRE           ] = biblatexin_btgenre,
 		[ BT_EPRINT       ] = biblatexin_bteprint,
 		[ BLT_THESIS_TYPE ] = biblatexin_bltthesistype,
 		[ BLT_SCHOOL      ] = biblatexin_bltschool,

@@ -3,7 +3,7 @@
  * 
  * (Word 2007 format)
  *
- * Copyright (c) Chris Putnam 2007-2017
+ * Copyright (c) Chris Putnam 2007-2018
  *
  * Source code released under the GPL version 2
  *
@@ -166,7 +166,7 @@ output_list( fields *info, FILE *outptr, convert *c, int nc )
         int i, n;
         for ( i=0; i<nc; ++i ) {
                 n = fields_find( info, c[i].oldtag, c[i].code );
-                if ( n!=-1 ) output_item( info, outptr, c[i].newtag, c[i].prefix, n, 0 );
+                if ( n!=FIELDS_NOTFOUND ) output_item( info, outptr, c[i].newtag, c[i].prefix, n, 0 );
         }
 
 }
@@ -178,25 +178,26 @@ typedef struct outtype {
 
 static
 outtype genres[] = {
-	{ TYPE_PATENT, "patent" },
-	{ TYPE_REPORT, "report" },
-	{ TYPE_CASE,   "legal case and case notes" },
-	{ TYPE_ART,    "art original" },
-	{ TYPE_ART,    "art reproduction" },
-	{ TYPE_ART,    "comic strip" },
-	{ TYPE_ART,    "diorama" },
-	{ TYPE_ART,    "graphic" },
-	{ TYPE_ART,    "model" },
-	{ TYPE_ART,    "picture" },
+	{ TYPE_PATENT,           "patent" },
+	{ TYPE_REPORT,           "report" },
+	{ TYPE_REPORT,           "technical report" },
+	{ TYPE_CASE,             "legal case and case notes" },
+	{ TYPE_ART,              "art original" },
+	{ TYPE_ART,              "art reproduction" },
+	{ TYPE_ART,              "comic strip" },
+	{ TYPE_ART,              "diorama" },
+	{ TYPE_ART,              "graphic" },
+	{ TYPE_ART,              "model" },
+	{ TYPE_ART,              "picture" },
 	{ TYPE_ELECTRONICSOURCE, "electronic" },
-	{ TYPE_FILM,   "videorecording" },
-	{ TYPE_FILM,   "motion picture" },
-	{ TYPE_SOUNDRECORDING, "sound" },
-	{ TYPE_PERFORMANCE, "rehersal" },
-	{ TYPE_INTERNETSITE, "web site" },
-	{ TYPE_INTERVIEW, "interview" },
-	{ TYPE_INTERVIEW, "communication" },
-	{ TYPE_MISC, "misc" },
+	{ TYPE_FILM,             "videorecording" },
+	{ TYPE_FILM,             "motion picture" },
+	{ TYPE_SOUNDRECORDING,   "sound" },
+	{ TYPE_PERFORMANCE,      "rehersal" },
+	{ TYPE_INTERNETSITE,     "web site" },
+	{ TYPE_INTERVIEW,        "interview" },
+	{ TYPE_INTERVIEW,        "communication" },
+	{ TYPE_MISC,             "misc" },
 };
 int ngenres = sizeof( genres ) / sizeof( genres[0] );
 
@@ -207,7 +208,7 @@ get_type_from_genre( fields *info )
 	char *genre, *tag;
 	for ( i=0; i<info->n; ++i ) {
 		tag = (char *) fields_tag( info, i, FIELDS_CHRP );
-		if ( strcasecmp( tag, "GENRE" ) && strcasecmp( tag, "NGENRE" ) ) continue;
+		if ( strcasecmp( tag, "GENRE:MARC" ) && strcasecmp( tag, "GENRE:BIBUTILS" ) && strcasecmp( tag, "GENRE:UNKNOWN" ) ) continue;
 		genre = (char *) fields_value( info, i, FIELDS_CHRP );
 		for ( j=0; j<ngenres; ++j ) {
 			if ( !strcasecmp( genres[j].out, genre ) )
@@ -252,7 +253,7 @@ get_type_from_resource( fields *info )
 	char *tag, *resource;
 	for ( i=0; i<info->n; ++i ) {
 		tag = (char *) fields_tag( info, i, FIELDS_CHRP );
-		if ( strcasecmp( tag, "GENRE" ) && strcasecmp( tag, "NGENRE" ) ) continue;
+		if ( strcasecmp( tag, "RESOURCE" ) ) continue;
 		resource = (char *) fields_value( info, i, FIELDS_CHRP );
 		if ( !strcasecmp( resource, "moving image" ) )
 			type = TYPE_FILM;

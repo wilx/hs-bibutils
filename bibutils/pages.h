@@ -1,7 +1,7 @@
 /*
  * pages.h
  *
- * Copyright (c) Chris Putnam 2016-2017
+ * Copyright (c) Chris Putnam 2016-2018
  *
  * Program and source code released under the GPL version 2
  */

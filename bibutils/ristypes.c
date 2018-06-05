@@ -1,7 +1,7 @@
 /*
  * ristypes.c
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Source code released under the GPL version 2
  *
@@ -159,12 +159,12 @@ static lookups article[] = {
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "Y1", "PARTDATE:YEAR",DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "PARTDATE:MONTH",SIMPLE, LEVEL_MAIN },   /* Access Date */
-	{ "  ", "INTERNAL_TYPE|ARTICLE",  ALWAYS, LEVEL_MAIN },
-	{ "  ", "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
-	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|journal article",  ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|periodical",       ALWAYS, LEVEL_HOST },
-	{ "  ", "GENRE|academic journal", ALWAYS, LEVEL_HOST }
+	{ "  ", "INTERNAL_TYPE|ARTICLE",           ALWAYS, LEVEL_MAIN },
+	{ "  ", "ISSUANCE|continuing",             ALWAYS, LEVEL_HOST },
+	{ "  ", "RESOURCE|text",                   ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE:BIBUTILS|journal article",  ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE:MARC|periodical",           ALWAYS, LEVEL_HOST },
+	{ "  ", "GENRE:BIBUTILS|academic journal", ALWAYS, LEVEL_HOST }
 };
 
 /* magazine article */
@@ -240,10 +240,10 @@ static lookups magarticle[] = {
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "Y1", "PARTDATE:YEAR",DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "PARTDATE:MONTH",SIMPLE, LEVEL_MAIN },   /* Access Date */
-	{ "  ", "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
-	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|periodical",       ALWAYS, LEVEL_HOST },
-	{ "  ", "GENRE|magazine",         ALWAYS, LEVEL_HOST }
+	{ "  ", "ISSUANCE|continuing",     ALWAYS, LEVEL_HOST },
+	{ "  ", "RESOURCE|text",           ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE:MARC|periodical",   ALWAYS, LEVEL_HOST },
+	{ "  ", "GENRE:BIBUTILS|magazine", ALWAYS, LEVEL_HOST }
 };
 
 static lookups newsarticle[] = {
@@ -321,7 +321,7 @@ static lookups newsarticle[] = {
 	{ "  ", "INTERNAL_TYPE|NEWSARTICLE", ALWAYS, LEVEL_MAIN },
 	{ "  ", "ISSUANCE|continuing",       ALWAYS, LEVEL_HOST },
 	{ "  ", "RESOURCE|text",             ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|newspaper",           ALWAYS, LEVEL_HOST }
+	{ "  ", "GENRE:MARC|newspaper",           ALWAYS, LEVEL_HOST }
 };
 
 static lookups book[] = {
@@ -398,7 +398,7 @@ static lookups book[] = {
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "ISSUANCE|monographic",   ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|book",             ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE:MARC|book",             ALWAYS, LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",          ALWAYS, LEVEL_MAIN }
 };
 
@@ -475,8 +475,8 @@ static lookups inbook[] = {
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_HOST },   /* Deprecated? */
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_HOST },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_HOST },   /* Access Date */
-	{ "  ", "GENRE|book chapter",   ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|book",           ALWAYS, LEVEL_HOST },
+	{ "  ", "GENRE:BIBUTILS|book chapter",   ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE:MARC|book",           ALWAYS, LEVEL_HOST },
 	{ "  ", "ISSUANCE|monographic", ALWAYS, LEVEL_HOST },
 	{ "  ", "RESOURCE|text",        ALWAYS, LEVEL_MAIN }
 };
@@ -556,7 +556,7 @@ static lookups conference[] = {
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_HOST },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|CONFERENCE",     ALWAYS, LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",                ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|conference publication", ALWAYS, LEVEL_HOST }
+	{ "  ", "GENRE:MARC|conference publication", ALWAYS, LEVEL_HOST }
 };
 
 static lookups statute[] = {
@@ -634,7 +634,7 @@ static lookups statute[] = {
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|STATUTE", ALWAYS, LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",         ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|legislation",     ALWAYS, LEVEL_MAIN }
+	{ "  ", "GENRE:MARC|legislation",     ALWAYS, LEVEL_MAIN }
 };
 
 static lookups hearing[] = {
@@ -711,7 +711,7 @@ static lookups hearing[] = {
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|HEARING", ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|hearing",         ALWAYS, LEVEL_MAIN }
+	{ "  ", "GENRE:BIBUTILS|hearing",         ALWAYS, LEVEL_MAIN }
 };
 
 static lookups cases[] = {
@@ -788,7 +788,7 @@ static lookups cases[] = {
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|CASE",              ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|legal case and case notes", ALWAYS, LEVEL_MAIN }
+	{ "  ", "GENRE:MARC|legal case and case notes", ALWAYS, LEVEL_MAIN }
 };
 
 static lookups communication[] = {
@@ -833,7 +833,7 @@ static lookups communication[] = {
 	{ "L4", "FIGATTACH",    LINKEDFILE,  LEVEL_MAIN },   /* Figure Attachment (local, not URL) */
 	{ "LA", "LANGUAGE",     SIMPLE,  LEVEL_MAIN },   /* Language */
 	{ "LB", "LABEL",        SIMPLE,  LEVEL_MAIN },   /* Label */
-	{ "M1", "GENRE",        SIMPLE,  LEVEL_MAIN },   /* Misc or Number? */
+	{ "M1", "GENRE:UKNOWN", GENRE,   LEVEL_MAIN },   /* Misc or Number? */
 	{ "M2", "NOTES",        NOTES,   LEVEL_MAIN },   /* Misc or Deprecated? */
 	{ "M3", "NOTES",        NOTES,   LEVEL_MAIN },   /* Misc or Type of Work? */
 	{ "N1", "NOTES",        NOTES,   LEVEL_MAIN },   /* Notes */
@@ -864,8 +864,8 @@ static lookups communication[] = {
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ "  ", "INTERNAL_TYPE|ARTICLE", ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|communication",   ALWAYS, LEVEL_MAIN }
+	{ "  ", "INTERNAL_TYPE|ARTICLE",          ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE:BIBUTILS|communication",   ALWAYS, LEVEL_MAIN }
 };
 
 static lookups thesis[] = {
@@ -943,7 +943,7 @@ static lookups thesis[] = {
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "INTERNAL_TYPE|THESIS",  ALWAYS,  LEVEL_MAIN },
 	{ "  ", "RESOURCE|text",         ALWAYS,  LEVEL_MAIN },
-	{ "  ", "GENRE|thesis",          ALWAYS,  LEVEL_MAIN },
+	{ "  ", "GENRE:MARC|thesis",          ALWAYS,  LEVEL_MAIN },
 };
 
 static lookups report[] = {
@@ -1019,9 +1019,9 @@ static lookups report[] = {
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ "  ", "INTERNAL_TYPE|REPORT",  ALWAYS,  LEVEL_MAIN },
-	{ "  ", "RESOURCE|text",         ALWAYS,  LEVEL_MAIN },
-	{ "  ", "GENRE|report",          ALWAYS,  LEVEL_MAIN }
+	{ "  ", "INTERNAL_TYPE|REPORT",        ALWAYS, LEVEL_MAIN },
+	{ "  ", "RESOURCE|text",               ALWAYS, LEVEL_MAIN },
+	{ "  ", "GENRE:MARC|technical report", ALWAYS, LEVEL_MAIN }
 };
 
 static lookups abstract[] = {
@@ -1097,7 +1097,7 @@ static lookups abstract[] = {
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ "  ", "GENRE|abstract or summary", ALWAYS,  LEVEL_MAIN }
+	{ "  ", "GENRE:MARC|abstract or summary", ALWAYS,  LEVEL_MAIN }
 };
 
 static lookups program[] = {
@@ -1250,7 +1250,7 @@ static lookups patent[] = {
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ "  ", "RESOURCE|text", ALWAYS, LEVEL_MAIN },
-	{ "  ", "GENRE|patent",  ALWAYS, LEVEL_MAIN }
+	{ "  ", "GENRE:MARC|patent",  ALWAYS, LEVEL_MAIN }
 };
 
 static lookups electric[] = {
@@ -1327,7 +1327,7 @@ static lookups electric[] = {
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ " ",  "RESOURCE|software, multimedia", ALWAYS, LEVEL_MAIN },
-	{ " ",  "GENRE|electronic",              ALWAYS, LEVEL_MAIN },
+	{ " ",  "GENRE:MARC|electronic",              ALWAYS, LEVEL_MAIN },
 };
 
 static lookups pamphlet[] = {
@@ -1404,7 +1404,7 @@ static lookups pamphlet[] = {
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
 	{ " ",  "RESOURCE|text",  ALWAYS, LEVEL_MAIN },
-	{ " ",  "GENRE|pamphlet", ALWAYS, LEVEL_MAIN },
+	{ " ",  "GENRE:BIBUTILS|pamphlet", ALWAYS, LEVEL_MAIN },
 };
 
 static lookups map[] = {
@@ -1480,8 +1480,8 @@ static lookups map[] = {
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated? */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ " ",  "RESOURCE|cartographic",   ALWAYS, LEVEL_MAIN },
-	{ " ",  "GENRE|map",               ALWAYS, LEVEL_MAIN }
+	{ " ",  "RESOURCE|cartographic", ALWAYS, LEVEL_MAIN },
+	{ " ",  "GENRE:MARC|map",        ALWAYS, LEVEL_MAIN }
 };
 
 static lookups unpublished[] = {
@@ -1557,8 +1557,8 @@ static lookups unpublished[] = {
 	{ "VO", "VOLUME",       SIMPLE,  LEVEL_MAIN },   /* Deprecated? */
 	{ "Y1", "DATE:YEAR",    DATE,    LEVEL_MAIN },   /* Deprecated */
 	{ "Y2", "DATE:MONTH",   SIMPLE,  LEVEL_MAIN },   /* Access Date */
-	{ " ",  "RESOURCE|text",     ALWAYS, LEVEL_MAIN },
-	{ " ",  "GENRE|unpublished", ALWAYS, LEVEL_MAIN }
+	{ " ",  "RESOURCE|text",              ALWAYS, LEVEL_MAIN },
+	{ " ",  "GENRE:BIBUTILS|unpublished", ALWAYS, LEVEL_MAIN }
 };
 
 #define ORIG(a) ( &(a[0]) )

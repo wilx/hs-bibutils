@@ -1,6 +1,6 @@
 /* generic.h
  *
- * Copyright (c) Chris Putnam 2016-2017
+ * Copyright (c) Chris Putnam 2016-2018
  *
  * Source code released under GPL version 2
  *
@@ -19,5 +19,6 @@ int generic_serialno( fields *bibin, int n, str *intag, str *invalue, int level,
 int generic_simple  ( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout );
 int generic_skip    ( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout );
 int generic_title   ( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout );
+int generic_genre   ( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout );
 
 #endif

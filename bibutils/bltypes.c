@@ -1,8 +1,8 @@
 /*
  * bltypes.c
  *
- * Copyright (c) Chris Putnam 2008-2017
- * Copyright (c) Johannes Wilm 2010-2017
+ * Copyright (c) Chris Putnam 2008-2018
+ * Copyright (c) Johannes Wilm 2010-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -86,8 +86,8 @@ static lookups article[] = {
 	{ "",                "INTERNAL_TYPE|ARTICLE",  ALWAYS,          LEVEL_MAIN   },
 	{ "",                "ISSUANCE|continuing",    ALWAYS,          LEVEL_HOST   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-	{ "",                "NGENRE|journal article", DEFAULT,         LEVEL_MAIN   },
-	{ "",                "GENRE|periodical",       DEFAULT,         LEVEL_HOST   }
+	{ "",                "GENRE:BIBUTILS|journal article", DEFAULT, LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|periodical",          DEFAULT, LEVEL_HOST   }
 };
 
 /* Book */
@@ -161,7 +161,7 @@ static lookups book[] = {
 	{ "",                "INTERNAL_TYPE|BOOK",     ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
 	{ "",                "ISSUANCE|monographic",   ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|book",             ALWAYS,          LEVEL_MAIN   }
+	{ "",                "GENRE:MARC|book",        ALWAYS,          LEVEL_MAIN   }
 };
 
 /* Booklet */
@@ -189,7 +189,7 @@ static lookups booklet[] = {
 	{ "month",           "DATE:MONTH",             SIMPLE,          LEVEL_MAIN   },
 	{ "date",            "DATE",                   SIMPLE,          LEVEL_MAIN   },   /*WRONG*/
 	{ "language",        "LANGUAGE",               SIMPLE,          LEVEL_MAIN   },
-	{ "type",            "GENRE",                  BT_GENRE,        LEVEL_MAIN   },
+	{ "type",            "GENRE:UNKNOWN",          GENRE,           LEVEL_MAIN   },
 	{ "note",            "NOTES",                  NOTES,           LEVEL_MAIN   },
 	{ "annote",          "ANNOTATION",             SIMPLE,          LEVEL_MAIN   },
 	{ "annotation",      "ANNOTATION",             SIMPLE,          LEVEL_MAIN   },
@@ -214,7 +214,7 @@ static lookups booklet[] = {
 	{ "",                "INTERNAL_TYPE|BOOK",     ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
 	{ "",                "ISSUANCE|monographic",   ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|book",             ALWAYS,          LEVEL_MAIN   }
+	{ "",                "GENRE:MARC|book",        ALWAYS,          LEVEL_MAIN   }
 };
 
 static lookups collection[] = {
@@ -285,7 +285,7 @@ static lookups collection[] = {
 	{ "",                "INTERNAL_TYPE|BOOK",     ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
 	{ "",                "ISSUANCE|monographic",   ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|book",             ALWAYS,          LEVEL_MAIN   }
+	{ "",                "GENRE:MARC|book",        ALWAYS,          LEVEL_MAIN   }
 };
 
 /* Part of a book (e.g. chapter or section) */
@@ -362,8 +362,8 @@ static lookups inbook[] = {
 	{ "",                "INTERNAL_TYPE|INBOOK",   ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
 	{ "",                "ISSUANCE|monographic",   ALWAYS,          LEVEL_HOST   },
-        { "",                "NGENRE|book chapter",    ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|book",             ALWAYS,          LEVEL_HOST   }
+        { "",                "GENRE:BIBUTILS|book chapter", ALWAYS,          LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|book",             ALWAYS,          LEVEL_HOST   }
 };
 
 /* incollection */
@@ -444,7 +444,7 @@ static lookups incollection[] = {
 	{ "",                "INTERNAL_TYPE|INCOLLECTION", ALWAYS,      LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
 	{ "",                "ISSUANCE|monographic",   ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|collection",       ALWAYS,          LEVEL_HOST   }
+	{ "",                "GENRE:BIBUTILS|collection",      ALWAYS,          LEVEL_HOST   }
 };
 
 /* inproceedings */
@@ -527,7 +527,7 @@ static lookups inproceedings[] = {
 	{ "",                "INTERNAL_TYPE|INPROCEEDINGS", ALWAYS,     LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
 	{ "",                "ISSUANCE|monographic",   ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|conference publication", ALWAYS,    LEVEL_HOST   }
+	{ "",                "GENRE:MARC|conference publication", ALWAYS,    LEVEL_HOST   }
 };
 
 static lookups manual[] = {
@@ -561,7 +561,7 @@ static lookups manual[] = {
 	{ "language",        "LANGUAGE",               SIMPLE,          LEVEL_MAIN   },
 	{ "edition",         "EDITION",                SIMPLE,          LEVEL_MAIN   },
 	{ "version",         "EDITION",                SIMPLE,          LEVEL_MAIN   },
-	{ "type",            "GENRE",                  BT_GENRE,        LEVEL_MAIN   },
+	{ "type",            "GENRE:UNKNOWN",          GENRE,           LEVEL_MAIN   },
 	{ "series",          "TITLE",                  SIMPLE,          LEVEL_HOST   },
 	{ "number",          "NUMBER",                 SIMPLE,          LEVEL_MAIN   },
 	{ "note",            "NOTES",                  NOTES,           LEVEL_MAIN   },
@@ -589,7 +589,7 @@ static lookups manual[] = {
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "INTERNAL_TYPE|REPORT",   ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|instruction",      ALWAYS,          LEVEL_MAIN   }
+	{ "",                "GENRE:MARC|instruction",      ALWAYS,          LEVEL_MAIN   }
 };
 
 static lookups misc[] = {
@@ -617,7 +617,7 @@ static lookups misc[] = {
 	{ "language",        "LANGUAGE",               SIMPLE,          LEVEL_MAIN   },
 	{ "howpublished",    "",                       HOWPUBLISHED,    LEVEL_MAIN   },
 	{ "version",         "EDITION",                SIMPLE,          LEVEL_MAIN   },
-	{ "type",            "GENRE",                  BT_GENRE,        LEVEL_MAIN   },
+	{ "type",            "GENRE:UNKNOWN",          GENRE,           LEVEL_MAIN   },
 	{ "note",            "NOTES",                  NOTES,           LEVEL_MAIN   },
 	{ "annote",          "ANNOTATION",             SIMPLE,          LEVEL_MAIN   },
 	{ "annotation",      "ANNOTATION",             SIMPLE,          LEVEL_MAIN   },
@@ -638,6 +638,7 @@ static lookups misc[] = {
 	{ "hyphenation",     "LANGCATALOG",            SIMPLE,          LEVEL_MAIN   },
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "INTERNAL_TYPE|MISC",     ALWAYS,          LEVEL_MAIN   },
+	{ "",                "GENRE:BIBUTILS|miscellaneous",   ALWAYS,          LEVEL_MAIN   },
 };
 
 static lookups online[] = {
@@ -664,7 +665,7 @@ static lookups online[] = {
 	{ "year",            "DATE:YEAR",              SIMPLE,          LEVEL_MAIN   },
 	{ "language",        "LANGUAGE",               SIMPLE,          LEVEL_MAIN   },
 	{ "version",         "EDITION",                SIMPLE,          LEVEL_MAIN   },
-	{ "type",            "GENRE",                  BT_GENRE,        LEVEL_MAIN   },
+	{ "type",            "GENRE:UNKNOWN",          GENRE,           LEVEL_MAIN   },
 	{ "note",            "NOTES",                  NOTES,           LEVEL_MAIN   },
 	{ "annote",          "ANNOTATION",             SIMPLE,          LEVEL_MAIN   },
 	{ "annotation",      "ANNOTATION",             SIMPLE,          LEVEL_MAIN   },
@@ -685,7 +686,7 @@ static lookups online[] = {
 	{ "hyphenation",     "LANGCATALOG",            SIMPLE,          LEVEL_MAIN   },
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
         { "",                "RESOURCE|software, multimedia", ALWAYS,   LEVEL_MAIN   },
-	{ "",                "NGENRE|web page",        ALWAYS,          LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|web page",    ALWAYS,          LEVEL_MAIN   },
 };
 
 static lookups patent[] = {
@@ -700,7 +701,7 @@ static lookups patent[] = {
 	{ "month",           "DATE:MONTH",             SIMPLE,          LEVEL_MAIN   },
 	{ "year",            "DATE:YEAR",              SIMPLE,          LEVEL_MAIN   },
 	{ "version",         "EDITION",                SIMPLE,          LEVEL_MAIN   },
-	{ "type",            "GENRE",                  BT_GENRE,        LEVEL_MAIN   },
+	{ "type",            "GENRE:UKNOWN",           GENRE,           LEVEL_MAIN   },
 	{ "note",            "NOTES",                  NOTES,           LEVEL_MAIN   },
 	{ "annote",          "ANNOTATION",             SIMPLE,          LEVEL_MAIN   },
 	{ "annotation",      "ANNOTATION",             SIMPLE,          LEVEL_MAIN   },
@@ -719,7 +720,7 @@ static lookups patent[] = {
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
 	{ "",                "INTERNAL_TYPE|PATENT",   ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|patent",           ALWAYS,          LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|patent",      ALWAYS,          LEVEL_MAIN   },
 };
 
 /*
@@ -778,8 +779,8 @@ static lookups periodical[] = {
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "ISSUANCE|continuing",    ALWAYS,          LEVEL_HOST   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|issue",            ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|periodical",       ALWAYS,          LEVEL_HOST   }
+	{ "",                "GENRE:MARC|issue",       ALWAYS,          LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|periodical",  ALWAYS,          LEVEL_HOST   }
 };
 
 static lookups proceedings[] = {
@@ -851,7 +852,7 @@ static lookups proceedings[] = {
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "INTERNAL_TYPE|BOOK",     ALWAYS,          LEVEL_MAIN   },
         { "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-        { "",                "GENRE|conference publication", ALWAYS,    LEVEL_MAIN   }
+        { "",                "GENRE:MARC|conference publication", ALWAYS,    LEVEL_MAIN   }
 };
 
 /* Technical reports */
@@ -862,7 +863,7 @@ static lookups report[] = {
 	{ "titleaddon",      "TITLEADDON",             TITLE,           LEVEL_MAIN   },
 	{ "shorttitle",      "SHORTTITLE",             SIMPLE,          LEVEL_MAIN   },
 	{ "series",          "TITLE",                  TITLE,           LEVEL_HOST   },
-	{ "type",            "GENRE",                  BT_GENRE,        LEVEL_MAIN   },
+	{ "type",            "GENRE:UNKNOWN",          GENRE,           LEVEL_MAIN   },
 	{ "institution",     "SPONSOR:ASIS",           SIMPLE,          LEVEL_MAIN   },
 	{ "year",            "DATE:YEAR",              SIMPLE,          LEVEL_MAIN   },
 	{ "month",           "DATE:MONTH",             SIMPLE,          LEVEL_MAIN   },
@@ -891,9 +892,9 @@ static lookups report[] = {
 	{ "address",         "ADDRESS",                SIMPLE,          LEVEL_MAIN   },
 	{ "hyphenation",     "LANGCATALOG",            SIMPLE,          LEVEL_MAIN   },
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
-	{ "",                "INTERNAL_TYPE|REPORT",   ALWAYS,          LEVEL_MAIN   },
-	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|report",           ALWAYS,          LEVEL_MAIN   }
+	{ "",                "INTERNAL_TYPE|REPORT",        ALWAYS,     LEVEL_MAIN   },
+	{ "",                "RESOURCE|text",               ALWAYS,     LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|technical report", ALWAYS,     LEVEL_MAIN   },
 };
 
 /* Unpublished */
@@ -923,7 +924,7 @@ static lookups unpublished[] = {
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "INTERNAL_TYPE|BOOK",     ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|unpublished",      ALWAYS,          LEVEL_MAIN   }
+	{ "",                "GENRE:BIBUTILS|unpublished",     ALWAYS,          LEVEL_MAIN   }
 };
 
 static lookups thesis[] = {
@@ -957,7 +958,7 @@ static lookups thesis[] = {
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "INTERNAL_TYPE|THESIS",   ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|thesis",           ALWAYS,          LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|thesis",      ALWAYS,          LEVEL_MAIN   },
 };
 
 static lookups phdthesis[] = {
@@ -991,8 +992,8 @@ static lookups phdthesis[] = {
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "INTERNAL_TYPE|THESIS",   ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|thesis",           ALWAYS,          LEVEL_MAIN   },
-	{ "",                "NGENRE|Ph.D. thesis",    DEFAULT,         LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|thesis",      ALWAYS,          LEVEL_MAIN   },
+	{ "",                "GENRE:BIBUTILS|Ph.D. thesis",DEFAULT,     LEVEL_MAIN   },
 };
 
 static lookups mastersthesis[] = {
@@ -1026,8 +1027,8 @@ static lookups mastersthesis[] = {
 	{ "refnum",          "REFNUM",                 SIMPLE,          LEVEL_MAIN   },
 	{ "",                "INTERNAL_TYPE|THESIS",   ALWAYS,          LEVEL_MAIN   },
 	{ "",                "RESOURCE|text",          ALWAYS,          LEVEL_MAIN   },
-	{ "",                "GENRE|thesis",           ALWAYS,          LEVEL_MAIN   },
-	{ "",                "NGENRE|Masters thesis",  DEFAULT,         LEVEL_MAIN   },
+	{ "",                "GENRE:MARC|thesis",      ALWAYS,          LEVEL_MAIN   },
+	{ "",                "GENRE:BIBUTILS|Masters thesis",  DEFAULT, LEVEL_MAIN   },
 };
 
 #define ORIG(a) ( &(a[0]) )

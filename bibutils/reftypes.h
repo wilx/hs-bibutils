@@ -1,7 +1,7 @@
 /*
  * reftypes.h
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Source code released under the GPL version 2
  *
@@ -31,8 +31,8 @@
 #define LINKEDFILE      (12)
 #define KEYWORD         (13)
 #define URL             (14)
-#define BT_SENTE        (15) /* Bibtex 'Sente' */
-#define BT_GENRE        (16) /* Bibtex Genre */
+#define GENRE           (15)
+#define BT_SENTE        (16) /* Bibtex 'Sente' */
 #define BT_EPRINT       (17) /* Bibtex 'Eprint' */
 #define BT_ORG          (18) /* Bibtex Organization */
 #define BLT_THESIS_TYPE (19) /* Biblatex Thesis Type */

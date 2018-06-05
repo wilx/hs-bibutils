@@ -1,7 +1,7 @@
 /*
  * isiin.c
  *
- * Copyright (c) Chris Putnam 2004-2017
+ * Copyright (c) Chris Putnam 2004-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -170,7 +170,7 @@ add_tag_value( fields *isiin, str *tag, str *value, int *tag_added )
 {
 	int status;
 
-	if ( str_has_value( value ) ) {
+	if ( str_has_value( tag ) && str_has_value( value ) ) {
 		status = fields_add( isiin, str_cstr( tag ), str_cstr( value ), 0 );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		*tag_added = 1;
@@ -272,8 +272,8 @@ isiin_typef( fields *isiin, char *filename, int nref, param *p )
 	ntypename = fields_find( isiin, "PT", LEVEL_MAIN );
 	nrefname  = fields_find( isiin, "UT", LEVEL_MAIN );
 
-	if ( nrefname!=-1 )  refname  = fields_value( isiin, nrefname,  FIELDS_CHRP_NOUSE );
-	if ( ntypename!=-1 ) typename = fields_value( isiin, ntypename, FIELDS_CHRP_NOUSE );
+	if ( nrefname!=FIELDS_NOTFOUND )  refname  = fields_value( isiin, nrefname,  FIELDS_CHRP_NOUSE );
+	if ( ntypename!=FIELDS_NOTFOUND ) typename = fields_value( isiin, ntypename, FIELDS_CHRP_NOUSE );
 
 	return get_reftype( typename, nref, p->progname, p->all, p->nall, refname, &is_default, REFTYPE_CHATTY );
 }
@@ -297,10 +297,11 @@ isiin_addauthors( fields *isiin, fields *info, int reftype, variants *all, int n
 		if ( !strcasecmp( t->data, "AF" ) ) has_af++;
 	}
 	if ( has_af ) authortype = use_af;
-	else authortype = use_au;
+	else if ( has_au ) authortype = use_au;
+	else return BIBL_OK; /* no authors */
+
 	for ( i=0; i<nfields; ++i ) {
 		t = fields_tag( isiin, i, FIELDS_STRP );
-		if ( !strcasecmp( t->data, "AU" ) ) has_au++;
 		if ( strcasecmp( t->data, authortype ) ) continue;
 		d = fields_value( isiin, i, FIELDS_STRP );
 		n = process_findoldtag( authortype, reftype, all, nall );

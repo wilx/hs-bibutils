@@ -1,7 +1,7 @@
 /*
  * bibutils.c
  *
- * Copyright (c) Chris Putnam 2005-2017
+ * Copyright (c) Chris Putnam 2005-2018
  *
  * Source code released under the GPL version 2
  *
@@ -24,9 +24,9 @@ bibl_initparams( param *p, int readmode, int writemode, char *progname )
 	case BIBL_ENDNOTEXMLIN: endxmlin_initparams( p, progname ); break;
 	case BIBL_MEDLINEIN:    medin_initparams( p, progname ); break;
 	case BIBL_MODSIN:       modsin_initparams( p, progname ); break;
+	case BIBL_NBIBIN:       nbibin_initparams( p, progname ); break;
 	case BIBL_RISIN:        risin_initparams( p, progname ); break;
 	case BIBL_WORDIN:       wordin_initparams( p, progname ); break;
-	case BIBL_NBIBIN:	nbibin_initparams( p, progname ); break;
 	default: /* internal error */;
 	}
 

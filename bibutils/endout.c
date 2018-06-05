@@ -1,7 +1,7 @@
 /*
  * endout.c
  *
- * Copyright (c) Chris Putnam 2004-2017
+ * Copyright (c) Chris Putnam 2004-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -224,6 +224,7 @@ get_type( fields *in, param *p, unsigned long refnum )
 		{ "rehearsal",                 TYPE_AUDIOVISUAL },
 /*		{ "remote sensing image",      TYPE_GENERIC },*/
 /*		{ "reporting",                 TYPE_GENERIC },*/
+		{ "report",                    TYPE_REPORT },
 /*		{ "review",                    TYPE_GENERIC },*/
 /*		{ "script",                    TYPE_GENERIC },*/
 /*		{ "series",                    TYPE_GENERIC },*/
@@ -235,7 +236,7 @@ get_type( fields *in, param *p, unsigned long refnum )
 /*		{ "statistics",                TYPE_GENERIC },*/
 /*		{ "survey of literature",      TYPE_GENERIC },*/
 		{ "technical drawing",         TYPE_ARTWORK },
-		{ "techincal report",          TYPE_REPORT },
+		{ "technical report",          TYPE_REPORT },
 		{ "thesis",                    TYPE_THESIS },
 /*		{ "toy",                       TYPE_GENERIC },*/
 /*		{ "transparency",              TYPE_GENERIC },*/
@@ -253,7 +254,6 @@ get_type( fields *in, param *p, unsigned long refnum )
 		{ "Habilitation thesis",       TYPE_HABILITATIONTHESIS },
 		{ "communication",             TYPE_COMMUNICATION },
 		{ "manuscript",                TYPE_MANUSCRIPT },
-		{ "report",                    TYPE_REPORT },
 		{ "unpublished",               TYPE_UNPUBLISHED },
 	};
 	int nmatch_genres = sizeof( match_genres ) / sizeof( match_genres[0] );
@@ -264,8 +264,9 @@ get_type( fields *in, param *p, unsigned long refnum )
 	/* Determine type from genre information */
 	for ( i=0; i<in->n; ++i ) {
 		tag = fields_tag( in, i, FIELDS_CHRP );
-		if ( strcasecmp( tag, "GENRE" )!=0 &&
-		     strcasecmp( tag, "NGENRE" )!=0 ) continue;
+		if ( strcasecmp( tag, "GENRE:MARC" )!=0 &&
+		     strcasecmp( tag, "GENRE:BIBUTILS" )!=0 &&
+		     strcasecmp( tag, "GENRE:UNKNOWN" )!=0 ) continue;
 		data = fields_value( in, i, FIELDS_CHRP );
 		for ( j=0; j<nmatch_genres; ++j ) {
 			if ( !strcasecmp( data, match_genres[j].name ) ) {
@@ -350,8 +351,8 @@ get_type( fields *in, param *p, unsigned long refnum )
 		else {
 			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
 			fprintf( stderr, "Cannot identify TYPE in reference %lu ", refnum+1 );
-			n = fields_find( in, "REFNUM", -1 );
-			if ( n!=-1 )
+			n = fields_find( in, "REFNUM", LEVEL_ANY );
+			if ( n!=FIELDS_NOTFOUND )
 				fprintf( stderr, " %s", (char *) fields_value( in, n, FIELDS_CHRP ) );
 			fprintf( stderr, " (defaulting to generic)\n" );
 			type = TYPE_GENERIC;
@@ -565,6 +566,52 @@ append_monthday( fields *in, fields *out, int *status )
 }
 
 static void
+append_genrehint( int type, fields *out, vplist *a, int *status )
+{
+	vplist_index i;
+	int fstatus;
+	char *g;
+
+	for ( i=0; i<a->n; ++i ) {
+		g = ( char * ) vplist_get( a, i );
+		if ( !strcmp( g, "journal article" ) && type==TYPE_ARTICLE ) continue;
+		if ( !strcmp( g, "academic journal" ) && type==TYPE_ARTICLE ) continue;
+		if ( !strcmp( g, "collection" ) && type==TYPE_INBOOK ) continue;
+		if ( !strcmp( g, "television broadcast" ) && type==TYPE_FILMBROADCAST ) continue;
+		if ( !strcmp( g, "electronic" ) && type==TYPE_PROGRAM ) continue;
+		if ( !strcmp( g, "magazine" ) && type==TYPE_MAGARTICLE ) continue;
+		if ( !strcmp( g, "miscellaneous" ) && type==TYPE_GENERIC ) continue;
+		if ( !strcmp( g, "hearing" ) && type==TYPE_HEARING ) continue;
+		if ( !strcmp( g, "communication" ) && type==TYPE_COMMUNICATION ) continue;
+		if ( !strcmp( g, "report" ) && type==TYPE_REPORT ) continue;
+		if ( !strcmp( g, "book chapter" ) && type==TYPE_INBOOK ) continue;
+		fstatus = fields_add( out, "%9", g, LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) {
+			*status = BIBL_ERR_MEMERR;
+			return;
+		}
+	}
+}
+
+static void
+append_all_genrehint( int type, fields *in, fields *out, int *status )
+{
+	vplist a;
+
+	vplist_init( &a );
+
+	fields_findv_each( in, LEVEL_ANY, FIELDS_CHRP, &a, "GENRE:BIBUTILS" );
+	append_genrehint( type, out, &a, status );
+
+	vplist_empty( &a );
+
+	fields_findv_each( in, LEVEL_ANY, FIELDS_CHRP, &a, "GENRE:UNKNOWN" );
+	append_genrehint( type, out, &a, status );
+
+	vplist_free( &a );
+}
+
+static void
 append_thesishint( int type, fields *out, int *status )
 {
 	int fstatus;
@@ -705,7 +752,7 @@ append_data( fields *in, fields *out, param *p, unsigned long refnum )
 	append_easy    ( in, "ABSTRACT",           "%X", LEVEL_ANY, out, &status );
 	append_easy    ( in, "CLASSIFICATION"   ,  "%L", LEVEL_ANY, out, &status );
 	append_easyall ( in, "KEYWORD",            "%K", LEVEL_ANY, out, &status );
-	append_easyall ( in, "NGENRE",             "%9", LEVEL_ANY, out, &status );
+	append_all_genrehint(  type, in, out, &status );
 	append_thesishint( type, out, &status );
 	append_easyall ( in, "DOI",                "%R", LEVEL_ANY, out, &status );
 	append_easyall ( in, "URL",                "%U", LEVEL_ANY, out, &status );

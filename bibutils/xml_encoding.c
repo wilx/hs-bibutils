@@ -1,7 +1,7 @@
 /*
  * xml_getencoding.c
  *
- * Copyright (c) Chris Putnam 2007-2017
+ * Copyright (c) Chris Putnam 2007-2018
  *
  * Source code released under the GPL version 2
  *
@@ -22,8 +22,8 @@ xml_getencodingr( xml *node )
 	str *s;
 	char *t;
 
-	if ( xml_tagexact( node, "xml" ) ) {
-		s = xml_getattrib( node, "encoding" );
+	if ( xml_tag_matches( node, "xml" ) ) {
+		s = xml_attribute( node, "encoding" );
 		if ( str_has_value( s ) ) {
 			t = str_cstr( s );
 			if ( !strcasecmp( t, "UTF-8" ) )
@@ -66,7 +66,7 @@ xml_getencoding( str *s )
 			str_init( &descriptor );
 			str_segcpy( &descriptor, p, q+2 );
 			xml_init( &descriptxml );
-			xml_tree( str_cstr( &descriptor ), &descriptxml );
+			xml_parse( str_cstr( &descriptor ), &descriptxml );
 			file_charset = xml_getencodingr( &descriptxml );
 			xml_free( &descriptxml );
 			str_free( &descriptor );

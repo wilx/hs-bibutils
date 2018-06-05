@@ -3,7 +3,7 @@
  *
  * Version: 2017-07-03
  *
- * Copyright (c) Chris Putnam 1999-2017
+ * Copyright (c) Chris Putnam 1999-2018
  *
  * Source code released under the GPL version 2
  *
@@ -43,7 +43,7 @@ str_realloc( str *s, unsigned long minsize )
 	if (size < minsize) size = minsize;
 	newptr = (char *) realloc( s->data, sizeof( *(s->data) )*size );
 	if ( !newptr ) {
-		fprintf(stderr,"Error.  Cannot reallocate memory (%ld bytes) in str_realloc.\n", sizeof(*(s->data))*size);
+		fprintf( stderr,"Error.  Cannot reallocate memory (%lu bytes) in str_realloc.\n", sizeof(*(s->data))*size );
 		exit( EXIT_FAILURE );
 	}
 	s->data = newptr;
@@ -65,8 +65,7 @@ str_realloc( str *s, unsigned long minsize )
 	if ( size < minsize ) size = minsize;
 	newptr = (char *) malloc( sizeof( *(s->data) ) * size );
 	if ( !newptr ) {
-		fprintf( stderr, "Error.  Cannot reallocate memory (%d bytes)"
-			" in str_realloc.\n", sizeof(*(s->data))*size );
+		fprintf( stderr, "Error.  Cannot reallocate memory (%lu bytes) in str_realloc.\n", sizeof(*(s->data))*size );
 		exit( EXIT_FAILURE );
 	}
 	if ( s->data ) {
@@ -174,7 +173,7 @@ str_initalloc( str *s, unsigned long minsize )
 	if ( minsize > str_initlen ) size = minsize;
 	s->data = (char *) malloc (sizeof( *(s->data) ) * size);
 	if ( !s->data ) {
-		fprintf(stderr,"Error.  Cannot allocate memory in str_initalloc.\n");
+		fprintf(stderr,"Error.  Cannot allocate memory in str_initalloc, requested %lu characters.\n", size );
 		exit( EXIT_FAILURE );
 	}
 	s->data[0]='\0';

@@ -1,9 +1,9 @@
 /*
  * slist.c
  *
- * version: 2017-07-04
+ * version: 2017-11-14
  *
- * Copyright (c) Chris Putnam 2004-2017
+ * Copyright (c) Chris Putnam 2004-2018
  *
  * Source code released under the GPL version 2
  *
@@ -319,7 +319,7 @@ slist_ensure_space( slist *a, slist_index n, int mode )
 }
 
 str *
-slist_addvp( slist *a, unsigned char mode, void *vp )
+slist_addvp( slist *a, int mode, void *vp )
 {
 	str *s = NULL;
 	int status;
@@ -358,7 +358,7 @@ slist_add( slist *a, str *s )
 }
 
 str *
-slist_addvp_unique( slist *a, unsigned char mode, void *vp )
+slist_addvp_unique( slist *a, int mode, void *vp )
 {
 	str *s;
 	int n;
@@ -387,7 +387,7 @@ slist_add_unique( slist *a, str *s )
 }
 
 int
-slist_addvp_all( slist *a, unsigned char mode, ... )
+slist_addvp_all( slist *a, int mode, ... )
 {
 	int ret = SLIST_OK;
 	va_list ap;

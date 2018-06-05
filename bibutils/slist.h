@@ -1,9 +1,9 @@
 /*
  * slist.h
  *
- * version: 2017-07-04
+ * version: 2017-11-14
  *
- * Copyright (c) Chris Putnam 2004-2017
+ * Copyright (c) Chris Putnam 2004-2018
  *
  * Source code released under the GPL version 2
  *
@@ -54,15 +54,15 @@ slist * slist_dup( slist *a );
 int     slist_copy( slist *to, slist *from );
 void    slist_swap( slist *a, slist_index n1, slist_index n2 );
 
-str *   slist_addvp( slist *a, unsigned char mode, void *vp );
+str *   slist_addvp( slist *a, int mode, void *vp );
 str *   slist_addc( slist *a, const char *value );
 str *   slist_add( slist *a, str *value );
 
-int     slist_addvp_all( slist *a, unsigned char mode, ... );
+int     slist_addvp_all( slist *a, int mode, ... );
 int     slist_addc_all( slist *a, ... );
 int     slist_add_all( slist *a, ... );
 
-str *   slist_addvp_unique( slist *a, unsigned char mode, void *vp );
+str *   slist_addvp_unique( slist *a, int mode, void *vp );
 str *   slist_addc_unique( slist *a, const char *value );
 str *   slist_add_unique( slist *a, str *value );
 

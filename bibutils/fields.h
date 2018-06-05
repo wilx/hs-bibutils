@@ -1,7 +1,7 @@
 /*
  * fields.h
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Source code released under the GPL version 2
  *
@@ -12,12 +12,13 @@
 #define FIELDS_OK     (1)
 #define FIELDS_ERR    (0)
 
+#define FIELDS_NOTFOUND (-1)
+
+#define LEVEL_ORIG   (-2)
 #define LEVEL_ANY    (-1)
 #define LEVEL_MAIN    (0)
 #define LEVEL_HOST    (1)
 #define LEVEL_SERIES  (2)
-
-#define LEVEL_ORIG (-2)
 
 #include <stdarg.h>
 #include "str.h"
@@ -34,13 +35,14 @@ typedef struct fields {
 
 void    fields_init( fields *f );
 fields *fields_new( void );
+void    fields_delete( fields *f );
 void    fields_free( fields *f );
 
 #define FIELDS_CAN_DUP (0)
 #define FIELDS_NO_DUPS (1)
 
-#define fields_add( a, b, c, d )         _fields_add( a, b, c, d, FIELDS_NO_DUPS )
-#define fields_add_can_dup( a, b, c, d ) _fields_add( a, b, c, d, FIELDS_CAN_DUP )
+#define fields_add( a, b, c, d )                      _fields_add( a, b, c, d, FIELDS_NO_DUPS )
+#define fields_add_can_dup( a, b, c, d )              _fields_add( a, b, c, d, FIELDS_CAN_DUP )
 #define fields_add_tagsuffix( a, b, c, d, e )         _fields_add( a, b, c, d, e, FIELDS_NO_DUPS )
 #define fields_add_tagsuffix_can_dup( a, b, c, d, e ) _fields_add( a, b, c, d, e, FIELDS_CAN_DUP )
 
@@ -89,7 +91,7 @@ int   fields_find( fields *f, char *searchtag, int level );
 void *fields_findv( fields *f, int level, int mode, char *tag );
 void *fields_findv_firstof( fields *f, int level, int mode, ... );
 
-void  fields_findv_each( fields *f, int level, int mode, vplist *a, char *tag );
-void  fields_findv_eachof( fields *f, int level, int mode, vplist *a, ... );
+int   fields_findv_each( fields *f, int level, int mode, vplist *a, char *tag );
+int   fields_findv_eachof( fields *f, int level, int mode, vplist *a, ... );
 
 #endif

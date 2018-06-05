@@ -1,7 +1,7 @@
 /*
  * endin.c
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -256,7 +256,7 @@ is_wiley_author( fields *endin, int n )
 {
 	str *t, *v;
 	t = fields_tag( endin, n, FIELDS_STRP_NOUSE );
-	if ( str_is_empty( t ) || strcmp( t->data, "%A" ) ) return 0;
+	if ( str_is_empty( t ) || strcmp( str_cstr( t ), "%A" ) ) return 0;
 	v = fields_value( endin, n, FIELDS_STRP_NOUSE );
 	if ( str_is_empty( v ) ) return 0;
 	if ( v->data[v->len-1]!=',' ) return 0;
@@ -264,45 +264,70 @@ is_wiley_author( fields *endin, int n )
 }
 
 static int
+add_wiley_author( fields *endin, char *intag, str *instring, int inlevel, str *name, int authornum )
+{
+	int fstatus;
+
+	/* if first author, just replace the data string in the field */
+	if ( authornum==0 ) {
+		str_strcpy( instring, name );
+		if ( str_memerr( instring ) ) return BIBL_ERR_MEMERR;
+	}
+
+	/* otherwise, append the author */
+	else {
+		fstatus = fields_add( endin, intag, str_cstr( name ), inlevel );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
+}
+
+static int
 cleanup_wiley_author( fields *endin, int n )
 {	
+	int status=BIBL_OK, inlevel, authornum = 0;
 	str *instring, copy, name;
-	int status, nauthor = 0;
-	char *p;
+	char *p, *intag;
 
 	strs_init( &copy, &name, NULL );
 
-	instring = &( endin->data[n] );
-	str_strcpy( &copy, instring );
+	intag    = fields_tag  ( endin, n, FIELDS_CHRP_NOUSE );
+	instring = fields_value( endin, n, FIELDS_STRP_NOUSE );
+	inlevel  = fields_level( endin, n );
 
-	p = copy.data;
+	str_strcpy( &copy, instring );
+	p = str_cstr( &copy );
+
 	while ( *p ) {
+
 		if ( *p==',' ) {
-			if ( str_memerr( &name ) )
-				return BIBL_ERR_MEMERR;
-			if ( nauthor==0 ) {
-				/* ...replace the first author in the field */
-				str_strcpy( instring, &name );
-				if ( str_memerr( instring ) )
-					return BIBL_ERR_MEMERR;
-			} else {
-				status = fields_add( endin, endin->tag[n].data,
-					name.data, endin->level[n] );
-				if ( status!=FIELDS_OK )
-					return BIBL_ERR_MEMERR;
+			if ( str_memerr( &name ) ) {
+				status = BIBL_ERR_MEMERR;
+				goto out;
 			}
+
+			status = add_wiley_author( endin, intag, instring, inlevel, &name, authornum );
+			if ( status!=BIBL_OK ) goto out;
+
 			str_empty( &name );
-			nauthor++;
+			authornum++;
+
 			p++;
 			while ( is_ws( *p ) ) p++;
-		} else {
+		}
+
+		else {
 			str_addchar( &name, *p );
 			p++;
 		}
 	}
 
+	if ( str_has_value( &name ) )
+		status = add_wiley_author( endin, intag, instring, inlevel, &name, authornum );
+out:
 	strs_free( &copy, &name, NULL );
-	return BIBL_OK;
+	return status;
 }
 
 static int
@@ -434,7 +459,7 @@ endin_date( fields *bibin, int n, str *intag, str *invalue, int level, param *pm
 		if ( *p==',' ) p++;
 
 		/* ...get year */
-		p = str_cpytodelim( &date, skip_ws( p ), " \t\n\r", 0 );
+		(void) str_cpytodelim( &date, skip_ws( p ), " \t\n\r", 0 );
 		if ( str_memerr( &date ) ) return BIBL_ERR_MEMERR;
 		if ( str_has_value( &date ) ) {
 			status = fields_add( bibout, tags[0][part], date.data, level );
@@ -514,6 +539,7 @@ endin_convertf( fields *bibin, fields *bibout, int reftype, param *p )
 		[ PAGES        ] = generic_pages,
 		[ NOTES        ] = generic_notes,
 		[ URL          ] = generic_url,
+		[ GENRE        ] = generic_genre,
 		[ TYPE         ] = endin_type,
 		[ DATE         ] = endin_date,
         };

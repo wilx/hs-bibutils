@@ -1,7 +1,7 @@
 /*
  * str_conv.c
  *
- * Copyright (c) Chris Putnam 1999-2017
+ * Copyright (c) Chris Putnam 1999-2018
  *
  * Source code released under the GPL version 2
  *
@@ -24,7 +24,7 @@ static void
 addentity( str *s, unsigned int ch )
 {
 	char buf[512];
-	sprintf( buf, "&#%d;", ch );
+	sprintf( buf, "&#%u;", ch );
 	str_strcatc( s, buf );
 }
 
@@ -176,7 +176,16 @@ str_convert( str *s,
 
 	if ( !s || s->len==0 ) return ok;
 
-	str_init( &ns );
+	/* Ensure that string is internally allocated.
+	 * This fixes NULL pointer derefernce in CVE-2018-10775 in bibutils
+	 * as a string with a valid data pointer is potentially replaced
+	 * by a string without a valid data pointer due to it being invalid
+	 * unicode.
+	 * This probably also fixes CVE-2018-10773 and CVE-2018-10774 which
+	 * are NULL dereferences also likely due to a fuzzer, but without
+	 * test cases in the report, I can't be completely sure.
+	 */
+	str_initstrc( &ns, "" );
 
 	if ( charsetin==CHARSET_UNKNOWN ) charsetin = CHARSET_DEFAULT;
 	if ( charsetout==CHARSET_UNKNOWN ) charsetout = CHARSET_DEFAULT;
@@ -193,4 +202,3 @@ out:
 
 	return ok;
 }
-

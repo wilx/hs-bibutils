@@ -1,7 +1,7 @@
 /*
  * bibtexout.c
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -67,57 +67,81 @@ enum {
 };
 
 static int
+is_genre_element( fields *in, int n )
+{
+	char *tag;
+
+	tag = fields_tag( in, n, FIELDS_CHRP );
+
+	if ( !strcasecmp( tag, "GENRE:MARC"     ) ) return 1;
+	if ( !strcasecmp( tag, "GENRE:BIBUTILS" ) ) return 1;
+	if ( !strcasecmp( tag, "GENRE:UNKNOWN"  ) ) return 1;
+
+	return 0;
+}
+
+static int
+is_issuance_element( fields *in, int n )
+{
+	if ( !strcasecmp( fields_tag( in, n, FIELDS_CHRP ), "ISSUANCE" ) ) return 1;
+	else return 0;
+}
+
+static int
 bibtexout_type( fields *in, char *filename, int refnum, param *p )
 {
 	int type = TYPE_UNKNOWN, i, maxlevel, n, level;
-	char *tag, *genre;
+	char *genre;
 
-	/* determine bibliography type */
+	/* determine bibliography type from GENRE */
 	for ( i=0; i<in->n; ++i ) {
-		tag = fields_tag( in, i, FIELDS_CHRP );
-		if ( strcasecmp( tag, "GENRE" ) && strcasecmp( tag, "NGENRE" ) ) continue;
+		if ( !is_genre_element( in, i ) ) continue;
 		genre = fields_value( in, i, FIELDS_CHRP );
 		level = in->level[i];
 		if ( !strcasecmp( genre, "periodical" ) ||
 		     !strcasecmp( genre, "academic journal" ) ||
 		     !strcasecmp( genre, "magazine" ) ||
 		     !strcasecmp( genre, "newspaper" ) ||
-		     !strcasecmp( genre, "article" ) )
+		     !strcasecmp( genre, "article" ) ) {
 			type = TYPE_ARTICLE;
-		else if ( !strcasecmp( genre, "instruction" ) )
+		} else if ( !strcasecmp( genre, "instruction" ) ) {
 			type = TYPE_MANUAL;
-		else if ( !strcasecmp( genre, "unpublished" ) )
+		} else if ( !strcasecmp( genre, "unpublished" ) ) {
 			type = TYPE_UNPUBLISHED;
-		else if ( !strcasecmp( genre, "conference publication" ) ) {
+		} else if ( !strcasecmp( genre, "conference publication" ) ) {
 			if ( level==0 ) type=TYPE_PROCEEDINGS;
 			else type = TYPE_INPROCEEDINGS;
 		} else if ( !strcasecmp( genre, "collection" ) ) {
 			if ( level==0 ) type=TYPE_COLLECTION;
 			else type = TYPE_INCOLLECTION;
-		} else if ( !strcasecmp( genre, "report" ) )
+		} else if ( !strcasecmp( genre, "report" ) ||
+		            !strcasecmp( genre, "technical report" ) ) {
 			type = TYPE_REPORT;
-		else if ( !strcasecmp( genre, "book chapter" ) )
+		} else if ( !strcasecmp( genre, "book chapter" ) ) {
 			type = TYPE_INBOOK;
-		else if ( !strcasecmp( genre, "book" ) ) {
+		} else if ( !strcasecmp( genre, "book" ) ) {
 			if ( level==0 ) type = TYPE_BOOK;
 			else type = TYPE_INBOOK;
 		} else if ( !strcasecmp( genre, "thesis" ) ) {
 			if ( type==TYPE_UNKNOWN ) type=TYPE_PHDTHESIS;
-		} else if ( !strcasecmp( genre, "Ph.D. thesis" ) )
+		} else if ( !strcasecmp( genre, "Ph.D. thesis" ) ) {
 			type = TYPE_PHDTHESIS;
-		else if ( !strcasecmp( genre, "Masters thesis" ) )
+		} else if ( !strcasecmp( genre, "Masters thesis" ) ) {
 			type = TYPE_MASTERSTHESIS;
-		else  if ( !strcasecmp( genre, "electronic" ) )
+		} else if ( !strcasecmp( genre, "electronic" ) ) {
 			type = TYPE_ELECTRONIC;
+		} else if ( !strcasecmp( genre, "miscellaneous" ) ) {
+			type = TYPE_MISC;
+		}
 	}
+
+	/* check type from ISSUANCE */
 	if ( type==TYPE_UNKNOWN ) {
 		for ( i=0; i<in->n; ++i ) {
-			tag = fields_tag( in, i, FIELDS_CHRP );
-			if ( strcasecmp( tag, "ISSUANCE" ) ) continue;
+			if ( !is_issuance_element( in, i ) ) continue;
 			genre = fields_value( in, i, FIELDS_CHRP );
 			if ( !strcasecmp( genre, "monographic" ) ) {
-				if ( in->level[i]==0 ) type = TYPE_BOOK;
-				else if ( in->level[i]==1 ) type = TYPE_MISC;
+				if ( level==0 ) type = TYPE_BOOK;
 			}
 		}
 	}
@@ -130,7 +154,7 @@ bibtexout_type( fields *in, char *filename, int refnum, param *p )
 			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
 			fprintf( stderr, "Cannot identify TYPE in reference %d ", refnum+1 );
 			n = fields_find( in, "REFNUM", LEVEL_ANY );
-			if ( n!=-1 ) 
+			if ( n!=FIELDS_NOTFOUND ) 
 				fprintf( stderr, " %s", (char*) fields_value( in, n, FIELDS_CHRP ) );
 			fprintf( stderr, " (defaulting to @Misc)\n" );
 			type = TYPE_MISC;
@@ -243,7 +267,7 @@ append_citekey( fields *in, fields *out, int format_opts, int *status )
 	char *p;
 
 	n = fields_find( in, "REFNUM", LEVEL_ANY );
-	if ( ( format_opts & BIBL_FORMAT_BIBOUT_DROPKEY ) || n==-1 ) {
+	if ( ( format_opts & BIBL_FORMAT_BIBOUT_DROPKEY ) || n==FIELDS_NOTFOUND ) {
 		fstatus = fields_add( out, "REFNUM", "", LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
 	}
@@ -278,7 +302,7 @@ append_simple( fields *in, char *intag, char *outtag, fields *out, int *status )
 	int n, fstatus;
 
 	n = fields_find( in, intag, LEVEL_ANY );
-	if ( n!=-1 ) {
+	if ( n!=FIELDS_NOTFOUND ) {
 		fields_setused( in, n );
 		fstatus = fields_add( out, outtag, fields_value( in, n, FIELDS_CHRP ), LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
@@ -462,16 +486,14 @@ out:
 static int
 append_title( fields *in, char *bibtag, int level, fields *out, int format_opts )
 {
-	int title = -1,     short_title = -1;
-	int subtitle = -1,  short_subtitle = -1;
-	int use_title = -1, use_subtitle = -1;
+	int title, short_title, subtitle, short_subtitle, use_title, use_subtitle;
 
 	title          = fields_find( in, "TITLE",         level );
 	short_title    = fields_find( in, "SHORTTITLE",    level );
 	subtitle       = fields_find( in, "SUBTITLE",      level );
 	short_subtitle = fields_find( in, "SHORTSUBTITLE", level );
 
-	if ( title==-1 || ( ( format_opts & BIBL_FORMAT_BIBOUT_SHORTTITLE ) && level==1 ) ) {
+	if ( title==FIELDS_NOTFOUND || ( ( format_opts & BIBL_FORMAT_BIBOUT_SHORTTITLE ) && level==1 ) ) {
 		use_title    = short_title;
 		use_subtitle = short_subtitle;
 	}
@@ -540,7 +562,7 @@ find_date( fields *in, char *date_element )
 	sprintf( date, "DATE:%s", date_element );
 	n = fields_find( in, date, LEVEL_ANY );
 
-	if ( n==-1 ) {
+	if ( n==FIELDS_NOTFOUND ) {
 		sprintf( partdate, "PARTDATE:%s", date_element );
 		n = fields_find( in, partdate, LEVEL_ANY );
 	}
@@ -556,7 +578,7 @@ append_date( fields *in, fields *out, int *status )
 	int n, month, fstatus;
 
 	n = find_date( in, "YEAR" );
-	if ( n!=-1 ) {
+	if ( n!=FIELDS_NOTFOUND ) {
 		fields_setused( in, n );
 		fstatus = fields_add( out, "year", in->data[n].data, LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) {
@@ -598,7 +620,7 @@ append_arxiv( fields *in, fields *out, int *status )
 	str url;
 
 	n = fields_find( in, "ARXIV", LEVEL_ANY );
-	if ( n==-1 ) return;
+	if ( n==FIELDS_NOTFOUND ) return;
 
 	fields_setused( in, n );
 
@@ -650,24 +672,23 @@ append_isi( fields *in, fields *out, int *status )
 	int n, fstatus;
 
 	n = fields_find( in, "ISIREFNUM", LEVEL_ANY );
-	if ( n!=-1 ) {
-		fstatus = fields_add( out, "note", fields_value( in, n, FIELDS_CHRP ), LEVEL_MAIN );
-		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
-	}
+	if ( n==FIELDS_NOTFOUND ) return;
+
+	fstatus = fields_add( out, "note", fields_value( in, n, FIELDS_CHRP ), LEVEL_MAIN );
+	if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
 }
 
-static int
-append_articlenumber( fields *in, fields *out )
+static void
+append_articlenumber( fields *in, fields *out, int *status )
 {
 	int n, fstatus;
 
 	n = fields_find( in, "ARTICLENUMBER", LEVEL_ANY );
-	if ( n!=-1 ) {
-		fields_setused( in, n );
-		fstatus = fields_add( out, "pages", fields_value( in, n, FIELDS_CHRP ), LEVEL_MAIN );
-		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
-	}
-	return BIBL_OK;
+	if ( n==FIELDS_NOTFOUND );
+
+	fields_setused( in, n );
+	fstatus = fields_add( out, "pages", fields_value( in, n, FIELDS_CHRP ), LEVEL_MAIN );
+	if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
 }
 
 static int
@@ -702,7 +723,7 @@ pages_are_defined( fields *in, int *sn, int *en )
 {
 	*sn = fields_find( in, "PAGES:START", LEVEL_ANY );
 	*en = fields_find( in, "PAGES:STOP",  LEVEL_ANY );
-	if ( *sn==-1 && *en==-1 ) return 0;
+	if ( *sn==FIELDS_NOTFOUND && *en==FIELDS_NOTFOUND ) return 0;
 	else return 1;
 }
 
@@ -713,7 +734,7 @@ append_pages( fields *in, fields *out, int format_opts, int *status )
 	str pages;
 
 	if ( !pages_are_defined( in, &sn, &en ) ) {
-		*status = append_articlenumber( in, out );
+		append_articlenumber( in, out, status );
 		return;
 	}
 
@@ -741,28 +762,29 @@ append_pages( fields *in, fields *out, int format_opts, int *status )
 static void
 append_issue_number( fields *in, fields *out, int *status )
 {
+	char issue[] = "issue", number[] = "number", *use_issue = number;
 	int nissue  = fields_find( in, "ISSUE",  LEVEL_ANY );
 	int nnumber = fields_find( in, "NUMBER", LEVEL_ANY );
 	int fstatus;
 
-	if ( nissue!=-1 && nnumber!=-1 ) {
+	if ( nissue!=FIELDS_NOTFOUND && nnumber!=FIELDS_NOTFOUND ) use_issue = issue;
+
+	if ( nissue!=FIELDS_NOTFOUND ) {
 		fields_setused( in, nissue );
-		fields_setused( in, nnumber );
-		fstatus = fields_add( out, "issue", fields_value( in, nissue, FIELDS_CHRP ), LEVEL_MAIN );
+		fstatus = fields_add( out, use_issue, fields_value( in, nissue, FIELDS_CHRP ), LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) {
 			*status = BIBL_ERR_MEMERR;
 			return;
 		}
-		fstatus = fields_add( out, "number", fields_value( in, nnumber, FIELDS_CHRP ), LEVEL_MAIN );
-		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
-	} else if ( nissue!=-1 ) {
-		fields_setused( in, nissue );
-		fstatus = fields_add( out, "number", fields_value( in, nissue, FIELDS_CHRP ), LEVEL_MAIN );
-		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
-	} else if ( nnumber!=-1 ) {
+	}
+
+	if ( nnumber!=FIELDS_NOTFOUND ) {
 		fields_setused( in, nnumber );
 		fstatus = fields_add( out, "number", fields_value( in, nnumber, FIELDS_CHRP ), LEVEL_MAIN );
-		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+		if ( fstatus!=FIELDS_OK ) {
+			*status = BIBL_ERR_MEMERR;
+			return;
+		}
 	}
 }
 

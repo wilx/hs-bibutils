@@ -1,7 +1,7 @@
 /*
  * risout.c
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Source code released under the GPL version 2
  *
@@ -180,6 +180,7 @@ get_type_genre( fields *f, param *p )
 		{ "Doctoral thesis",           TYPE_DOCTORALTHESIS },
 		{ "Habilitation thesis",       TYPE_HABILITATIONTHESIS },
 		{ "report",                    TYPE_REPORT },
+		{ "technical report",          TYPE_REPORT },
 		{ "abstract or summary",       TYPE_ABSTRACT },
 		{ "patent",                    TYPE_PATENT },
 		{ "unpublished",               TYPE_UNPUBLISHED },
@@ -193,7 +194,7 @@ get_type_genre( fields *f, param *p )
 
 	for ( i=0; i<fields_num( f ); ++i ) {
 		tag = ( char * ) fields_tag( f, i, FIELDS_CHRP );
-		if ( strcmp( tag, "GENRE" ) && strcmp( tag, "NGENRE" ) ) continue;
+		if ( strcmp( tag, "GENRE:MARC" ) && strcmp( tag, "GENRE:BIBUTILS" ) && strcmp( tag, "GENRE:UNKNOWN") ) continue;
 		value = ( char * ) fields_value( f, i, FIELDS_CHRP );
 		for ( j=0; j<nmatch_genres; ++j )
 			if ( !strcasecmp( match_genres[j].name, value ) )

@@ -1,7 +1,7 @@
 /*
  * isiout.c
  *
- * Copyright (c) Chris Putnam 2008-2017
+ * Copyright (c) Chris Putnam 2008-2018
  *
  * Source code released under the GPL version 2
  *
@@ -61,8 +61,9 @@ get_type( fields *in )
 	n = fields_num( in );
         for ( i=0; i<n; ++i ) {
 		tag = fields_tag( in, i, FIELDS_CHRP );
-                if ( strcasecmp( tag, "GENRE" ) &&
-                     strcasecmp( tag, "NGENRE") ) continue;
+                if ( strcasecmp( tag, "GENRE:MARC" ) &&
+		     strcasecmp( tag, "GENRE:BIBUTILS" ) &&
+		     strcasecmp( tag, "GENRE:UNKNOWN" ) ) continue;
 		value = fields_value( in, i, FIELDS_CHRP );
 		level = fields_level( in, i );
                 if ( !strcasecmp( value, "periodical" ) ||

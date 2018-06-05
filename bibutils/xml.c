@@ -1,7 +1,7 @@
 /*
  * xml.c
  *
- * Copyright (c) Chris Putnam 2004-2017
+ * Copyright (c) Chris Putnam 2004-2018
  *
  * Source code released under the GPL version 2
  *
@@ -15,72 +15,41 @@
 
 char *xml_pns = NULL;
 
-static xml_attrib *
-xmlattrib_new( void )
+void
+xml_init( xml *node )
 {
-	xml_attrib *a = (xml_attrib *) malloc( sizeof( xml_attrib ) );
-	if ( a ) {
-		slist_init( &(a->attrib) );
-		slist_init( &(a->value) );
-	}
-	return a;
-}
-
-static void
-xmlattrib_add( xml_attrib *a, char *attrib, char *value  )
-{
-	if ( attrib ) slist_addc( &(a->attrib), attrib );
-	else slist_addc( &(a->attrib), "" );
-	if ( value ) slist_addc( &(a->value), value );
-	else slist_addc( &(a->value), "" );
-}
-
-static void
-xmlattrib_free( xml_attrib *a )
-{
-	slist_free( &(a->attrib) );
-	slist_free( &(a->value ) );
+	str_init( &(node->tag) );
+	str_init( &(node->value) );
+	slist_init( &(node->attributes) );
+	slist_init( &(node->attribute_values) );
+	node->down = NULL;
+	node->next = NULL;
 }
 
 static xml *
 xml_new( void )
 {
-	xml *x = ( xml * ) malloc( sizeof( xml ) );
-	if ( x ) xml_init( x );
-	return x;
+	xml *node = ( xml * ) malloc( sizeof( xml ) );
+	if ( node ) xml_init( node );
+	return node;
+}
+
+static void
+xml_delete( xml *node )
+{
+	xml_free( node );
+	free( node );
 }
 
 void
-xml_free( xml *x )
+xml_free( xml *node )
 {
-	if ( x->tag ) {
-		str_free( x->tag );
-		free( x->tag );
-	}
-	if ( x->value ) {
-		str_free( x->value );
-		free( x->value );
-	}
-	if ( x->a ) {
-		xmlattrib_free( x->a );
-		free( x->a );
-	}
-	if ( x->down ) xml_free( x->down );
-	if ( x->next ) xml_free( x->next );
-}
-
-void
-xml_init( xml *x )
-{
-	x->tag = str_new();
-	x->value = str_new();
-	x->a = NULL;
-	x->down = NULL;
-	x->next = NULL;
-	if ( !(x->tag) || !(x->value) ) {
-		fprintf(stderr,"xml_init: memory error.\n");
-		exit( EXIT_FAILURE );
-	}
+	str_free( &(node->tag) );
+	str_free( &(node->value) );
+	slist_free( &(node->attributes) );
+	slist_free( &(node->attribute_values) );
+	if ( node->down ) xml_delete( node->down );
+	if ( node->next ) xml_delete( node->next );
 }
 
 enum {
@@ -92,7 +61,7 @@ enum {
 };
 
 static int
-xml_terminator( char *p, int *type )
+xml_is_terminator( char *p, int *type )
 {
 	if ( *p=='>' ) {
 		return 1;
@@ -110,88 +79,128 @@ xml_terminator( char *p, int *type )
 	return 0;
 }
 
-static char *
-xml_processattrib( char *p, xml_attrib **ap, int *type )
+static int
+xml_add_attribute( xml *node, char *attribute, char *attribute_value  )
 {
-	xml_attrib *a = NULL;
+	str *s;
+
+	if ( attribute )
+		s = slist_addc( &(node->attributes), attribute );
+	else
+		s = slist_addc( &(node->attributes), "" );
+	if ( s==NULL ) return 0;
+
+	if ( attribute_value )
+		s = slist_addc( &(node->attribute_values), attribute_value );
+	else
+		s = slist_addc( &(node->attribute_values), "" );
+	if ( s==NULL ) {
+		(void) slist_remove( &(node->attributes), node->attributes.n-1 );
+		return 0;
+	}
+	return 1;
+}
+
+static char *
+xml_processattrib( char *p, xml *node, int *type )
+{
 	char quote_character = '\"';
 	int inquotes = 0;
 	str aname, aval;
+
 	str_init( &aname );
 	str_init( &aval );
-	while ( *p && !xml_terminator(p,type) ) {
+
+	while ( *p && !xml_is_terminator( p, type ) ) {
+
 		/* get attribute name */
 		while ( *p==' ' || *p=='\t' ) p++;
-		while ( *p && !strchr( "= \t", *p ) && !xml_terminator(p,type)){
+		while ( *p && !strchr( "= \t", *p ) && !xml_is_terminator( p, type ) ){
 			str_addchar( &aname, *p );
 			p++;
 		}
+
+		/* equals sign */
 		while ( *p==' ' || *p=='\t' ) p++;
 		if ( *p=='=' ) p++;
-		/* get attribute value */
 		while ( *p==' ' || *p=='\t' ) p++;
+
+		/* get attribute value */
 		if ( *p=='\"' || *p=='\'' ) {
 			if ( *p=='\'' ) quote_character = *p;
 			inquotes=1;
 			p++;
 		}
-		while ( *p && ((!xml_terminator(p,type) && !strchr("= \t", *p ))||inquotes)){
+		while ( *p && ((!xml_is_terminator(p,type) && !strchr("= \t", *p ))||inquotes)){
 			if ( *p==quote_character ) inquotes=0;
 			else str_addchar( &aval, *p );
 			p++;
 		}
 		if ( str_has_value( &aname ) ) {
-			if ( !a ) a = xmlattrib_new();
-			xmlattrib_add( a, str_cstr( &aname ), str_cstr( &aval ) );
+			xml_add_attribute( node, str_cstr( &aname ), str_cstr( &aval ) );
 		}
+
 		str_empty( &aname );
 		str_empty( &aval );
 	}
+
 	str_free( &aname );
 	str_free( &aval );
-	*ap = a;
+
 	return p;
 }
 
 /*
  * xml_processtag
  *
- *      XML_COMMENT   <!-- ....  -->
+ *                        start right after '<'
+ *                        *
+ *      XML_COMMENT      <!-- ....  -->
  * 	XML_DESCRIPTOR   <?.....>
- * 	XML_OPEN      <A>
- * 	XML_CLOSE     </A>
- * 	XML_OPENCLOSE <A/>
+ * 	XML_OPEN         <A>
+ * 	XML_CLOSE        </A>
+ * 	XML_OPENCLOSE    <A/>
  */
 static char *
-xml_processtag( char *p, str *tag, xml_attrib **attrib, int *type )
+xml_processtag( char *p, xml *node, int *type )
 {
-	*attrib = NULL;
-	if ( *p=='<' ) p++;
+	str tag;
+
+	str_init( &tag );
+
 	if ( *p=='!' ) {
-		while ( *p && *p!='>' ) str_addchar( tag, *p++ );
 		*type = XML_COMMENT;
-	} else if ( *p=='?' ) {
+		while ( *p && *p!='>' ) p++;
+	}
+	else if ( *p=='?' ) {
 		*type = XML_DESCRIPTOR;
 		p++; /* skip '?' */
-		while ( *p && !strchr( " \t", *p ) && !xml_terminator(p,type) )
-			str_addchar( tag, *p++ );
+		while ( *p && !strchr( " \t", *p ) && !xml_is_terminator(p,type) )
+			str_addchar( &tag, *p++ );
 		if ( *p==' ' || *p=='\t' )
-			p = xml_processattrib( p, attrib, type );
-	} else if ( *p=='/' ) {
-		while ( *p && !strchr( " \t", *p ) && !xml_terminator(p,type) )
-			str_addchar( tag, *p++ );
+			p = xml_processattrib( p, node, type );
+	}
+	else if ( *p=='/' ) {
 		*type = XML_CLOSE;
+		while ( *p && !strchr( " \t", *p ) && !xml_is_terminator(p,type) )
+			str_addchar( &tag, *p++ );
 		if ( *p==' ' || *p=='\t' ) 
-			p = xml_processattrib( p, attrib, type );
-	} else {
+			p = xml_processattrib( p, node, type );
+	}
+	else {
 		*type = XML_OPEN;
-		while ( *p && !strchr( " \t", *p ) && !xml_terminator(p,type) )
-			str_addchar( tag, *p++ );
+		while ( *p && !strchr( " \t", *p ) && !xml_is_terminator(p,type) )
+			str_addchar( &tag, *p++ );
 		if ( *p==' ' || *p=='\t' ) 
-			p = xml_processattrib( p, attrib, type );
+			p = xml_processattrib( p, node, type );
 	}
 	while ( *p && *p!='>' ) p++;
 	if ( *p=='>' ) p++;
+
+	str_strcpy( &(node->tag), &tag );
+
+	str_free( &tag );
+
 	return p;
 }
 
@@ -207,102 +216,99 @@ xml_appendnode( xml *onode, xml *nnode )
 }
 
 char *
-xml_tree( char *p, xml *onode )
+xml_parse( char *p, xml *onode )
 {
-	str tag;
-	xml_attrib *attrib;
 	int type, is_style = 0;
-
-	str_init( &tag );
+	xml *nnode;
 
 	while ( *p ) {
+
 		/* retain white space for <style> tags in endnote xml */
-		if ( onode->tag && str_cstr( onode->tag ) &&
-			!strcasecmp( str_cstr( onode->tag ),"style") ) is_style=1;
+		if ( str_cstr( &(onode->tag) ) &&
+			!strcasecmp( str_cstr( &(onode->tag) ),"style") ) is_style=1;
+
 		while ( *p && *p!='<' ) {
-			if ( onode->value->len>0 || is_style || !is_ws( *p ) )
-				str_addchar( onode->value, *p );
+			if ( onode->value.len>0 || is_style || !is_ws( *p ) )
+				str_addchar( &(onode->value), *p );
 			p++;
 		}
+
 		if ( *p=='<' ) {
-			str_empty( &tag );
-			p = xml_processtag( p, &tag, &attrib, &type );
-			if ( type==XML_OPEN || type==XML_OPENCLOSE ||
-			     type==XML_DESCRIPTOR ) {
-				xml *nnode = xml_new();
-				str_strcpy( nnode->tag, &tag );
-				nnode->a = attrib;
+			nnode = xml_new();
+			p = xml_processtag( p+1, nnode, &type );
+			if ( type==XML_OPEN || type==XML_OPENCLOSE || type==XML_DESCRIPTOR ) {
 				xml_appendnode( onode, nnode );
 				if ( type==XML_OPEN )
-					p = xml_tree( p, nnode );
+					p = xml_parse( p, nnode );
 			} else if ( type==XML_CLOSE ) {
 				/*check to see if it's closing for this one*/
+				xml_delete( nnode );
 				goto out; /* assume it's right for now */
+			} else {
+				xml_delete( nnode );
 			}
 		}
+
 	}
 out:
-	str_free( &tag );
 	return p;
 }
 
 void
-xml_draw( xml *x, int n )
+xml_draw( xml *node, int n )
 {
-	int i,j;
-	if ( !x ) return;
+	slist_index j;
+	int i;
+
+	if ( !node ) return;
+
 	for ( i=0; i<n; ++i ) printf( "    " );
-	printf("n=%d tag='%s' value='%s'\n", n, str_cstr( x->tag ), str_cstr( x->value ) );
-	if ( x->a ) {
-		for ( j=0; j<x->a->value.n; ++j ) {
-			for ( i=0; i<n; ++i ) printf( "    " );
-			printf("    attrib='%s' value='%s'\n",
-				slist_cstr( &(x->a)->attrib, j ),
-				slist_cstr( &(x->a)->attrib, j ) );
-		}
+
+	printf("n=%d tag='%s' value='%s'\n", n, str_cstr( &(node->tag) ), str_cstr( &(node->value) ) );
+
+	for ( j=0; j<node->attributes.n; ++j ) {
+		for ( i=0; i<n; ++i ) printf( "    " );
+		printf( "    attribute='%s' value='%s'\n",
+			slist_cstr( &(node->attributes), j ),
+			slist_cstr( &(node->attribute_values), j )
+		);
 	}
-	if ( x->down ) xml_draw( x->down, n+1 );
-	if ( x->next ) xml_draw( x->next, n );
+
+	if ( node->down ) xml_draw( node->down, n+1 );
+	if ( node->next ) xml_draw( node->next, n );
 }
 
 char *
-xml_findstart( char *buffer, char *tag )
+xml_find_start( char *buffer, char *tag )
 {
 	str starttag;
 	char *p;
 
-	str_init( &starttag );
-	str_addchar( &starttag, '<' );
-	str_strcatc( &starttag, tag );
-	str_addchar( &starttag, ' ' );
-	p = strsearch( buffer, str_cstr( &starttag ) );
+	str_initstrsc( &starttag, "<", tag, " ", NULL );
 
+	p = strsearch( buffer, str_cstr( &starttag ) );
 	if ( !p ) {
 		starttag.data[ starttag.len-1 ] = '>';
 		p = strsearch( buffer, str_cstr( &starttag ) );
 	}
 
 	str_free( &starttag );
+
 	return p;
 }
 
 char *
-xml_findend( char *buffer, char *tag )
+xml_find_end( char *buffer, char *tag )
 {
 	str endtag;
 	char *p;
 
-	str_init( &endtag );
-	str_strcpyc( &endtag, "</" );
-	if ( xml_pns ) {
-		str_strcatc( &endtag, xml_pns );
-		str_addchar( &endtag, ':' );
-	}
-	str_strcatc( &endtag, tag );
-	str_addchar( &endtag, '>' );
+	if ( xml_pns )
+		str_initstrsc( &endtag, "</", xml_pns, ":", tag, ">", NULL );
+	else
+		str_initstrsc( &endtag, "</", tag, ">", NULL );
 
 	p = strsearch( buffer, str_cstr( &endtag ) );
-
 	if ( p && *p ) {
 		if ( *p ) p++;  /* skip <random_tag></end> combo */
 		while ( *p && *(p-1)!='>' ) p++;
@@ -313,102 +319,101 @@ xml_findend( char *buffer, char *tag )
 }
 
 static int
-xml_tagexact_simple( xml* node, char *s )
+xml_tag_matches_simple( xml* node, const char *tag )
 {
-	if ( node->tag->len!=strlen( s ) ) return 0;
-	if ( strcasecmp( str_cstr( node->tag ), s ) ) return 0;
+	if ( node->tag.len!=strlen( tag ) ) return 0;
+	if ( strcasecmp( str_cstr( &(node->tag) ), tag ) ) return 0;
 	return 1;
 }
 static int
-xml_tagexact_pns( xml* node, char *s )
+xml_tag_matches_pns( xml* node, const char *tag )
 {
 	int found = 0;
-	str tag;
+	str pnstag;
 
-	str_init( &tag );
-	str_strcpyc( &tag, xml_pns );
-	str_addchar( &tag, ':' );
-	str_strcatc( &tag, s );
-	if ( node->tag->len==tag.len &&
-			!strcasecmp( str_cstr( node->tag ), str_cstr( &tag ) ) )
+	str_initstrsc( &pnstag, xml_pns, ":", tag, NULL );
+	if ( node->tag.len==pnstag.len &&
+			!strcasecmp( str_cstr( &(node->tag) ), str_cstr( &pnstag ) ) )
 		found = 1;
-	str_free( &tag );
+	str_free( &pnstag );
 
 	return found;
 }
 int
-xml_tagexact( xml *node, char *s )
+xml_tag_matches( xml *node, const char *tag )
 {
-	if ( xml_pns ) return xml_tagexact_pns( node, s );
-	else           return xml_tagexact_simple( node, s );
+	if ( xml_pns ) return xml_tag_matches_pns   ( node, tag );
+	else           return xml_tag_matches_simple( node, tag );
 }
 
 int
-xml_hasattrib( xml *node, char *attrib, char *value )
+xml_tag_matches_has_value( xml *node, const char *tag )
 {
-	xml_attrib *na = node->a;
+	if ( xml_tag_matches( node, tag ) && xml_has_value( node ) ) return 1;
+	return 0;
+}
+
+int
+xml_has_attribute( xml *node, const char *attribute, const char *attribute_value )
+{
+	slist_index i;
 	char *a, *v;
-	int i;
 
-	if ( na ) {
-
-		for ( i=0; i<na->attrib.n; ++i ) {
-			a = slist_cstr( &(na->attrib), i );
-			v = slist_cstr( &(na->value),  i );
-			if ( !a || !v ) continue;
-			if ( !strcasecmp( a, attrib ) && !strcasecmp( v, value ) )
-				return 1;
-		}
-
+	for ( i=0; i<node->attributes.n; ++i ) {
+		a = slist_cstr( &(node->attributes), i );
+		v = slist_cstr( &(node->attribute_values), i );
+		if ( !a || !v ) continue;
+		if ( !strcasecmp( a, attribute ) && !strcasecmp( v, attribute_value ) )
+			return 1;
 	}
 
 	return 0;
 }
 
 int
-xml_tag_attrib( xml *node, char *s, char *attrib, char *value )
+xml_tag_has_attribute( xml *node, const char *tag, const char *attribute, const char *attribute_value )
 {
-	if ( !xml_tagexact( node, s ) ) return 0;
-	return xml_hasattrib( node, attrib, value );
+	if ( !xml_tag_matches( node, tag ) ) return 0;
+	return xml_has_attribute( node, attribute, attribute_value );
 }
 
 str *
-xml_getattrib( xml *node, char *attrib )
+xml_attribute( xml *node, const char *attribute )
 {
-	xml_attrib *na = node->a;
-	str *ns = NULL;
-	int i;
+	slist_index n;
 
-	if ( na ) {
-		for ( i=0; i<na->attrib.n; ++i )
-			if ( !strcasecmp( slist_cstr( &(na->attrib), i ), attrib ) )
-				ns = slist_str( &(na->value), i );
-	}
-	return ns;
+	n = slist_findc( &(node->attributes), attribute );
+	if ( slist_wasnotfound( &(node->attributes), n ) ) return NULL;
+	else return slist_str( &(node->attribute_values), n );
 }
 
 int
-xml_hasvalue( xml *node )
+xml_has_value( xml *node )
 {
-	if ( node && node->value && str_cstr( node->value ) ) return 1;
+	if ( node && str_has_value( &(node->value) ) ) return 1;
 	return 0;
 }
 
-char *
+str *
 xml_tag( xml *node )
 {
-	return str_cstr( node->tag );
+	return &(node->tag);
 }
 
 char *
-xml_value( xml *node )
+xml_tag_cstr( xml *node )
 {
-	return str_cstr( node->value );
+	return str_cstr( &(node->tag) );
 }
 
-int
-xml_tagwithvalue( xml *node, char *tag )
+str *
+xml_value( xml *node )
 {
-	if ( !xml_hasvalue( node ) ) return 0;
-	return xml_tagexact( node, tag );
+	return &(node->value);
+}
+
+char *
+xml_value_cstr( xml *node )
+{
+	return str_cstr( &(node->value) );
 }

@@ -1,7 +1,7 @@
 /*
  * bibcore.c
  *
- * Copyright (c) Chris Putnam 2005-2017
+ * Copyright (c) Chris Putnam 2005-2018
  *
  * Source code released under the GPL version 2
  *
@@ -44,16 +44,15 @@ report_params( FILE *fp, const char *f, param *p )
 		case BIBL_EBIIN:        fprintf( fp, " (BIBL_EBIIN)\n" );        break;
 		case BIBL_WORDIN:       fprintf( fp, " (BIBL_WORDIN)\n" );       break;
 		case BIBL_NBIBIN:       fprintf( fp, " (BIBL_NBIBIN)\n" );       break;
-		default:                fprintf( fp, " (Illegal)\n" );           break;
+		default:                fprintf( fp, " (Illegal value %d)\n", p->readformat ); break;
 	}
 	fprintf( fp, "\tcharsetin=%d\n", p->charsetin );
-/*	fprintf( fp, "\tcharsetin=%d (%s)\n", p->charsetin, get_charsetname( p->charsetin ) );*/
 	fprintf( fp, "\tcharsetin_src=%d", p->charsetin_src );
 	switch ( p->charsetin_src ) {
 		case 0:  fprintf( fp, " (BIBL_SRC_DEFAULT)\n" ); break;
 		case 1:  fprintf( fp, " (BIBL_SRC_FILE)\n" );    break;
 		case 2:  fprintf( fp, " (BIBL_SRC_USER)\n" );    break;
-		default: fprintf( fp, " (Illegal value!)\n" );   break;
+		default: fprintf( fp, " (Illegal value %d)\n", p->charsetin_src );   break;
 	}
 	fprintf( fp, "\tutf8in=%d\n", p->utf8in );
 	fprintf( fp, "\tlatexin=%d\n", p->latexin );
@@ -69,16 +68,15 @@ report_params( FILE *fp, const char *f, param *p )
 		case BIBL_ISIOUT:       fprintf( fp, " (BIBL_ISIOUT)\n" );       break;
 		case BIBL_WORD2007OUT:  fprintf( fp, " (BIBL_WORD2007OUT)\n" );  break;
 		case BIBL_ADSABSOUT:    fprintf( fp, " (BIBL_ADSABSOUT)\n" );    break;
-		default:                fprintf( fp, " (Illegal)\n" );           break;
+		default:                fprintf( fp, " (Illegal value %d)\n", p->writeformat ); break;
 	}
-/*	fprintf( fp, "\tcharsetout=%d (%s)\n", p->charsetout, get_charsetname( p->charsetout ) );*/
 	fprintf( fp, "\tcharsetout=%d\n", p->charsetout );
 	fprintf( fp, "\tcharsetout_src=%d", p->charsetout_src );
 	switch ( p->charsetout_src ) {
 		case 0:  fprintf( fp, " (BIBL_SRC_DEFAULT)\n" ); break;
 		case 1:  fprintf( fp, " (BIBL_SRC_FILE)\n" );    break;
 		case 2:  fprintf( fp, " (BIBL_SRC_USER)\n" );    break;
-		default: fprintf( fp, " (Illegal value!)\n" );   break;
+		default: fprintf( fp, " (Illegal value %d)\n", p->charsetout_src ); break;
 	}
 	fprintf( fp, "\tutf8out=%d\n", p->utf8out );
 	fprintf( fp, "\tutf8bom=%d\n", p->utf8bom );
@@ -275,7 +273,7 @@ bibl_reporterr( int err )
 		case BIBL_ERR_CANTOPEN:
 			fprintf( stderr, "Can't open." ); break;
 		default:
-			fprintf( stderr, "Cannot identify error code: %d", err); break;
+			fprintf( stderr, "Cannot identify error code %d.", err ); break;
 	}
 	fprintf( stderr, "\n" );
 }
@@ -338,9 +336,9 @@ bibl_verbose0( bibl *bin )
 /* extract_tag_value
  *
  * Extract the tag and the value for ALWAYS/DEFAULT
- * entries like: "NGENRE|Masters thesis"
+ * entries like: "GENRE:BIBUTILS|Masters thesis"
  *
- * tag = "NGENRE"
+ * tag = "GENRE:BIBUTILS"
  * value = "Masters thesis"
  */
 static int
@@ -395,7 +393,7 @@ process_defaultadd( fields *f, int reftype, param *r )
 		}
 
 		n = fields_find( f, tag.data, level );
-		if ( n==-1 ) {
+		if ( n==FIELDS_NOTFOUND ) {
 			status = fields_add( f, tag.data, value.data, level );
 			if ( status!=FIELDS_OK ) {
 				ret = BIBL_ERR_MEMERR;
@@ -474,13 +472,11 @@ read_ref( FILE *fp, bibl *bin, char *filename, param *p )
 			if ( !ok ) {
 				ret = BIBL_ERR_MEMERR;
 				bibl_free( bin );
-				fields_free( ref );
-				free( ref );
+				fields_delete( ref );
 				goto out;
 			}
 		} else {
-			fields_free( ref );
-			free( ref );
+			fields_delete( ref );
 		}
 		str_empty( &reference );
 		if ( fcharset!=CHARSET_UNKNOWN ) {
@@ -597,9 +593,9 @@ build_refnum( fields *f, long nrefs, int *n )
 		goto out;
 	}
 
-	status = fields_add( f, "REFNUM", refnum.data, 0 );
+	status = fields_add( f, "REFNUM", refnum.data, LEVEL_MAIN );
 	if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-	else *n = fields_find( f, "REFNUM", 0 );
+	else *n = fields_find( f, "REFNUM", LEVEL_MAIN );
 
 out:
 	str_free( &refnum );
@@ -617,8 +613,8 @@ bibl_checkrefid( bibl *b, param *p )
 
 	for ( i=0; i<b->nrefs; ++i ) {
 		ref = b->ref[i];
-		n = fields_find( ref, "REFNUM", 0 );
-		if ( n==-1 ) {
+		n = fields_find( ref, "REFNUM", LEVEL_MAIN );
+		if ( n==FIELDS_NOTFOUND ) {
 			status = build_refnum( ref, i+1, &n );
 			if ( status!=BIBL_OK ) return status;
 		}
@@ -642,13 +638,13 @@ generate_citekey( fields *f, int nref )
 
 	str_init( &citekey );
 
-	n1 = fields_find( f, "AUTHOR", 0 );
-	if ( n1==-1 ) n1 = fields_find( f, "AUTHOR", -1 );
-	n2 = fields_find( f, "DATE:YEAR", 0 );
-	if ( n2==-1 ) n2 = fields_find( f, "DATE:YEAR", -1 );
-	if ( n2==-1 ) n2 = fields_find( f, "PARTDATE:YEAR", 0 );
-	if ( n2==-1 ) n2 = fields_find( f, "PARTDATE:YEAR", -1 );
-	if ( n1!=-1 && n2!=-1 ) {
+	n1 = fields_find( f, "AUTHOR", LEVEL_MAIN );
+	if ( n1==FIELDS_NOTFOUND ) n1 = fields_find( f, "AUTHOR", LEVEL_ANY );
+	n2 = fields_find( f, "DATE:YEAR", LEVEL_MAIN );
+	if ( n2==FIELDS_NOTFOUND ) n2 = fields_find( f, "DATE:YEAR", LEVEL_ANY );
+	if ( n2==FIELDS_NOTFOUND ) n2 = fields_find( f, "PARTDATE:YEAR", LEVEL_MAIN );
+	if ( n2==FIELDS_NOTFOUND ) n2 = fields_find( f, "PARTDATE:YEAR", LEVEL_ANY );
+	if ( n1!=FIELDS_NOTFOUND && n2!=FIELDS_NOTFOUND ) {
 		p = f->data[n1].data;
 		while ( p && *p && *p!='|' ) {
 			if ( !is_ws( *p ) ) str_addchar( &citekey, *p ); 
@@ -672,7 +668,7 @@ generate_citekey( fields *f, int nref )
 		sprintf( buf, "ref%d\n", nref );
 		str_strcpyc( &citekey, buf );
 	}
-	ret = fields_find( f, "REFNUM", -1 );
+	ret = fields_find( f, "REFNUM", LEVEL_ANY );
 out:
 	str_free( &citekey );
 	return ret;
@@ -710,8 +706,8 @@ resolve_citekeys( bibl *b, slist *citekeys, int *dup )
 			}
 			nsame++;
 			dup[j] = -1;
-			n = fields_find( b->ref[j], "REFNUM", -1 );
-			if ( n!=-1 ) {
+			n = fields_find( b->ref[j], "REFNUM", LEVEL_ANY );
+			if ( n!=FIELDS_NOTFOUND ) {
 				str_strcpy(&((b->ref[j])->data[n]),&tmp);
 				if ( str_memerr( &((b->ref[j])->data[n]) ) ) {
 					status = BIBL_ERR_MEMERR;
@@ -733,9 +729,9 @@ get_citekeys( bibl *b, slist *citekeys )
 	str *s;
 	for ( i=0; i<b->nrefs; ++i ) {
 		f = b->ref[i];
-		n = fields_find( f, "REFNUM", -1 );
-		if ( n==-1 ) n = generate_citekey( f, i );
-		if ( n!=-1 && f->data[n].data ) {
+		n = fields_find( f, "REFNUM", LEVEL_ANY );
+		if ( n==FIELDS_NOTFOUND ) n = generate_citekey( f, i );
+		if ( n!=FIELDS_NOTFOUND && f->data[n].data ) {
 			s = slist_add( citekeys, &(f->data[n]) );
 			if ( !s ) return BIBL_ERR_MEMERR;
 		} else {
@@ -838,20 +834,31 @@ bibl_read( bibl *b, FILE *fp, char *filename, param *p )
 	if ( !fp ) return BIBL_ERR_BADINPUT;
 	if ( !p )  return BIBL_ERR_BADINPUT;
 
-	if ( debug_set( p ) ) {
-		fflush( stdout );
-		report_params( stderr, "bibl_read", p );
+	if ( bibl_illegalinmode( p->readformat ) ) {
+		if ( debug_set( p ) ) {
+			fflush( stdout );
+			report_params( stderr, "bibl_read", p );
+		}
+		return BIBL_ERR_BADINPUT;
 	}
 
-	if ( bibl_illegalinmode( p->readformat ) ) return BIBL_ERR_BADINPUT;
-
 	status = bibl_setreadparams( &lp, p );
-	if ( status!=BIBL_OK ) return status;
+	if ( status!=BIBL_OK ) {
+		if ( debug_set( p ) ) {
+			fflush( stdout );
+			report_params( stderr, "bibl_read", p );
+		}
+		return status;
+	}
 
 	bibl_init( &bin );
 
 	status = read_ref( fp, &bin, filename, &lp );
 	if ( status!=BIBL_OK ) {
+		if ( debug_set( p ) ) {
+			fflush( stdout );
+			report_params( stderr, "bibl_read", &lp );
+		}
 		bibl_freeparams( &lp );
 		return status;
 	}
@@ -930,7 +937,7 @@ singlerefname( fields *reffields, long nref, int mode )
 	else if ( mode==BIBL_MODSOUT )       strcpy( suffix, "xml" );
 	else if ( mode==BIBL_RISOUT )        strcpy( suffix, "ris" );
 	else if ( mode==BIBL_WORD2007OUT )   strcpy( suffix, "xml" );
-	found = fields_find( reffields, "REFNUM", 0 );
+	found = fields_find( reffields, "REFNUM", LEVEL_MAIN );
 	/* find new filename based on reference */
 	if ( found!=-1 ) {
 		sprintf( outfile,"%s.%s",reffields->data[found].data, suffix );
@@ -990,7 +997,7 @@ bibl_write( bibl *b, FILE *fp, param *p )
 	if ( !b ) return BIBL_ERR_BADINPUT;
 	if ( !p ) return BIBL_ERR_BADINPUT;
 	if ( bibl_illegaloutmode( p->writeformat ) ) return BIBL_ERR_BADINPUT;
-	if ( !fp && ( !p || !p->singlerefperfile ) ) return BIBL_ERR_BADINPUT;
+	if ( !fp && !p->singlerefperfile ) return BIBL_ERR_BADINPUT;
 
 	status = bibl_setwriteparams( &lp, p );
 	if ( status!=BIBL_OK ) return status;

@@ -3,7 +3,7 @@
  *
  * mangle names w/ and w/o commas
  *
- * Copyright (c) Chris Putnam 2004-2017
+ * Copyright (c) Chris Putnam 2004-2018
  *
  * Source code released under the GPL version 2
  *
@@ -41,7 +41,7 @@ name_build_withcomma( str *s, char *p )
 		nch = 0;
 		if ( nseps==1 ) {
 			if ( suffix ) {
-				str_addchar( s, ' ' );
+				str_strcatc( s, " " );
 				str_strcatc( s, suffix+2 );
 			}
 			str_addchar( s, ',' );
@@ -114,16 +114,16 @@ identify_suffix( char *p )
 	suffix_value_t suffixes[] = {
 		{ "Jr."   ,   JUNIOR              },
 		{ "Jr"    ,   JUNIOR              },
-		{ "Jr.,"  ,   JUNIOR | WITHCOMMA },
-		{ "Jr,"   ,   JUNIOR | WITHCOMMA },
+		{ "Jr.,"  ,   JUNIOR | WITHCOMMA  },
+		{ "Jr,"   ,   JUNIOR | WITHCOMMA  },
 		{ "Sr."   ,   SENIOR              },
 		{ "Sr"    ,   SENIOR              },
-		{ "Sr.,"  ,   SENIOR | WITHCOMMA },
-		{ "Sr,"   ,   SENIOR | WITHCOMMA },
+		{ "Sr.,"  ,   SENIOR | WITHCOMMA  },
+		{ "Sr,"   ,   SENIOR | WITHCOMMA  },
 		{ "III"   ,   THIRD               },
-		{ "III,"  ,   THIRD  | WITHCOMMA },
+		{ "III,"  ,   THIRD  | WITHCOMMA  },
 		{ "IV"    ,   FOURTH              },
-		{ "IV,"   ,   FOURTH | WITHCOMMA },
+		{ "IV,"   ,   FOURTH | WITHCOMMA  },
 	};
 	int i, nsuffixes = sizeof( suffixes ) / sizeof( suffixes[0] );
 	for ( i=0; i<nsuffixes; ++i ) {
@@ -411,8 +411,8 @@ name_addsingleelement( fields *info, char *tag, char *name, int level, int corp 
 int
 name_parse( str *outname, str *inname, slist *asis, slist *corps )
 {
+	int status, ret = 1;
 	slist tokens;
-	int ret = 1;
 
 	str_empty( outname );
 	if ( !inname || !inname->len ) return ret;
@@ -430,7 +430,12 @@ name_parse( str *outname, str *inname, slist *asis, slist *corps )
 	}
 
 	str_findreplace( inname, ",", ", " );
-	slist_tokenize( &tokens, inname, " ", 1 );
+	status = slist_tokenize( &tokens, inname, " ", 1 );
+	if ( status!=SLIST_OK ) {
+		str_strcpy( outname, inname );
+		ret = 2;
+		goto out;
+	}
 
 	if ( tokens.n==1 ) {
 		str_strcpy( outname, inname );

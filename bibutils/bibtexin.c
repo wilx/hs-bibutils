@@ -1,7 +1,7 @@
 /*
  * bibtexin.c
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -292,11 +292,6 @@ replace_strings( slist *tokens, fields *bibin, param *pm )
 					if ( !isdigit( *q ) ) ok = 0;
 					q++;
 				}
-				if ( !ok ) {
-					fprintf( stderr, "%s: Warning: Non-numeric "
-					   "BibTeX elements should be in quotations or "
-					   "curly brackets in reference.\n", pm->progname );
-				}
 			}
 		}
 		i++;
@@ -560,7 +555,7 @@ bibtex_addtitleurl( fields *info, str *in )
 	if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
 
 	/* ...return deleted fragment to str in */
-	p = str_cpytodelim( &s, p, "", 0 );
+	(void) str_cpytodelim( &s, p, "", 0 );
 	if ( str_memerr( &s ) ) { status = BIBL_ERR_MEMERR; goto out; }
 	str_swapstrings( &s, in );
 
@@ -727,7 +722,7 @@ bibtexin_findref( bibl *bin, char *citekey )
 	long i;
 	for ( i=0; i<bin->nrefs; ++i ) {
 		n = fields_find( bin->ref[i], "refnum", LEVEL_ANY );
-		if ( n==-1 ) continue;
+		if ( n==FIELDS_NOTFOUND ) continue;
 		if ( !strcmp( bin->ref[i]->data[n].data, citekey ) ) return i;
 	}
 	return -1;
@@ -740,7 +735,7 @@ bibtexin_nocrossref( bibl *bin, long i, int n, param *p )
 	if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
 	fprintf( stderr, "Cannot find cross-reference '%s'",
 			bin->ref[i]->data[n].data );
-	if ( n1!=-1 ) fprintf( stderr, " for reference '%s'\n",
+	if ( n1!=FIELDS_NOTFOUND ) fprintf( stderr, " for reference '%s'\n",
 			bin->ref[i]->data[n1].data );
 	fprintf( stderr, "\n" );
 }
@@ -785,7 +780,7 @@ bibtexin_crossref( bibl *bin, param *p )
 	for ( i=0; i<bin->nrefs; ++i ) {
 		bibref = bin->ref[i];
 		n = fields_find( bibref, "CROSSREF", LEVEL_ANY );
-		if ( n==-1 ) continue;
+		if ( n==FIELDS_NOTFOUND ) continue;
 		fields_setused( bibref, n );
 		ncross = bibtexin_findref( bin, (char*) fields_value( bibref, n, FIELDS_CHRP ) );
 		if ( ncross==-1 ) {
@@ -824,8 +819,8 @@ bibtexin_typef( fields *bibin, char *filename, int nrefs, param *p )
 
 	ntypename = fields_find( bibin, "INTERNAL_TYPE", LEVEL_MAIN );
 	nrefname  = fields_find( bibin, "REFNUM",        LEVEL_MAIN );
-	if ( nrefname!=-1 )  refname  = fields_value( bibin, nrefname,  FIELDS_CHRP_NOUSE );
-	if ( ntypename!=-1 ) typename = fields_value( bibin, ntypename, FIELDS_CHRP_NOUSE );
+	if ( nrefname!=FIELDS_NOTFOUND )  refname  = fields_value( bibin, nrefname,  FIELDS_CHRP_NOUSE );
+	if ( ntypename!=FIELDS_NOTFOUND ) typename = fields_value( bibin, ntypename, FIELDS_CHRP_NOUSE );
 
 	return get_reftype( typename, nrefs, p->progname, p->all, p->nall, refname, &is_default, REFTYPE_CHATTY );
 }
@@ -882,7 +877,7 @@ bibtexin_btorg( fields *bibin, int m, str *intag, str *invalue, int level, param
 {
 	int n, fstatus;
 	n = fields_find( bibin, "publisher", LEVEL_ANY );
-	if ( n==-1 )
+	if ( n==FIELDS_NOTFOUND )
 		fstatus = fields_add( bibout, "PUBLISHER", str_cstr( invalue ), level );
 	else
 		fstatus = fields_add( bibout, "ORGANIZER:CORP", str_cstr( invalue ), level );
@@ -1009,10 +1004,10 @@ bibtexin_howpublished( fields *bibin, int n, str *intag, str *invalue, int level
 {
 	int fstatus, status = BIBL_OK;
 	if ( !strncasecmp( str_cstr( invalue ), "Diplom", 6 ) ) {
-		fstatus = fields_replace_or_add( bibout, "GENRE", "Diploma thesis", level );
+		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Diploma thesis", level );
 		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
 	} else if ( !strncasecmp( str_cstr( invalue ), "Habilitation", 13 ) ) {
-		fstatus = fields_replace_or_add( bibout, "GENRE", "Habilitation thesis", level );
+		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Habilitation thesis", level );
 		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
 	} else if ( is_embedded_link( str_cstr( invalue ) ) ) {
 		status =  urls_split_and_add( str_cstr( invalue ), bibout, level );
@@ -1097,8 +1092,8 @@ bibtexin_eprint( fields *bibin, int m, str *intag, str *invalue, int level, para
 
 	/* ...do we have an archivePrefix too? */
 	n = fields_find( bibin, "ARCHIVEPREFIX", level );
-	if ( n==-1 ) n = fields_find( bibin, "EPRINTTYPE", level );
-	if ( n!=-1 ) {
+	if ( n==FIELDS_NOTFOUND ) n = fields_find( bibin, "EPRINTTYPE", level );
+	if ( n!=FIELDS_NOTFOUND ) {
 		prefix = fields_value( bibin, n, FIELDS_CHRP );
 		return process_eprint_with_prefix( bibout, prefix, invalue, level );
 	}
@@ -1248,12 +1243,12 @@ bibtexin_titleinbook_isbooktitle( fields *bibin, char *intag )
 
 	/* ...look only at '@inbook' references */
 	n = fields_find( bibin, "INTERNAL_TYPE", LEVEL_ANY );
-	if ( n==-1 ) return 0;
+	if ( n==FIELDS_NOTFOUND ) return 0;
 	if ( strcasecmp( fields_value( bibin, n, FIELDS_CHRP ), "INBOOK" ) ) return 0;
 
 	/* ...look to see if 'booktitle="yyy"' exists */
 	n = fields_find( bibin, "BOOKTITLE", LEVEL_ANY );
-	if ( n==-1 ) return 0;
+	if ( n==FIELDS_NOTFOUND ) return 0;
 	else return 1;
 }
 
@@ -1291,6 +1286,7 @@ bibtexin_convertf( fields *bibin, fields *bibout, int reftype, param *p )
 		[ HOWPUBLISHED ] = bibtexin_howpublished,
 		[ LINKEDFILE   ] = bibtexin_linkedfile,
 		[ NOTES        ] = generic_notes,
+		[ GENRE        ] = generic_genre,
 		[ BT_SENTE     ] = bibtexin_btsente,
 		[ BT_ORG       ] = bibtexin_btorg,
 		[ URL          ] = generic_url

@@ -4,7 +4,7 @@
 #ifndef ISO639_2_H
 #define ISO639_2_H
 
-extern char * iso639_2_from_code( char *code );
-extern char * iso639_2_from_language( char *lang );
+char * iso639_2_from_code( char *code );
+char * iso639_2_from_language( char *lang );
 
 #endif

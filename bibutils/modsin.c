@@ -1,7 +1,7 @@
 /*
  * modsin.c
  *
- * Copyright (c) Chris Putnam 2004-2017
+ * Copyright (c) Chris Putnam 2004-2018
  *
  * Source code released under the GPL version 2
  *
@@ -19,7 +19,8 @@
 #include "name.h"
 #include "reftypes.h"
 #include "modstypes.h"
-#include "marc.h"
+#include "bu_auth.h"
+#include "marc_auth.h"
 #include "url.h"
 #include "iso639_1.h"
 #include "iso639_2.h"
@@ -76,9 +77,9 @@ static int
 modsin_detailr( xml *node, str *value )
 {
 	int status = BIBL_OK;
-	if ( node->value && node->value->len ) {
+	if ( xml_has_value( node ) ) {
 		if ( value->len ) str_addchar( value, ' ' );
-		str_strcat( value, node->value );
+		str_strcat( value, xml_value( node ) );
 		if ( str_memerr( value ) ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down ) {
@@ -97,7 +98,7 @@ modsin_detail( xml *node, fields *info, int level )
 	int fstatus, status = BIBL_OK;
 	if ( node->down ) {
 		strs_init( &type, &value, NULL );
-		tp = xml_getattrib( node, "type" );
+		tp = xml_attribute( node, "type" );
 		if ( tp ) {
 			str_strcpy( &type, tp );
 			str_toupper( &type );
@@ -121,11 +122,14 @@ static int
 modsin_date( xml *node, fields *info, int level, int part )
 {
 	int fstatus, status = BIBL_OK;
-	char *tag, *p = NULL;
+	char *tag, *p;
 	str s;
-	if ( node->value ) p = node->value->data;
+
+	str_init( &s );
+
+	p = xml_value_cstr( node );
+
 	if ( p ) {
-		str_init( &s );
 
 		p = str_cpytodelim( &s, skip_ws( p ), "-", 1 );
 		if ( str_memerr( &s ) ) { status = BIBL_ERR_MEMERR; goto out; }
@@ -143,16 +147,18 @@ modsin_date( xml *node, fields *info, int level, int part )
 			if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
 		}
 
-		p = str_cpytodelim( &s, skip_ws( p ), "", 0 );
+		(void) str_cpytodelim( &s, skip_ws( p ), "", 0 );
 		if ( str_memerr( &s ) ) { status = BIBL_ERR_MEMERR; goto out; }
 		if ( str_has_value( &s ) ) {
 			tag = ( part ) ? "PARTDATE:DAY" : "DATE:DAY";
 			fstatus =  fields_add( info, tag, str_cstr( &s ), level );
 			if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
 		}
-out:
-		str_free( &s );
+
 	}
+
+out:
+	str_free( &s );
 	return status;
 }
 
@@ -160,17 +166,17 @@ static int
 modsin_pager( xml *node, str *sp, str *ep, str *tp, str *lp )
 {
 	int status = BIBL_OK;
-	if ( xml_tagexact( node, "start" ) ) {
-		str_strcpy( sp, node->value );
+	if ( xml_tag_matches_has_value( node, "start" ) ) {
+		str_strcpy( sp, xml_value( node ) );
 		if ( str_memerr( sp ) ) return BIBL_ERR_MEMERR;
-	} else if ( xml_tagexact( node, "end" ) ) {
-		str_strcpy( ep, node->value );
+	} else if ( xml_tag_matches_has_value( node, "end" ) ) {
+		str_strcpy( ep, xml_value( node ) );
 		if ( str_memerr( ep ) ) return BIBL_ERR_MEMERR;
-	} else if ( xml_tagexact( node, "total" ) ) {
-		str_strcpy( tp, node->value );
+	} else if ( xml_tag_matches_has_value( node, "total" ) ) {
+		str_strcpy( tp, xml_value( node ) );
 		if ( str_memerr( tp ) ) return BIBL_ERR_MEMERR;
-	} else if ( xml_tagexact( node, "list" ) ) {
-		str_strcpy( lp, node->value );
+	} else if ( xml_tag_matches_has_value( node, "list" ) ) {
+		str_strcpy( lp, xml_value( node ) );
 		if ( str_memerr( lp ) ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down ) {
@@ -222,12 +228,12 @@ static int
 modsin_titler( xml *node, str *title, str *subtitle )
 {
 	int status = BIBL_OK;
-	if ( xml_tagexact( node, "title" ) ) {
+	if ( xml_tag_matches_has_value( node, "title" ) ) {
 		if ( str_has_value( title ) ) str_strcatc( title, " : " );
-		str_strcat( title, node->value );
+		str_strcat( title, xml_value( node ) );
 		if ( str_memerr( title ) ) return BIBL_ERR_MEMERR;
-	} else if ( xml_tagexact( node, "subTitle" ) ) {
-		str_strcat( subtitle, node->value );
+	} else if ( xml_tag_matches_has_value( node, "subTitle" ) ) {
+		str_strcat( subtitle, xml_value( node ) );
 		if ( str_memerr( subtitle ) ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down ) {
@@ -255,7 +261,7 @@ modsin_title( xml *node, fields *info, int level )
 	if ( !dnode ) return status;
 
 	strs_init( &title, &subtitle, NULL );
-	abbr = xml_tag_attrib( node, "titleInfo", "type", "abbreviated" );
+	abbr = xml_tag_has_attribute( node, "titleInfo", "type", "abbreviated" );
 
 	status = modsin_titler( dnode, &title, &subtitle );
 	if ( status!=BIBL_OK ) goto out;
@@ -343,12 +349,12 @@ static int
 modsin_asis_corp_r( xml *node, str *name, str *role )
 {
 	int status = BIBL_OK;
-	if ( xml_tagexact( node, "namePart" ) ) {
-		str_strcpy( name, node->value );
+	if ( xml_tag_matches_has_value( node, "namePart" ) ) {
+		str_strcpy( name, xml_value( node ) );
 		if ( str_memerr( name ) ) return BIBL_ERR_MEMERR;
-	} else if ( xml_tagexact( node, "roleTerm" ) ) {
+	} else if ( xml_tag_matches_has_value( node, "roleTerm" ) ) {
 		if ( role->len ) str_addchar( role, '|' );
-		str_strcat( role, node->value );
+		str_strcat( role, xml_value( node ) );
 		if ( str_memerr( role ) ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down ) {
@@ -383,8 +389,10 @@ out:
 static int
 modsin_roler( xml *node, str *roles )
 {
-	if ( roles->len ) str_addchar( roles, '|' );
-	str_strcat( roles, node->value );
+	if ( xml_has_value( node ) ) {
+		if ( roles->len ) str_addchar( roles, '|' );
+		str_strcat( roles, xml_value( node ) );
+	}
 	if ( str_memerr( roles ) ) return BIBL_ERR_MEMERR;
 	else return BIBL_OK;
 }
@@ -394,26 +402,28 @@ modsin_personr( xml *node, str *familyname, str *givenname, str *suffix )
 {
 	int status = BIBL_OK;
 
-	if ( xml_tag_attrib( node, "namePart", "type", "family" ) ) {
+	if ( !xml_has_value( node ) ) return status;
+
+	if ( xml_tag_has_attribute( node, "namePart", "type", "family" ) ) {
 		if ( str_has_value( familyname ) ) str_addchar( familyname, ' ' );
-		str_strcat( familyname, node->value );
+		str_strcat( familyname, xml_value( node ) );
 		if ( str_memerr( familyname ) ) status = BIBL_ERR_MEMERR;
 	}
 
-	else if ( xml_tag_attrib( node, "namePart", "type", "suffix") ||
-	          xml_tag_attrib( node, "namePart", "type", "termsOfAddress" )) {
+	else if ( xml_tag_has_attribute( node, "namePart", "type", "suffix"         ) ||
+	          xml_tag_has_attribute( node, "namePart", "type", "termsOfAddress" ) ) {
 		if ( str_has_value( suffix ) ) str_addchar( suffix, ' ' );
-		str_strcat( suffix, node->value );
+		str_strcat( suffix, xml_value( node ) );
 		if ( str_memerr( suffix ) ) status = BIBL_ERR_MEMERR;
 	}
 
-	else if (xml_tag_attrib( node, "namePart", "type", "date") ){
+	else if ( xml_tag_has_attribute( node, "namePart", "type", "date" ) ) {
 		/* no nothing */
 	}
 
 	else {
 		if ( str_has_value( givenname ) ) str_addchar( givenname, '|' );
-		str_strcat( givenname, node->value );
+		str_strcat( givenname, xml_value( node ) );
 		if ( str_memerr( givenname ) ) status = BIBL_ERR_MEMERR;
 	}
 
@@ -434,15 +444,15 @@ modsin_person( xml *node, fields *info, int level )
 
 	while ( dnode ) {
 
-		if ( xml_tagexact( dnode, "namePart" ) ) {
+		if ( xml_tag_matches( dnode, "namePart" ) ) {
 			status = modsin_personr( dnode, &familyname, &givenname, &suffix );
 			if ( status!=BIBL_OK ) goto out;
 		}
 
-		else if ( xml_tagexact( dnode, "role" ) ) {
+		else if ( xml_tag_matches( dnode, "role" ) ) {
 			rnode = dnode->down;
 			while ( rnode ) {
-				if ( xml_tagexact( rnode, "roleTerm" ) ) {
+				if ( xml_tag_matches( rnode, "roleTerm" ) ) {
 					status = modsin_roler( rnode, &roles );
 					if ( status!=BIBL_OK ) goto out;
 				}
@@ -509,7 +519,7 @@ modsin_placeterm_text( xml *node, fields *info, int level, int school )
 
 	tag = ( school ) ? school_tag : address_tag;
 
-	fstatus = fields_add( info, tag, xml_value( node ), level );
+	fstatus = fields_add( info, tag, xml_value_cstr( node ), level );
 	if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 
 	return BIBL_OK;
@@ -523,12 +533,12 @@ modsin_placeterm_code( xml *node, fields *info, int level )
 
 	str_init( &s );
 
-	auth = xml_getattrib( node, "authority" );
+	auth = xml_attribute( node, "authority" );
 	if ( auth && auth->len ) {
 		str_strcpy( &s, auth );
 		str_addchar( &s, '|' );
 	}
-	str_strcat( &s, node->value );
+	str_strcat( &s, xml_value( node ) );
 
 	if ( str_memerr( &s ) ) {
 		status = BIBL_ERR_MEMERR;
@@ -548,7 +558,7 @@ modsin_placeterm( xml *node, fields *info, int level, int school )
 	int status = BIBL_OK;
 	str *type;
 
-	type = xml_getattrib( node, "type" );
+	type = xml_attribute( node, "type" );
 	if ( str_has_value( type ) ) {
 		if ( !strcmp( str_cstr( type ), "text" ) )
 			status = modsin_placeterm_text( node, info, level, school );
@@ -563,16 +573,20 @@ static int
 modsin_placer( xml *node, fields *info, int level, int school )
 {
 	int status = BIBL_OK;
-	if ( xml_tag_attrib( node, "place", "type", "school" ) ) {
+
+	if ( xml_tag_has_attribute( node, "place", "type", "school" ) ) {
 		school = 1;
-	} else if ( xml_tagexact( node, "placeTerm" ) ) {
+	} else if ( xml_tag_matches( node, "placeTerm" ) ) {
 		status = modsin_placeterm( node, info, level, school );
 	}
+
 	if ( node->down ) {
 		status = modsin_placer( node->down, info, level, school );
 		if ( status!=BIBL_OK ) return status;
 	}
+
 	if ( node->next ) status = modsin_placer( node->next, info, level, school );
+
 	return status;
 }
 
@@ -580,26 +594,31 @@ static int
 modsin_origininfor( xml *node, fields *info, int level, str *pub, str *add, str *addc, str *ed, str *iss )
 {
 	int status = BIBL_OK;
-	if ( xml_tagexact( node, "dateIssued" ) )
+
+	if ( xml_tag_matches( node, "dateIssued" ) ) {
 		status = modsin_date( node, info, level, 0 );
-	else if ( xml_tagexact( node, "publisher" ) && xml_hasvalue( node ) ) {
-		str_strcat( pub, node->value );
-		if ( str_memerr( pub ) ) return BIBL_ERR_MEMERR;
-	} else if ( xml_tagexact( node, "edition" ) && xml_hasvalue( node ) ) {
-		str_strcat( ed, node->value );
-		if( str_memerr( ed ) ) return BIBL_ERR_MEMERR;
-	} else if ( xml_tagexact( node, "issuance" ) && xml_hasvalue( node ) ) {
-		str_strcat( iss, node->value );
-		if ( str_memerr( iss ) ) return BIBL_ERR_MEMERR;
-	} else if ( xml_tagexact( node, "place" ) && xml_hasvalue( node ) )
+	} else if ( xml_tag_matches( node, "place" ) ) {
 		status = modsin_placer( node, info, level, 0 );
+	} else if ( xml_tag_matches_has_value( node, "publisher" ) ) {
+		str_strcat( pub, xml_value( node ) );
+		if ( str_memerr( pub ) ) return BIBL_ERR_MEMERR;
+	} else if ( xml_tag_matches_has_value( node, "edition" ) ) {
+		str_strcat( ed, xml_value( node ) );
+		if( str_memerr( ed ) ) return BIBL_ERR_MEMERR;
+	} else if ( xml_tag_matches_has_value( node, "issuance" ) ) {
+		str_strcat( iss, xml_value( node ) );
+		if ( str_memerr( iss ) ) return BIBL_ERR_MEMERR;
+	}
 	if ( status!=BIBL_OK ) return status;
+
 	if ( node->down ) {
 		status = modsin_origininfor( node->down, info, level, pub, add, addc, ed, iss );
 		if ( status!=BIBL_OK ) return status;
 	}
+
 	if ( node->next )
 		status = modsin_origininfor( node->next, info, level, pub, add, addc, ed, iss );
+
 	return status;
 }
 
@@ -643,12 +662,16 @@ static int
 modsin_subjectr( xml *node, fields *info, int level )
 {
 	int fstatus, status = BIBL_OK;
-	if ( xml_tag_attrib( node, "topic", "class", "primary" ) ) {
-		fstatus = fields_add( info, "EPRINTCLASS", node->value->data, level );
+	if ( xml_tag_has_attribute( node, "topic", "class", "primary" ) && xml_has_value( node ) ) {
+		fstatus = fields_add( info, "EPRINTCLASS", xml_value_cstr( node ), level );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
-	else if ( xml_tagexact( node, "topic" ) || xml_tagexact( node, "geographic" )) {
-		fstatus = fields_add( info, "KEYWORD", node->value->data, level );
+	else if ( xml_tag_matches_has_value( node, "topic" ) ) {
+		fstatus = fields_add( info, "KEYWORD", xml_value_cstr( node ), level );
+		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	}
+	else if ( xml_tag_matches_has_value( node, "geographic" ) ) {
+		fstatus = fields_add( info, "KEYWORD", xml_value_cstr( node ), level );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down ) {
@@ -672,7 +695,7 @@ modsin_id1( xml *node, fields *info, int level )
 {
 	int fstatus;
 	str *ns;
-	ns = xml_getattrib( node, "ID" );
+	ns = xml_attribute( node, "ID" );
 	if ( str_has_value( ns ) ) {
 		fstatus = fields_add( info, "REFNUM", str_cstr( ns ), level );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
@@ -680,35 +703,31 @@ modsin_id1( xml *node, fields *info, int level )
 	return BIBL_OK;
 }
 
+/* modsin_genre()
+ *
+ * MARC authority terms tagged with "GENRE:MARC"
+ * bibutils authority terms tagged with "GENRE:BIBUTILS"
+ * unknown terms tagged with "GENRE:UNKNOWN"
+ */
 static int
 modsin_genre( xml *node, fields *info, int level )
 {
-	char *added[] = { "manuscript", "academic journal", "magazine",
-		"hearing", "report", "Ph.D. thesis", "Masters thesis",
-		"Diploma thesis", "Doctoral thesis", "Habilitation thesis",
-		"collection", "handwritten note", "communication",
-		"teletype", "airtel", "memo", "e-mail communication",
-		"press release", "television broadcast", "electronic"
-	};
-	int nadded = sizeof( added ) /sizeof( char *);
-	int i, ismarc = 0, isadded = 0, fstatus;
+	int fstatus;
 	char *d;
 
-	if ( !xml_hasvalue( node ) ) return BIBL_OK;
-	d = xml_value( node );
-	if ( marc_findgenre( d )!=-1 ) ismarc = 1;
-	if ( !ismarc ) {
-		for ( i=0; i<nadded && ismarc==0 && isadded==0; ++i )
-			if ( !strcasecmp( d, added[i] ) ) isadded = 1;
-	}
+	if ( !xml_has_value( node ) ) return BIBL_OK;
 
-	if ( ismarc || isadded ) 
-		fstatus = fields_add( info, "GENRE", d, level );
+	d = xml_value_cstr( node );
+
+	if ( is_marc_genre( d ) )
+		fstatus = fields_add( info, "GENRE:MARC", d, level );
+	else if ( is_bu_genre( d ) )
+		fstatus = fields_add( info, "GENRE:BIBUTILS", d, level );
 	else
-		fstatus = fields_add( info, "NGENRE", d, level );
-	if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		fstatus = fields_add( info, "GENRE:UNKNOWN", d, level );
 
-	return BIBL_OK;
+	if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+	else return BIBL_OK;
 }
 
 /* in MODS version 3.5
@@ -725,17 +744,17 @@ modsin_languager( xml *node, fields *info, int level )
 {
 	int fstatus, status = BIBL_OK;
 	char *d = NULL;
-	if ( xml_tagexact( node, "languageTerm" ) ) {
-		if ( xml_hasvalue( node ) ) {
-			if ( xml_hasattrib( node, "type", "code" ) ) {
-				if ( xml_hasattrib( node, "authority", "iso639-1" ) )
-					d = iso639_1_from_code( xml_value( node ) );
-				else if ( xml_hasattrib( node, "authority", "iso639-2b" ) )
-					d = iso639_2_from_code( xml_value( node ) );
-				else if ( xml_hasattrib( node, "authority", "iso639-3" ))
-					d = iso639_3_from_code( xml_value( node ) );
+	if ( xml_tag_matches( node, "languageTerm" ) ) {
+		if ( xml_has_value( node ) ) {
+			if ( xml_has_attribute( node, "type", "code" ) ) {
+				if ( xml_has_attribute( node, "authority", "iso639-1" ) )
+					d = iso639_1_from_code( xml_value_cstr( node ) );
+				else if ( xml_has_attribute( node, "authority", "iso639-2b" ) )
+					d = iso639_2_from_code( xml_value_cstr( node ) );
+				else if ( xml_has_attribute( node, "authority", "iso639-3" ))
+					d = iso639_3_from_code( xml_value_cstr( node ) );
 			}
-			if ( !d ) d  = xml_value( node );
+			if ( !d ) d  = xml_value_cstr( node );
 			fstatus = fields_add( info, "LANGUAGE", d, level );
 			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
@@ -749,8 +768,8 @@ modsin_language( xml *node, fields *info, int level )
 {
 	int fstatus, status = BIBL_OK;
 	/* Old versions of MODS had <language>English</language> */
-	if ( xml_hasvalue( node ) ) {
-		fstatus = fields_add( info, "LANGUAGE", xml_value( node ), level );
+	if ( xml_has_value( node ) ) {
+		fstatus = fields_add( info, "LANGUAGE", xml_value_cstr( node ), level );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 
@@ -763,8 +782,8 @@ static int
 modsin_simple( xml *node, fields *info, char *tag, int level )
 {
 	int fstatus;
-	if ( xml_hasvalue( node ) ) {
-		fstatus = fields_add( info, tag, xml_value( node ), level );
+	if ( xml_has_value( node ) ) {
+		fstatus = fields_add( info, tag, xml_value_cstr( node ), level );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 	return BIBL_OK;
@@ -778,25 +797,25 @@ modsin_locationr( xml *node, fields *info, int level )
 	char *fileattach = "FILEATTACH";
 	char *tag=NULL;
 
-	if ( xml_tagexact( node, "url" ) ) {
-		if ( xml_hasattrib( node, "access", "raw object" ) )
+	if ( xml_tag_matches( node, "url" ) ) {
+		if ( xml_has_attribute( node, "access", "raw object" ) )
 			tag = fileattach;
 		else
 			tag = url;
 	}
-	else if ( xml_tagexact( node, "physicalLocation" ) ) {
-		if ( xml_hasattrib( node, "type", "school" ) )
+	else if ( xml_tag_matches( node, "physicalLocation" ) ) {
+		if ( xml_has_attribute( node, "type", "school" ) )
 			tag = "SCHOOL";
 		else
 			tag = "LOCATION";
 	}
 
 	if ( tag == url ) {
-		status = urls_split_and_add( xml_value( node ), info, level );
+		status = urls_split_and_add( xml_value_cstr( node ), info, level );
 		if ( status!=BIBL_OK ) return status;
 	}
 	else if ( tag ) {
-		fstatus = fields_add( info, tag, xml_value( node ), level );
+		fstatus = fields_add( info, tag, xml_value_cstr( node ), level );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 
@@ -820,9 +839,9 @@ static int
 modsin_descriptionr( xml *node, str *s )
 {
 	int status = BIBL_OK;
-	if ( xml_tagexact( node, "extent" ) ||
-	     xml_tagexact( node, "note" ) ) {
-		str_strcpy( s, node->value );
+	if ( xml_tag_matches( node, "extent" ) ||
+	     xml_tag_matches( node, "note" ) ) {
+		str_strcpy( s, &(node->value) );
 		if ( str_memerr( s ) ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down ) {
@@ -843,8 +862,8 @@ modsin_description( xml *node, fields *info, int level )
 		status = modsin_descriptionr( node->down, &s );
 		if ( status!=BIBL_OK ) goto out;
 	} else {
-		if ( node->value && node->value->len > 0 )
-			str_strcpy( &s, node->value );
+		if ( node->value.len > 0 )
+			str_strcpy( &s, &(node->value) );
 		if ( str_memerr( &s ) ) {
 			status = BIBL_ERR_MEMERR;
 			goto out;
@@ -866,13 +885,13 @@ static int
 modsin_partr( xml *node, fields *info, int level )
 {
 	int status = BIBL_OK;
-	if ( xml_tagexact( node, "detail" ) )
+	if ( xml_tag_matches( node, "detail" ) )
 		status = modsin_detail( node, info, level );
-	else if ( xml_tag_attrib( node, "extent", "unit", "page" ) )
+	else if ( xml_tag_has_attribute( node, "extent", "unit", "page" ) )
 		status = modsin_page( node, info, level );
-	else if ( xml_tag_attrib( node, "extent", "unit", "pages" ) )
+	else if ( xml_tag_has_attribute( node, "extent", "unit", "pages" ) )
 		status = modsin_page( node, info, level );
-	else if ( xml_tagexact( node, "date" ) )
+	else if ( xml_tag_matches( node, "date" ) )
 		status = modsin_date( node, info, level, 1 );
 	if ( status!=BIBL_OK ) return status;
 	if ( node->next ) status = modsin_partr( node->next, info, level );
@@ -891,14 +910,13 @@ static int
 modsin_classification( xml *node, fields *info, int level )
 {
 	int fstatus, status = BIBL_OK;
-	char *tag, *d;
-	if ( xml_hasvalue( node ) ) {
-		d = xml_value( node );
-		if ( xml_tag_attrib( node, "classification", "authority", "lcc" ) )
+	char *tag;
+	if ( xml_has_value( node ) ) {
+		if ( xml_tag_has_attribute( node, "classification", "authority", "lcc" ) )
 			tag = "LCC";
 		else
 			tag = "CLASSIFICATION";
-		fstatus = fields_add( info, tag, d, level );
+		fstatus = fields_add( info, tag, xml_value_cstr( node ), level );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down ) status = modsin_classification( node->down, info, level );
@@ -910,14 +928,12 @@ modsin_recordinfo( xml *node, fields *info, int level )
 {
 	int fstatus;
 	xml *curr;
-	char *d;
 
 	/* extract recordIdentifier */
 	curr = node;
 	while ( curr ) {
-		if ( xml_tagexact( curr, "recordIdentifier" ) && xml_hasvalue( curr ) ) {
-			d = xml_value( curr );
-			fstatus = fields_add( info, "REFNUM", d, level );
+		if ( xml_tag_matches_has_value( curr, "recordIdentifier" ) ) {
+			fstatus = fields_add( info, "REFNUM", xml_value_cstr( curr ), level );
 			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
 		curr = curr->next;
@@ -949,10 +965,10 @@ modsin_identifier( xml *node, fields *info, int level )
 		{ "jstor",         "JSTOR",       0, 0 },
 	};
 	int i, fstatus, n = sizeof( ids ) / sizeof( ids[0] );
-	if ( !node->value || node->value->len==0 ) return BIBL_OK;
+	if ( node->value.len==0 ) return BIBL_OK;
 	for ( i=0; i<n; ++i ) {
-		if ( xml_tag_attrib( node, "identifier", "type", ids[i].mods ) ) {
-			fstatus = fields_add( info, ids[i].internal, node->value->data, level );
+		if ( xml_tag_has_attribute( node, "identifier", "type", ids[i].mods ) ) {
+			fstatus = fields_add( info, ids[i].internal, xml_value_cstr( node ), level );
 			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
 	}
@@ -973,7 +989,7 @@ modsin_mods( xml *node, fields *info, int level )
 	int i, found = 0, status = BIBL_OK;
 
 	for ( i=0; i<nsimple && found==0; i++ ) {
-		if ( xml_tagexact( node, simple[i].mods ) ) {
+		if ( xml_tag_matches( node, simple[i].mods ) ) {
 			status = modsin_simple( node, info, simple[i].internal, level );
 			if ( status!=BIBL_OK ) return status;
 			found = 1;
@@ -981,41 +997,41 @@ modsin_mods( xml *node, fields *info, int level )
 	}
 
 	if ( !found ) {
-		if ( xml_tagexact( node, "titleInfo" ) )
+		if ( xml_tag_matches( node, "titleInfo" ) )
 			modsin_title( node, info, level );
-		else if ( xml_tag_attrib( node, "name", "type", "personal" ) )
+		else if ( xml_tag_has_attribute( node, "name", "type", "personal" ) )
 			status = modsin_person( node, info, level );
-		else if ( xml_tag_attrib( node, "name", "type", "corporate" ) )
+		else if ( xml_tag_has_attribute( node, "name", "type", "corporate" ) )
 			status = modsin_asis_corp( node, info, level, ":CORP" );
-		else if ( xml_tagexact( node, "name" ) )
+		else if ( xml_tag_matches( node, "name" ) )
 			status = modsin_asis_corp( node, info, level, ":ASIS" );
-		else if ( xml_tagexact( node, "recordInfo" ) && node->down )
+		else if ( xml_tag_matches( node, "recordInfo" ) && node->down )
 			status = modsin_recordinfo( node->down, info, level );
-		else if  ( xml_tagexact( node, "part" ) )
+		else if  ( xml_tag_matches( node, "part" ) )
 			modsin_part( node, info, level );
-		else if ( xml_tagexact( node, "identifier" ) )
+		else if ( xml_tag_matches( node, "identifier" ) )
 			status = modsin_identifier( node, info, level );
-		else if ( xml_tagexact( node, "originInfo" ) )
+		else if ( xml_tag_matches( node, "originInfo" ) )
 			status = modsin_origininfo( node, info, level );
-		else if ( xml_tagexact( node, "language" ) )
+		else if ( xml_tag_matches( node, "language" ) )
 			status = modsin_language( node, info, level );
-		else if ( xml_tagexact( node, "genre" ) )
+		else if ( xml_tag_matches( node, "genre" ) )
 			status = modsin_genre( node, info, level );
-		else if ( xml_tagexact( node, "date" ) )
+		else if ( xml_tag_matches( node, "date" ) )
 			status = modsin_date( node, info, level, 0 );
-		else if ( xml_tagexact( node, "subject" ) )
+		else if ( xml_tag_matches( node, "subject" ) )
 			status = modsin_subject( node, info, level );
-		else if ( xml_tagexact( node, "classification" ) )
+		else if ( xml_tag_matches( node, "classification" ) )
 			status = modsin_classification( node, info, level );
-		else if ( xml_tagexact( node, "location" ) )
+		else if ( xml_tag_matches( node, "location" ) )
 			status = modsin_location( node, info, level );
-		else if ( xml_tagexact( node, "physicalDescription" ) )
+		else if ( xml_tag_matches( node, "physicalDescription" ) )
 			status = modsin_description( node, info, level );
-		else if ( xml_tag_attrib( node, "relatedItem", "type", "host" ) ||
-			  xml_tag_attrib( node, "relatedItem", "type", "series" ) ) {
+		else if ( xml_tag_has_attribute( node, "relatedItem", "type", "host" ) ||
+			  xml_tag_has_attribute( node, "relatedItem", "type", "series" ) ) {
 			if ( node->down ) status = modsin_mods( node->down, info, level+1 );
 		}
-		else if ( xml_tag_attrib( node, "relatedItem", "type", "original" ) ) {
+		else if ( xml_tag_has_attribute( node, "relatedItem", "type", "original" ) ) {
 			if ( node->down ) status = modsin_mods( node->down, info, LEVEL_ORIG );
 		}
 
@@ -1031,7 +1047,7 @@ static int
 modsin_assembleref( xml *node, fields *info )
 {
 	int status = BIBL_OK;
-	if ( xml_tagexact( node, "mods" ) ) {
+	if ( xml_tag_matches( node, "mods" ) ) {
 		status = modsin_id1( node, info, 0 );
 		if ( status!=BIBL_OK ) return status;
 		if ( node->down ) {
@@ -1053,7 +1069,7 @@ modsin_processf( fields *modsin, char *data, char *filename, long nref, param *p
 	xml top;
 
 	xml_init( &top );
-	xml_tree( data, &top );
+	xml_parse( data, &top );
 	status = modsin_assembleref( &top, modsin );
 	xml_free( &top );
 
@@ -1069,12 +1085,12 @@ static char *
 modsin_startptr( char *p )
 {
 	char *startptr;
-	startptr = xml_findstart( p, "mods:mods" );
+	startptr = xml_find_start( p, "mods:mods" );
 	if ( startptr ) {
 		/* set namespace if found */
 		xml_pns = modsns;
 	} else {
-		startptr = xml_findstart( p, "mods" );
+		startptr = xml_find_start( p, "mods" );
 		if ( startptr ) xml_pns = NULL;
 	}
 	return startptr;
@@ -1083,7 +1099,7 @@ modsin_startptr( char *p )
 static char *
 modsin_endptr( char *p )
 {
-	return xml_findend( p, "mods" );
+	return xml_find_end( p, "mods" );
 }
 
 static int

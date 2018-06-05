@@ -4,6 +4,6 @@
 #ifndef ISO639_1_H
 #define ISO639_1_H
 
-extern char * iso639_1_from_code( const char *code );
+char * iso639_1_from_code( const char *code );
 
 #endif

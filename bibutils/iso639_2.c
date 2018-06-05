@@ -639,7 +639,8 @@ main( int argc, char *argv[] )
 {
 	int ok;
 	ok = check_alphabetical();
-	return EXIT_SUCCESS;
+	if ( ok ) return EXIT_SUCCESS;
+	return EXIT_FAILURE;
 }
 
 #endif

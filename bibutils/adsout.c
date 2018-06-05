@@ -1,8 +1,8 @@
 /*
  * adsout.c
  *
- * Copyright (c) Richard Mathar 2007-2017
- * Copyright (c) Chris Putnam 2007-2017
+ * Copyright (c) Richard Mathar 2007-2018
+ * Copyright (c) Chris Putnam 2007-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -98,6 +98,7 @@ get_type( fields *in )
 		{ "communication",             TYPE_COMMUNICATION },
 		{ "manuscript",                TYPE_MANUSCRIPT },
 		{ "report",                    TYPE_REPORT },
+		{ "technical report",          TYPE_REPORT },
 		{ "legal case and case notes", TYPE_CASE },
 		{ "patent",                    TYPE_PATENT },
 	};
@@ -108,8 +109,9 @@ get_type( fields *in )
 
 	for ( i=0; i<in->n; ++i ) {
 		tag = in->tag[i].data;
-		if ( strcasecmp( tag, "GENRE" )!=0 &&
-		     strcasecmp( tag, "NGENRE" )!=0 ) continue;
+		if ( strcasecmp( tag, "GENRE:MARC" ) &&
+		     strcasecmp( tag, "GENRE:BIBUTILS" ) &&
+		     strcasecmp( tag, "GENRE:UNKNOWN" ) ) continue;
 		data = in->data[i].data;
 		for ( j=0; j<nmatch_genres; ++j ) {
 			if ( !strcasecmp( data, match_genres[j].name ) ) {
@@ -358,9 +360,9 @@ get_firstinitial( fields *in )
 	int n;
 
 	n = fields_find( in, "AUTHOR", LEVEL_MAIN );
-	if ( n==-1 ) n = fields_find( in, "AUTHOR", LEVEL_ANY );
+	if ( n==FIELDS_NOTFOUND ) n = fields_find( in, "AUTHOR", LEVEL_ANY );
 
-	if ( n!=-1 ) {
+	if ( n!=FIELDS_NOTFOUND ) {
 		name = fields_value( in, n, FIELDS_CHRP );
 		return name[0];
 	} else return '\0';
@@ -373,7 +375,7 @@ get_journalabbr( fields *in )
 	int n, j;
 
 	n = fields_find( in, "TITLE", LEVEL_HOST );
-	if ( n!=-1 ) {
+	if ( n!=FIELDS_NOTFOUND ) {
 		jrnl = fields_value( in, n, FIELDS_CHRP );
 		for ( j=0; j<njournals; j++ ) {
 			if ( !strcasecmp( jrnl, journals[j]+6 ) )
@@ -394,8 +396,8 @@ append_Rtag( fields *in, char *adstag, int type, fields *out, int *status )
 
 	/** YYYY */
 	n = fields_find( in, "DATE:YEAR", LEVEL_ANY );
-	if ( n==-1 ) n = fields_find( in, "PARTDATE:YEAR", LEVEL_ANY );
-	if ( n!=-1 ) output_4digit_value( outstr, atoi( fields_value( in, n, FIELDS_CHRP ) ) );
+	if ( n==FIELDS_NOTFOUND ) n = fields_find( in, "PARTDATE:YEAR", LEVEL_ANY );
+	if ( n!=FIELDS_NOTFOUND ) output_4digit_value( outstr, atoi( fields_value( in, n, FIELDS_CHRP ) ) );
 
 	/** JJJJ */
 	n = get_journalabbr( in );
@@ -409,12 +411,12 @@ append_Rtag( fields *in, char *adstag, int type, fields *out, int *status )
 
 	/** VVVV */
 	n = fields_find( in, "VOLUME", LEVEL_ANY );
-	if ( n!=-1 ) output_4digit_value( outstr+9, atoi( fields_value( in, n, FIELDS_CHRP ) ) );
+	if ( n!=FIELDS_NOTFOUND ) output_4digit_value( outstr+9, atoi( fields_value( in, n, FIELDS_CHRP ) ) );
 
 	/** MPPPP */
 	n = fields_find( in, "PAGES:START", LEVEL_ANY );
-	if ( n==-1 ) n = fields_find( in, "ARTICLENUMBER", LEVEL_ANY );
-	if ( n!=-1 ) {
+	if ( n==FIELDS_NOTFOUND ) n = fields_find( in, "ARTICLENUMBER", LEVEL_ANY );
+	if ( n!=FIELDS_NOTFOUND ) {
 		page = atoll( fields_value( in, n, FIELDS_CHRP ) );
 		output_4digit_value( outstr+14, page );
 		if ( page>=10000 ) {

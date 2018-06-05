@@ -1,7 +1,7 @@
 /*
  * nbibin.c
  *
- * Copyright (c) Chris Putnam 2016-2017
+ * Copyright (c) Chris Putnam 2016-2018
  *
  * Source code released under the GPL version 2
  *
@@ -261,7 +261,7 @@ nbib_typef( fields *nbib, char *filename, int nref, param *p )
 	vplist a;
 
 	nrefname  = fields_find( nbib, "PMID", LEVEL_MAIN );
-	if ( nrefname!=-1 ) refname = fields_value( nbib, nrefname, FIELDS_CHRP_NOUSE );
+	if ( nrefname!=FIELDS_NOTFOUND ) refname = fields_value( nbib, nrefname, FIELDS_CHRP_NOUSE );
 
 	vplist_init( &a );
 

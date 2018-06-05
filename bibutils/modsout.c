@@ -1,7 +1,7 @@
 /*
  * modsout.c
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Source code released under the GPL version 2
  *
@@ -18,7 +18,8 @@
 #include "iso639_2.h"
 #include "utf8.h"
 #include "modstypes.h"
-#include "marc.h"
+#include "bu_auth.h"
+#include "marc_auth.h"
 #include "bibformats.h"
 
 static void modsout_writeheader( FILE *outptr, param *p );
@@ -171,7 +172,7 @@ convert_findallfields( fields *f, convert *parts, int nparts, int level )
 
 	for ( i=0; i<nparts; ++i ) {
 		parts[i].pos = fields_find( f, parts[i].internal, level );
-		n += ( parts[i].pos!=-1 );
+		n += ( parts[i].pos!=FIELDS_NOTFOUND );
 	}
 
 	return n;
@@ -196,9 +197,9 @@ output_title( fields *f, FILE *outptr, int level )
 	output_tag( outptr, lvl2indent(level),               "titleInfo", NULL,      TAG_CLOSE,     TAG_NEWLINE, NULL );
 
 	/* output shorttitle if it's different from normal title */
-	if ( shrttl!=-1 ) {
+	if ( shrttl!=FIELDS_NOTFOUND ) {
 		val = (char *) fields_value( f, shrttl, FIELDS_CHRP );
-		if ( ttl==-1 || subttl!=-1 || strcmp(f->data[ttl].data,val) ) {
+		if ( ttl==FIELDS_NOTFOUND || subttl!=FIELDS_NOTFOUND || strcmp(f->data[ttl].data,val) ) {
 			output_tag( outptr, lvl2indent(level),               "titleInfo", NULL, TAG_OPEN,      TAG_NEWLINE, "type", "abbreviated", NULL );
 			output_tag( outptr, lvl2indent(incr_level(level,1)), "title",     val,  TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 			output_tag( outptr, lvl2indent(level),               "titleInfo", NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
@@ -376,7 +377,7 @@ find_datepos( fields *f, int level, unsigned char use_altnames, int datepos[NUM_
 			datepos[i] = fields_find( f, src_names[i], level );
 		else
 			datepos[i] = fields_find( f, alt_names[i], level );
-		if ( datepos[i]!=-1 ) found = 1;
+		if ( datepos[i]!=FIELDS_NOTFOUND ) found = 1;
 	}
 
 	return found;
@@ -528,7 +529,7 @@ output_language( fields *f, FILE *outptr, int level )
 {
 	int n;
 	n = fields_find( f, "LANGUAGE", level );
-	if ( n!=-1 )
+	if ( n!=FIELDS_NOTFOUND )
 		output_language_core( f, n, outptr, "language", level );
 }
 
@@ -539,7 +540,7 @@ output_description( fields *f, FILE *outptr, int level )
 	int n;
 
 	n = fields_find( f, "DESCRIPTION", level );
-	if ( n!=-1 ) {
+	if ( n!=FIELDS_NOTFOUND ) {
 		val = ( char * ) fields_value( f, n, FIELDS_CHRP );
 		output_tag( outptr, lvl2indent(level),               "physicalDescription", NULL, TAG_OPEN,      TAG_NEWLINE, NULL );
 		output_tag( outptr, lvl2indent(incr_level(level,1)), "note",                val,  TAG_OPENCLOSE, TAG_NEWLINE, NULL );
@@ -554,7 +555,7 @@ output_toc( fields *f, FILE *outptr, int level )
 	int n;
 
 	n = fields_find( f, "CONTENTS", level );
-	if ( n!=-1 ) {
+	if ( n!=FIELDS_NOTFOUND ) {
 		val = (char *) fields_value( f, n, FIELDS_CHRP );
 		output_tag( outptr, lvl2indent(level), "tableOfContents", val, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 	}
@@ -742,7 +743,7 @@ output_recordInfo( fields *f, FILE *outptr, int level )
 {
 	int n;
 	n = fields_find( f, "LANGCATALOG", level );
-	if ( n!=-1 ) {
+	if ( n!=FIELDS_NOTFOUND ) {
 		output_tag( outptr, lvl2indent(level), "recordInfo", NULL, TAG_OPEN, TAG_NEWLINE, NULL );
 		output_language_core( f, n, outptr, "languageOfCataloging", incr_level(level,1) );
 		output_tag( outptr, lvl2indent(level), "recordInfo", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
@@ -752,20 +753,27 @@ output_recordInfo( fields *f, FILE *outptr, int level )
 /* output_genre()
  *
  * <genre authority="marcgt">thesis</genre>
- * <genre>Diploma thesis</genre>
+ * <genre authority="bibutilsgt">Diploma thesis</genre>
  */
 static void
 output_genre( fields *f, FILE *outptr, int level )
 {
-	char *value, *attr, *attrvalue="marcgt";
+	char *value, *attr = NULL, *attrvalue = NULL;
 	int i, n;
 
 	n = fields_num( f );
 	for ( i=0; i<n; ++i ) {
 		if ( fields_level( f, i ) != level ) continue;
-		if ( !fields_match_tag( f, i, "GENRE" ) && !fields_match_tag( f, i, "NGENRE" ) ) continue;
+		if ( !fields_match_tag( f, i, "GENRE:MARC" ) && !fields_match_tag( f, i, "GENRE:BIBUTILS" ) && !fields_match_tag( f, i, "GENRE:UNKNOWN" ) ) continue;
 		value = fields_value( f, i, FIELDS_CHRP );
-		attr = ( marc_findgenre( value ) == -1 ) ? NULL : "authority";
+		if ( is_marc_genre( value ) ) {
+			attr      = "authority";
+			attrvalue = "marcgt";
+		}
+		else if ( is_bu_genre( value ) ) {
+			attr      = "authority";
+			attrvalue = "bibutilsgt";
+		}
 		output_tag( outptr, lvl2indent(level), "genre", value, TAG_OPENCLOSE, TAG_NEWLINE, attr, attrvalue, NULL );
 	}
 }
@@ -781,9 +789,9 @@ output_resource( fields *f, FILE *outptr, int level )
 	int n;
 
 	n = fields_find( f, "RESOURCE", level );
-	if ( n!=-1 ) {
+	if ( n!=FIELDS_NOTFOUND ) {
 		value = fields_value( f, n, FIELDS_CHRP );
-		if ( marc_findresource( value )!=-1 ) {
+		if ( is_marc_resource( value ) ) {
 			output_fil( outptr, lvl2indent(level), "typeOfResource", f, n, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 		} else {
 			fprintf( stderr, "Illegal typeofResource = '%s'\n", value );
@@ -797,8 +805,8 @@ output_type( fields *f, FILE *outptr, int level )
 	int n;
 
 	/* silence warnings about INTERNAL_TYPE being unused */
-	n = fields_find( f, "INTERNAL_TYPE", 0 );
-	if ( n!=-1 ) fields_setused( f, n );
+	n = fields_find( f, "INTERNAL_TYPE", LEVEL_MAIN );
+	if ( n!=FIELDS_NOTFOUND ) fields_setused( f, n );
 
 	output_resource( f, outptr, level );
 	output_genre( f, outptr, level );
@@ -937,7 +945,7 @@ output_url( fields *f, FILE *outptr, int level )
 	int pdflink    = fields_find( f, "PDFLINK",    level );
 	int i, n;
 
-	if ( url==-1 && location==-1 && pdflink==-1 && fileattach==-1 ) return;
+	if ( url==FIELDS_NOTFOUND && location==FIELDS_NOTFOUND && pdflink==FIELDS_NOTFOUND && fileattach==FIELDS_NOTFOUND ) return;
 	output_tag( outptr, lvl2indent(level), "location", NULL, TAG_OPEN, TAG_NEWLINE, NULL );
 
 	n = fields_num( f );
@@ -987,8 +995,8 @@ output_head( fields *f, FILE *outptr, int dropkey, unsigned long numrefs )
 	int n;
 	fprintf( outptr, "<mods");
 	if ( !dropkey ) {
-		n = fields_find( f, "REFNUM", 0 );
-		if ( n!=-1 ) {
+		n = fields_find( f, "REFNUM", LEVEL_MAIN );
+		if ( n!=FIELDS_NOTFOUND ) {
 			fprintf( outptr, " ID=\"");
 			output_refnum( f, n, outptr );
 			fprintf( outptr, "\"");

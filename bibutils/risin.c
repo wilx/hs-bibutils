@@ -1,7 +1,7 @@
 /*
  * risin.c
  *
- * Copyright (c) Chris Putnam 2003-2017
+ * Copyright (c) Chris Putnam 2003-2018
  *
  * Source code released under the GPL version 2
  *
@@ -316,8 +316,8 @@ risin_typef( fields *risin, char *filename, int nref, param *p )
 
 	ntypename = fields_find( risin, "TY", LEVEL_MAIN );
 	nrefname  = fields_find( risin, "ID", LEVEL_MAIN );
-	if ( ntypename!=-1 ) typename = fields_value( risin, ntypename, FIELDS_CHRP_NOUSE );
-	if ( nrefname!=-1 )  refname  = fields_value( risin, nrefname,  FIELDS_CHRP_NOUSE );
+	if ( ntypename!=FIELDS_NOTFOUND ) typename = fields_value( risin, ntypename, FIELDS_CHRP_NOUSE );
+	if ( nrefname!=FIELDS_NOTFOUND )  refname  = fields_value( risin, nrefname,  FIELDS_CHRP_NOUSE );
 
 	return get_reftype( typename, nref, p->progname, p->all, p->nall, refname, &is_default, REFTYPE_CHATTY );
 }
@@ -490,7 +490,7 @@ risin_thesis_hints( fields *bibin, int reftype, param *p, fields *bibout )
 		     !strcasecmp(value,"Diploma Thesis")||
 		     !strcasecmp(value,"Doctoral Thesis")||
 		     !strcasecmp(value,"Habilitation Thesis")) {
-			fstatus = fields_add( bibout, "GENRE", value, 0 );
+			fstatus = fields_add( bibout, "GENRE:BIBUTILS", value, 0 );
 			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
 	}
@@ -513,10 +513,11 @@ risin_convertf( fields *bibin, fields *bibout, int reftype, param *p )
 		[ 0 ... NUM_REFTYPES-1 ] = generic_null,
 		[ SIMPLE       ] = generic_simple,
 		[ TITLE        ] = generic_title,
-		[ PERSON       ] = risin_person,
 		[ SERIALNO     ] = generic_serialno,
 		[ NOTES        ] = generic_notes,
 		[ URL          ] = generic_url,
+		[ GENRE        ] = generic_genre,
+		[ PERSON       ] = risin_person,
 		[ DATE         ] = risin_date,
 		[ DOI          ] = risin_doi,
 		[ LINKEDFILE   ] = risin_linkedfile,

@@ -1,7 +1,7 @@
 /*
  * nbibtypes.c
  *
- * Copyright (c) Chris Putnam 2016-2017
+ * Copyright (c) Chris Putnam 2016-2018
  *
  * Program and source code released under the GPL version 2
  *
@@ -47,12 +47,12 @@ static lookups article[] = {
 	{ "AID",    "DOI",                DOI,    LEVEL_MAIN }, /* Article ID? -- can be DOI/PII */
 	{ "PST",    "",                   SKIP,   LEVEL_MAIN },
 	{ "SO",     "",                   SKIP,   LEVEL_MAIN },
-	{ " ",      "INTERNAL_TYPE|ARTICLE",  ALWAYS, LEVEL_MAIN },
-	{ " ",      "ISSUANCE|continuing",    ALWAYS, LEVEL_HOST },
-	{ " ",      "RESOURCE|text",          ALWAYS, LEVEL_MAIN },
-	{ " ",      "GENRE|journal article",  ALWAYS, LEVEL_MAIN },
-	{ " ",      "GENRE|periodical",       ALWAYS, LEVEL_HOST },
-	{ " ",      "GENRE|academic journal", ALWAYS, LEVEL_HOST }
+	{ " ",      "INTERNAL_TYPE|ARTICLE",   ALWAYS, LEVEL_MAIN },
+	{ " ",      "ISSUANCE|continuing",     ALWAYS, LEVEL_HOST },
+	{ " ",      "RESOURCE|text",           ALWAYS, LEVEL_MAIN },
+	{ " ",      "GENRE:BIBUTILS|journal article",  ALWAYS, LEVEL_MAIN },
+	{ " ",      "GENRE:MARC|periodical",        ALWAYS, LEVEL_HOST },
+	{ " ",      "GENRE:BIBUTILS|academic journal", ALWAYS, LEVEL_HOST }
 };
 
 #define ORIG(a) ( &(a[0]) )

@@ -1,7 +1,7 @@
 /*
  * intlist.h
  *
- * Copyright (c) Chris Putnam 2007-2017
+ * Copyright (c) Chris Putnam 2007-2018
  *
  * Version 01/12/2017
  *
