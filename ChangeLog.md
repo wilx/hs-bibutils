@@ -2,6 +2,10 @@
 
   - Update to Bibutils 6.3.
 
+  - Enable NBIB support.
+
+  - Expose additional options values.
+
 
 # 6.2.0.1
 
