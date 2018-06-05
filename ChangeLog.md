@@ -1,3 +1,8 @@
+# 6.3.0.1
+
+  - Fix MacOS X compilation.
+
+
 # 6.3.0.0
 
   - Update to Bibutils 6.3.
