@@ -684,7 +684,7 @@ append_articlenumber( fields *in, fields *out, int *status )
 	int n, fstatus;
 
 	n = fields_find( in, "ARTICLENUMBER", LEVEL_ANY );
-	if ( n==FIELDS_NOTFOUND );
+	if ( n==FIELDS_NOTFOUND ) return;
 
 	fields_setused( in, n );
 	fstatus = fields_add( out, "pages", fields_value( in, n, FIELDS_CHRP ), LEVEL_MAIN );
