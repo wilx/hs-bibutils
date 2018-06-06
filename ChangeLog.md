@@ -1,3 +1,8 @@
+# 6.4.0.0
+
+  - Import Bibutils 6.4.
+
+
 # 6.3.0.1
 
   - Fix MacOS X compilation.
