@@ -101,6 +101,8 @@ int  str_is_uppercase( str *s );
 
 int  str_memerr( str *s );
 
+unsigned long str_strlen( str *s );
+
 int  str_has_value( str *s );
 int  str_is_empty( str *s );
 

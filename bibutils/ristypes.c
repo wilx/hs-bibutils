@@ -793,7 +793,7 @@ static lookups cases[] = {
 
 static lookups communication[] = {
 	{ "A1", "AUTHOR",       PERSON,  LEVEL_MAIN },   /* Deprecated? */
-	{ "A2", "RECIPIENT",    PERSON,  LEVEL_MAIN },   /* SPECIAL */
+	{ "A2", "ADDRESSEE",    PERSON,  LEVEL_MAIN },   /* SPECIAL */
 	{ "A3", "EDITOR",       PERSON,  LEVEL_SERIES }, /* 'Tertiary' Author - Series editor */
 	{ "A4", "AUTHOR",       PERSON,  LEVEL_SERIES }, /* 'Subsidiary' Author */
 	{ "AB", "ABSTRACT",     SIMPLE,  LEVEL_MAIN },   /* Abstract */

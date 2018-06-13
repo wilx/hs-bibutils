@@ -339,7 +339,12 @@ process_biblatexline( char *p, str *tag, str *data, uchar stripquotes, long nref
 	str_empty( data );
 
 	p = biblatex_tag( p, tag );
-	if ( tag->len==0 ) return p;
+	if ( str_is_empty( tag ) ) {
+		/* ...skip this line */
+		while ( *p && *p!='\n' && *p!='\r' ) p++;
+		while ( *p=='\n' || *p=='\r' ) p++;
+		return p;
+	}
 
 	slist_init( &tokens );
 
@@ -371,18 +376,21 @@ static int
 process_cite( fields *bibin, char *p, char *filename, long nref, param *pm )
 {
 	int fstatus, status = BIBL_OK;
-	str tag, data;
-	strs_init( &tag, &data, NULL );
-	p = process_biblatextype( p, &data );
-	if ( str_has_value( &data ) ) {
-		fstatus = fields_add( bibin, "INTERNAL_TYPE", str_cstr( &data ), 0 );
-		if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
-	}
-	p = process_biblatexid ( p, &data );
-	if ( str_has_value( &data ) ) {
-		fstatus = fields_add( bibin, "REFNUM", str_cstr( &data ), 0 );
-		if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
-	}
+	str type, id, tag, data;
+
+	strs_init( &type, &id, &tag, &data, NULL );
+
+	p = process_biblatextype( p, &type );
+	p = process_biblatexid( p, &id );
+
+	if ( str_is_empty( &type ) || str_is_empty( &id ) ) goto out;
+
+	fstatus = fields_add( bibin, "INTERNAL_TYPE", str_cstr( &type ), 0 );
+	if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
+
+	fstatus = fields_add( bibin, "REFNUM", str_cstr( &id ), 0 );
+	if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
+
 	while ( *p ) {
 		p = process_biblatexline( p, &tag, &data, 1, nref, pm );
 		if ( !p ) { status = BIBL_ERR_MEMERR; goto out; }
@@ -394,7 +402,7 @@ process_cite( fields *bibin, char *p, char *filename, long nref, param *pm )
 		strs_empty( &tag, &data, NULL );
 	}
 out:
-	strs_free( &tag, &data, NULL );
+	strs_free( &type, &id, &tag, &data, NULL );
 	return status;
 }
 

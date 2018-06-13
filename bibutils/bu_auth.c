@@ -21,6 +21,7 @@ const char *bu_genre[] = {
 	"handwritten note",
 	"hearing",
 	"journal article",
+	"Licentiate thesis",
 	"magazine",
 	"magazine article",
 	"manuscript",

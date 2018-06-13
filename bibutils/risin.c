@@ -489,7 +489,8 @@ risin_thesis_hints( fields *bibin, int reftype, param *p, fields *bibout )
 		     !strcasecmp(value,"Masters Thesis")||
 		     !strcasecmp(value,"Diploma Thesis")||
 		     !strcasecmp(value,"Doctoral Thesis")||
-		     !strcasecmp(value,"Habilitation Thesis")) {
+		     !strcasecmp(value,"Habilitation Thesis")||
+		     !strcasecmp(value,"Licentiate Thesis")) {
 			fstatus = fields_add( bibout, "GENRE:BIBUTILS", value, 0 );
 			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}

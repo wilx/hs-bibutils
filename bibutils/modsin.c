@@ -292,56 +292,40 @@ out:
 static int
 modsin_marcrole_convert( str *s, char *suffix, str *out )
 {
-	convert roles[] = {
-		{ "author",              "AUTHOR",        0, 0 },
-		{ "aut",                 "AUTHOR",        0, 0 },
-		{ "aud",                 "AUTHOR",        0, 0 },
-		{ "aui",                 "AUTHOR",        0, 0 },
-		{ "aus",                 "AUTHOR",        0, 0 },
-		{ "creator",             "AUTHOR",        0, 0 },
-		{ "cre",                 "AUTHOR",        0, 0 },
-		{ "editor",              "EDITOR",        0, 0 },
-		{ "edt",                 "EDITOR",        0, 0 },
-		{ "degree grantor",      "DEGREEGRANTOR", 0, 0 },
-		{ "dgg",                 "DEGREEGRANTOR", 0, 0 },
-		{ "organizer of meeting","ORGANIZER",     0, 0 },
-		{ "orm",                 "ORGANIZER",     0, 0 },
-		{ "patent holder",       "ASSIGNEE",      0, 0 },
-		{ "pth",                 "ASSIGNEE",      0, 0 }
-	};
-	int nroles = sizeof( roles ) / sizeof( roles[0] );
-	int i, nmismatch, n = -1, status = BIBL_OK;
-	char *p, *q;
+	int i, sstatus, status = BIBL_OK;
+	slist tokens;
+	char *p;
 
-	if ( s->len == 0 ) {
-		/* ...default to author on an empty string */
-		n = 0;
-	} else {
-		/* ...find first match in '|'-separated list */
-		for ( i=0; i<nroles && n==-1; ++i ) {
-			p = s->data;
-			while ( *p ) {
-				q = roles[i].mods;
-				nmismatch = 0;
-				while ( *p && *p!='|' && nmismatch == 0) {
-					if ( toupper( (unsigned char)*p ) != toupper( (unsigned char)*q ) )
-						nmismatch++;
-					p++;
-					q++;
-				}
-				if ( !nmismatch && !(*(q++))) n = i;
-				if ( *p=='|' ) p++;
+	slist_init( &tokens );
+
+	/* ...default to author on an empty string */
+	if ( str_is_empty( s ) ) {
+		str_strcpyc( out, "AUTHOR" );
+	}
+
+	else {
+		sstatus = slist_tokenize( &tokens, s, "|", 1 );
+		if ( sstatus!=SLIST_OK ) {
+			status = BIBL_ERR_MEMERR;
+			goto done;
+		}
+		/* ...take first match */
+		for ( i=0; i<tokens.n; ++i ) {
+			p = marc_convertrole( slist_cstr( &tokens, i ) );
+			if ( p ) {
+				str_strcpyc( out, p );
+				goto done;
 			}
 		}
+		/* ...otherwise just copy input */
+		str_strcpy( out, slist_str( &tokens, 0 ) );
+		str_toupper( out );
 	}
 
-	if ( n!=-1 ) {
-		str_strcpyc( out, roles[n].internal );
-		if ( suffix ) str_strcatc( out, suffix );
-	} else {
-		str_strcpy( out, s );
-	}
-	if ( str_memerr( out ) ) status = BIBL_ERR_MEMERR;
+done:
+	if ( suffix ) str_strcatc( out, suffix );
+	slist_free( &tokens );
+	if ( str_memerr( out ) ) return BIBL_ERR_MEMERR;
 	return status;
 }
 
@@ -718,6 +702,22 @@ modsin_genre( xml *node, fields *info, int level )
 	if ( !xml_has_value( node ) ) return BIBL_OK;
 
 	d = xml_value_cstr( node );
+
+	/* ...handle special genres in KTH DivA */
+	if ( !strcmp( d, "conferenceProceedings" ) || !strcmp( d, "conferencePaper" ) )
+		d = "conference publication";
+	else if ( !strcmp( d, "artisticOutput" ) || !strcmp( d, "other" ) )
+		d = "miscellaneous";
+	else if ( !strcmp( d, "studentThesis" ) )
+		d = "thesis";
+	else if ( !strcmp( d, "monographDoctoralThesis" ) )
+		d = "Ph.D. thesis";
+	else if ( !strcmp( d, "comprehensiveDoctoralThesis" ) )
+		d = "Ph.D. thesis";
+	else if ( !strcmp( d, "monographLicentiateThesis" ) )
+		d = "Licentiate thesis";
+	else if ( !strcmp( d, "comprehensiveLicentiateThesis" ) )
+		d = "Licentiate thesis";
 
 	if ( is_marc_genre( d ) )
 		fstatus = fields_add( info, "GENRE:MARC", d, level );

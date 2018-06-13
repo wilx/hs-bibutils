@@ -428,7 +428,7 @@ output_names( fields *info, FILE *outptr, int level, int type )
 {
 	char *authors[] = { "AUTHOR", "WRITER", "ASSIGNEE", "ARTIST",
 		"CARTOGRAPHER", "INVENTOR", "ORGANIZER", "DIRECTOR",
-		"PERFORMER", "REPORTER", "TRANSLATOR", "RECIPIENT",
+		"PERFORMER", "REPORTER", "TRANSLATOR", "ADDRESSEE",
 		"2ND_AUTHOR", "3RD_AUTHOR", "SUB_AUTHOR", "COMMITTEE",
 		"COURT", "LEGISLATIVEBODY" };
 	int nauthors = sizeof( authors ) / sizeof( authors[0] );

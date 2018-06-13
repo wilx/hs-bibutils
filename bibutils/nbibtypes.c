@@ -38,6 +38,7 @@ static lookups article[] = {
 	{ "JT",     "TITLE",              SIMPLE, LEVEL_HOST }, /* Journal title */
 	{ "JID",    "",                   SKIP,   LEVEL_HOST }, /* Journal ID? */
 	{ "SB",     "",                   SKIP,   LEVEL_MAIN },
+	{ "MH",     "KEYWORD",            SIMPLE, LEVEL_MAIN },
 	{ "PMC",    "PMC",                SIMPLE, LEVEL_MAIN },
 	{ "OID",    "",                   SKIP,   LEVEL_MAIN },
 	{ "EDAT",   "",                   SKIP,   LEVEL_MAIN },

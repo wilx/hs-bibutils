@@ -405,7 +405,7 @@ static lookups communication[] = {
 	{ "%Q", "TRANSLATEDTITLE", SIMPLE, LEVEL_MAIN },
 	{ "%D", "DATE:YEAR",       SIMPLE, LEVEL_MAIN },
 	{ "%T", "TITLE" ,          TITLE,  LEVEL_MAIN },
-	{ "%E", "RECIPIENT",       PERSON, LEVEL_MAIN },
+	{ "%E", "ADDRESSEE",       PERSON, LEVEL_MAIN },
 	{ "%C", "ADDRESS",         SIMPLE, LEVEL_MAIN },
 	{ "%V", "VOLUME",          SIMPLE, LEVEL_MAIN },
 	{ "%I", "PUBLISHER",       SIMPLE, LEVEL_MAIN },

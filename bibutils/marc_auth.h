@@ -15,5 +15,6 @@ int marc_findgenre( const char *query );
 int is_marc_genre( const char *query );
 int marc_findresource( const char *query );
 int is_marc_resource( const char *query );
+char *marc_convertrole( const char *query );
 
 #endif

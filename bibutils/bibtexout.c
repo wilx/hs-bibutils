@@ -58,6 +58,7 @@ enum {
 	TYPE_BOOK,
 	TYPE_PHDTHESIS,
 	TYPE_MASTERSTHESIS,
+	TYPE_DIPLOMATHESIS,
 	TYPE_REPORT,
 	TYPE_MANUAL,
 	TYPE_UNPUBLISHED,
@@ -106,7 +107,8 @@ bibtexout_type( fields *in, char *filename, int refnum, param *p )
 			type = TYPE_ARTICLE;
 		} else if ( !strcasecmp( genre, "instruction" ) ) {
 			type = TYPE_MANUAL;
-		} else if ( !strcasecmp( genre, "unpublished" ) ) {
+		} else if ( !strcasecmp( genre, "unpublished" ) ||
+		            !strcasecmp( genre, "manuscript" ) ) {
 			type = TYPE_UNPUBLISHED;
 		} else if ( !strcasecmp( genre, "conference publication" ) ) {
 			if ( level==0 ) type=TYPE_PROCEEDINGS;
@@ -126,8 +128,12 @@ bibtexout_type( fields *in, char *filename, int refnum, param *p )
 			if ( type==TYPE_UNKNOWN ) type=TYPE_PHDTHESIS;
 		} else if ( !strcasecmp( genre, "Ph.D. thesis" ) ) {
 			type = TYPE_PHDTHESIS;
+		} else if ( !strcasecmp( genre, "Licentiate thesis" ) ) {
+			type = TYPE_PHDTHESIS;
 		} else if ( !strcasecmp( genre, "Masters thesis" ) ) {
 			type = TYPE_MASTERSTHESIS;
+		} else if ( !strcasecmp( genre, "Diploma thesis" ) ) {
+			type = TYPE_DIPLOMATHESIS;
 		} else if ( !strcasecmp( genre, "electronic" ) ) {
 			type = TYPE_ELECTRONIC;
 		} else if ( !strcasecmp( genre, "miscellaneous" ) ) {
@@ -241,6 +247,7 @@ append_type( int type, fields *out, int *status )
 		[ TYPE_BOOK          ] = "Book",
 		[ TYPE_PHDTHESIS     ] = "PhdThesis",
 		[ TYPE_MASTERSTHESIS ] = "MastersThesis",
+		[ TYPE_DIPLOMATHESIS ] = "MastersThesis",
 		[ TYPE_REPORT        ] = "TechReport",
 		[ TYPE_MANUAL        ] = "Manual",
 		[ TYPE_COLLECTION    ] = "Collection",
@@ -788,6 +795,30 @@ append_issue_number( fields *in, fields *out, int *status )
 	}
 }
 
+static void
+append_howpublished( fields *in, fields *out, int *status )
+{
+	int n, fstatus;
+	char *d;
+
+	n = fields_find( in, "GENRE:BIBUTILS", LEVEL_ANY );
+	if ( n==FIELDS_NOTFOUND ) return;
+
+	d = fields_value( in, n, FIELDS_CHRP_NOUSE );
+	if ( !strcmp( d, "Habilitation thesis" ) ) {
+		fstatus = fields_add( out, "howpublised", d, LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
+	if ( !strcmp( d, "Licentiate thesis" ) ) {
+		fstatus = fields_add( out, "howpublised", d, LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
+	if ( !strcmp( d, "Diploma thesis" ) ) {
+		fstatus = fields_add( out, "howpublised", d, LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
+}
+
 static int
 append_data( fields *in, fields *out, param *p, unsigned long refnum )
 {
@@ -828,6 +859,7 @@ append_data( fields *in, fields *out, param *p, unsigned long refnum )
 	append_simple      ( in, "EPRINTCLASS",        "primaryClass", out, &status );
 	append_isi         ( in, out, &status );
 	append_simple      ( in, "LANGUAGE",           "language",  out, &status );
+	append_howpublished( in, out, &status );
 
 	return status;
 }

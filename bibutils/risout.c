@@ -69,6 +69,7 @@ enum {
 	TYPE_REPORT,             /* report */
 	TYPE_STATUTE,            /* statute */
 	TYPE_THESIS,             /* thesis */
+	TYPE_LICENTIATETHESIS,   /* thesis */
 	TYPE_MASTERSTHESIS,      /* thesis */
 	TYPE_PHDTHESIS,          /* thesis */
 	TYPE_DIPLOMATHESIS,      /* thesis */
@@ -119,6 +120,7 @@ write_type( FILE *fp, int type )
 		[ TYPE_REPORT             ] = "TYPE_REPORT",
 		[ TYPE_STATUTE            ] = "TYPE_STATUTE",
 		[ TYPE_THESIS             ] = "TYPE_THESIS",
+		[ TYPE_LICENTIATETHESIS   ] = "TYPE_LICENTIATETHESIS",
 		[ TYPE_MASTERSTHESIS      ] = "TYPE_MASTERSTHESIS",
 		[ TYPE_PHDTHESIS          ] = "TYPE_PHDTHESIS",
 		[ TYPE_DIPLOMATHESIS      ] = "TYPE_DIPLOMATHESIS",
@@ -175,6 +177,7 @@ get_type_genre( fields *f, param *p )
 		{ "legal case and case notes", TYPE_CASE },
 		{ "book chapter",              TYPE_INBOOK },
 		{ "Ph.D. thesis",              TYPE_PHDTHESIS },
+		{ "Licentiate thesis",         TYPE_LICENTIATETHESIS },
 		{ "Masters thesis",            TYPE_MASTERSTHESIS },
 		{ "Diploma thesis",            TYPE_DIPLOMATHESIS },
 		{ "Doctoral thesis",           TYPE_DOCTORALTHESIS },
@@ -184,6 +187,7 @@ get_type_genre( fields *f, param *p )
 		{ "abstract or summary",       TYPE_ABSTRACT },
 		{ "patent",                    TYPE_PATENT },
 		{ "unpublished",               TYPE_UNPUBLISHED },
+		{ "manuscript",                TYPE_UNPUBLISHED },
 		{ "map",                       TYPE_MAP },
 	};
 	int nmatch_genres = sizeof( match_genres ) / sizeof( match_genres[0] );
@@ -544,6 +548,11 @@ append_thesishint( int type, fields *out, int *status )
 
 	else if ( type==TYPE_HABILITATIONTHESIS ) {
 		fstatus = fields_add( out, "U1", "Habilitation thesis", LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
+
+	else if ( type==TYPE_LICENTIATETHESIS ) {
+		fstatus = fields_add( out, "U1", "Licentiate thesis", LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
 	}
 }

@@ -302,7 +302,7 @@ output_names( fields *f, FILE *outptr, int level )
 	  { "patent holder",                       "ASSIGNEE",        0, MARC_AUTHORITY },
 	  { "performer",                           "PERFORMER",       0, MARC_AUTHORITY },
 	  { "producer",                            "PRODUCER",        0, MARC_AUTHORITY },
-	  { "recipient",                           "RECIPIENT",       0, MARC_AUTHORITY },
+	  { "addressee",                           "ADDRESSEE",       0, MARC_AUTHORITY },
 	  { "redactor",                            "REDACTOR",        0, MARC_AUTHORITY },
 	  { "reporter",                            "REPORTER",        0, MARC_AUTHORITY },
 	  { "sponsor",                             "SPONSOR",         0, MARC_AUTHORITY },

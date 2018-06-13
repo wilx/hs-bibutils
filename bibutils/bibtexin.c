@@ -349,7 +349,13 @@ process_bibtexline( char *p, str *tag, str *data, uchar stripquotes, fields *bib
 	str_empty( data );
 
 	p = bibtex_tag( p, tag );
-	if ( p==NULL || str_is_empty( tag ) ) return p;
+
+	if ( str_is_empty( tag ) ) {
+		/* ...skip this line */
+		while ( *p && *p!='\n' && *p!='\r' ) p++;
+		while ( *p=='\n' || *p=='\r' ) p++;
+		return p;
+	}
 
 	slist_init( &tokens );
 
@@ -387,21 +393,20 @@ static int
 process_cite( fields *bibin, char *p, char *filename, long nref, param *pm )
 {
 	int fstatus, status = BIBL_OK;
-	str tag, data;
+	str type, id, tag, data;
 
-	strs_init( &tag, &data, NULL );
+	strs_init( &type, &id, &tag, &data, NULL );
 
-	p = process_bibtextype( p, &data );
-	if ( str_has_value( &data ) ) {
-		fstatus = fields_add( bibin, "INTERNAL_TYPE", str_cstr( &data ), 0 );
-		if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
-	}
+	p = process_bibtextype( p, &type );
+	p = process_bibtexid( p, &id );
 
-	p = process_bibtexid( p, &data );
-	if ( str_has_value( &data ) ) {
-		fstatus = fields_add( bibin, "REFNUM", str_cstr( &data ), 0 );
-		if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
-	}
+	if ( str_is_empty( &type ) || str_is_empty( &id ) ) goto out;
+
+	fstatus = fields_add( bibin, "INTERNAL_TYPE", str_cstr( &type ), 0 );
+	if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
+
+	fstatus = fields_add( bibin, "REFNUM", str_cstr( &id), 0 );
+	if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
 
 	while ( *p ) {
 		p = process_bibtexline( p, &tag, &data, 1, bibin, nref, pm );
@@ -414,7 +419,7 @@ process_cite( fields *bibin, char *p, char *filename, long nref, param *pm )
 		strs_empty( &tag, &data, NULL );
 	}
 out:
-	strs_free( &tag, &data, NULL );
+	strs_free( &type, &id, &tag, &data, NULL );
 	return status;
 }
 
@@ -1006,12 +1011,19 @@ bibtexin_howpublished( fields *bibin, int n, str *intag, str *invalue, int level
 	if ( !strncasecmp( str_cstr( invalue ), "Diplom", 6 ) ) {
 		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Diploma thesis", level );
 		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
-	} else if ( !strncasecmp( str_cstr( invalue ), "Habilitation", 13 ) ) {
+	}
+	else if ( !strncasecmp( str_cstr( invalue ), "HSabilitation", 13 ) ) {
 		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Habilitation thesis", level );
 		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
-	} else if ( is_embedded_link( str_cstr( invalue ) ) ) {
+	}
+	else if ( !strncasecmp( str_cstr( invalue ), "Licentiate", 10 ) ) {
+		fstatus = fields_replace_or_add( bibout, "GENRE:BIBUTILS", "Licentiate thesis", level );
+		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
+	}
+	else if ( is_embedded_link( str_cstr( invalue ) ) ) {
 		status =  urls_split_and_add( str_cstr( invalue ), bibout, level );
-	} else {
+	}
+	else {
 		fstatus = fields_add( bibout, "PUBLISHER", str_cstr( invalue ), level );
 		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
 	}

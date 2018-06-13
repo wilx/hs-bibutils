@@ -89,6 +89,7 @@ enum {
 	TYPE_DIPLOMATHESIS,               /* Thesis */
 	TYPE_DOCTORALTHESIS,              /* Thesis */
 	TYPE_HABILITATIONTHESIS,          /* Thesis */
+	TYPE_LICENTIATETHESIS,            /* Thesis */
 	TYPE_UNPUBLISHED,                 /* Unpublished Work */
 };
 
@@ -252,6 +253,7 @@ get_type( fields *in, param *p, unsigned long refnum )
 		{ "Diploma thesis",            TYPE_DIPLOMATHESIS },
 		{ "Doctoral thesis",           TYPE_DOCTORALTHESIS },
 		{ "Habilitation thesis",       TYPE_HABILITATIONTHESIS },
+		{ "Licentiate thesis",         TYPE_LICENTIATETHESIS },
 		{ "communication",             TYPE_COMMUNICATION },
 		{ "manuscript",                TYPE_MANUSCRIPT },
 		{ "unpublished",               TYPE_UNPUBLISHED },
@@ -636,6 +638,10 @@ append_thesishint( int type, fields *out, int *status )
 		fstatus = fields_add( out, "%9", "Habilitation thesis", LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
 	}
+	else if ( type==TYPE_LICENTIATETHESIS ) {
+		fstatus = fields_add( out, "%9", "Licentiate thesis", LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
+	}
 }
 
 static void
@@ -695,14 +701,24 @@ append_data( fields *in, fields *out, param *p, unsigned long refnum )
 	append_people( in, "AUTHOR",     "%Y", LEVEL_SERIES, out, &status );
 	append_people( in, "EDITOR",     "%Y", LEVEL_SERIES, out, &status );
 
-	if ( type==TYPE_CASE )
+	if ( type==TYPE_CASE ) {
 		append_easy(    in, "AUTHOR:CORP", "%I", LEVEL_MAIN, out, &status );
-	else if ( type==TYPE_HEARING )
+		append_easy(    in, "AUTHOR:ASIS", "%I", LEVEL_MAIN, out, &status );
+	}
+	else if ( type==TYPE_HEARING ) {
 		append_easyall( in, "AUTHOR:CORP", "%S", LEVEL_MAIN, out, &status );
-	else if ( type==TYPE_NEWSARTICLE )
-		append_people(  in, "REPORTER",    "%A", LEVEL_MAIN, out, &status );
-	else if ( type==TYPE_COMMUNICATION )
-		append_people(  in, "RECIPIENT",   "%E", LEVEL_ANY,  out, &status  );
+		append_easyall( in, "AUTHOR:ASIS", "%S", LEVEL_MAIN, out, &status );
+	}
+	else if ( type==TYPE_NEWSARTICLE ) {
+		append_people(  in, "REPORTER",        "%A", LEVEL_MAIN, out, &status );
+		append_people(  in, "REPORTER:CORP",   "%A", LEVEL_MAIN, out, &status );
+		append_people(  in, "REPORTER:ASIS",   "%A", LEVEL_MAIN, out, &status );
+	}
+	else if ( type==TYPE_COMMUNICATION ) {
+		append_people(  in, "ADDRESSEE",       "%E", LEVEL_ANY,  out, &status  );
+		append_people(  in, "ADDRESSEE:CORP",  "%E", LEVEL_ANY,  out, &status  );
+		append_people(  in, "ADDRESSEE:ASIS",  "%E", LEVEL_ANY,  out, &status  );
+	}
 	else {
 		append_easyall( in, "AUTHOR:CORP",     "%A", LEVEL_MAIN, out, &status );
 		append_easyall( in, "AUTHOR:ASIS",     "%A", LEVEL_MAIN, out, &status );

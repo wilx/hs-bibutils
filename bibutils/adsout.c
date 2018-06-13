@@ -71,6 +71,7 @@ enum {
 	TYPE_DIPLOMATHESIS,
 	TYPE_DOCTORALTHESIS,
 	TYPE_HABILITATIONTHESIS,
+	TYPE_LICENTIATETHESIS,
 	TYPE_PATENT,
 	TYPE_PROGRAM
 };
@@ -93,10 +94,12 @@ get_type( fields *in )
 		{ "Diploma thesis",            TYPE_DIPLOMATHESIS },
 		{ "Doctoral thesis",           TYPE_DOCTORALTHESIS },
 		{ "Habilitation thesis",       TYPE_HABILITATIONTHESIS },
+		{ "Licentiate thesis",         TYPE_LICENTIATETHESIS },
 		{ "legislation",               TYPE_BILL },
 		{ "newspaper",                 TYPE_NEWSPAPER },
 		{ "communication",             TYPE_COMMUNICATION },
 		{ "manuscript",                TYPE_MANUSCRIPT },
+		{ "unpublished",               TYPE_MANUSCRIPT },
 		{ "report",                    TYPE_REPORT },
 		{ "technical report",          TYPE_REPORT },
 		{ "legal case and case notes", TYPE_CASE },

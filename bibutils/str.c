@@ -1038,3 +1038,10 @@ str_is_empty( str *s )
 	if ( !s || s->len==0 ) return 1;
 	return 0;
 }
+
+unsigned long
+str_strlen( str *s )
+{
+	if ( !s ) return 0;
+	else return s->len;
+}
