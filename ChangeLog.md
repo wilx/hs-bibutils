@@ -2,6 +2,8 @@
 
   - Import Bibutils 6.6.
 
+  - Expose NBIB output support.
+
 
 # 6.5.0.0
 

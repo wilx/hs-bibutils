@@ -93,6 +93,7 @@ module Text.Bibutils
     , isi_out
     , word2007_out
     , adsab_out
+    , nbib_out
 
     -- * Options for Specific Output Formats
     , FormatOpt
@@ -425,6 +426,7 @@ newtype BiblioOut = BiblioOut { unBiblioOut :: CInt }
  , isi_out      = BIBL_ISIOUT
  , word2007_out = BIBL_WORD2007OUT
  , adsab_out    = BIBL_ADSABSOUT
+ , nbib_out     = BIBL_NBIBOUT
  }
 
 newtype FormatOpt = FormatOpt { unFormatOpt :: CInt }
