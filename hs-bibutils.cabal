@@ -83,13 +83,13 @@ library
         bibutils/is_ws.c bibutils/latex.c bibutils/marc_auth.c
         bibutils/medin.c bibutils/modsin.c bibutils/modsout.c
         bibutils/modstypes.c bibutils/name.c bibutils/nbibin.c
-        bibutils/nbibtypes.c bibutils/notes.c bibutils/pages.c
-        bibutils/reftypes.c bibutils/risin.c bibutils/risout.c
-        bibutils/ristypes.c bibutils/serialno.c bibutils/slist.c
-        bibutils/str.c bibutils/str_conv.c bibutils/strsearch.c
-        bibutils/title.c bibutils/unicode.c bibutils/url.c bibutils/utf8.c
-        bibutils/vplist.c bibutils/wordin.c bibutils/wordout.c bibutils/xml.c
-        bibutils/xml_encoding.c
+        bibutils/nbibout.c bibutils/nbibtypes.c bibutils/notes.c
+        bibutils/pages.c bibutils/reftypes.c bibutils/risin.c
+        bibutils/risout.c bibutils/ristypes.c bibutils/serialno.c
+        bibutils/slist.c bibutils/str.c bibutils/str_conv.c
+        bibutils/strsearch.c bibutils/title.c bibutils/unicode.c
+        bibutils/url.c bibutils/utf8.c bibutils/vplist.c bibutils/wordin.c
+        bibutils/wordout.c bibutils/xml.c bibutils/xml_encoding.c
 
     if impl(ghc >= 6.10)
        build-depends: base >= 4, syb
