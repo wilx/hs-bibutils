@@ -36,6 +36,7 @@ bibl_initparams( param *p, int readmode, int writemode, char *progname )
 	case BIBL_ENDNOTEOUT:  endout_initparams( p, progname ); break;
 	case BIBL_ISIOUT:      isiout_initparams( p, progname ); break;
 	case BIBL_MODSOUT:     modsout_initparams( p, progname ); break;
+	case BIBL_NBIBOUT:     nbibout_initparams( p, progname ); break;
 	case BIBL_RISOUT:      risout_initparams( p, progname ); break;
 	case BIBL_WORD2007OUT: wordout_initparams( p, progname ); break;
 	default: /* internal error */;

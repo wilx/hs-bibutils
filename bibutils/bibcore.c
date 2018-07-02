@@ -44,15 +44,15 @@ report_params( FILE *fp, const char *f, param *p )
 		case BIBL_EBIIN:        fprintf( fp, " (BIBL_EBIIN)\n" );        break;
 		case BIBL_WORDIN:       fprintf( fp, " (BIBL_WORDIN)\n" );       break;
 		case BIBL_NBIBIN:       fprintf( fp, " (BIBL_NBIBIN)\n" );       break;
-		default:                fprintf( fp, " (Illegal value %d)\n", p->readformat ); break;
+		default:                fprintf( fp, " (Illegal value)\n" );     break;
 	}
 	fprintf( fp, "\tcharsetin=%d\n", p->charsetin );
 	fprintf( fp, "\tcharsetin_src=%d", p->charsetin_src );
 	switch ( p->charsetin_src ) {
-		case 0:  fprintf( fp, " (BIBL_SRC_DEFAULT)\n" ); break;
-		case 1:  fprintf( fp, " (BIBL_SRC_FILE)\n" );    break;
-		case 2:  fprintf( fp, " (BIBL_SRC_USER)\n" );    break;
-		default: fprintf( fp, " (Illegal value %d)\n", p->charsetin_src );   break;
+		case BIBL_SRC_DEFAULT:  fprintf( fp, " (BIBL_SRC_DEFAULT)\n" ); break;
+		case BIBL_SRC_FILE:     fprintf( fp, " (BIBL_SRC_FILE)\n" );    break;
+		case BIBL_SRC_USER:     fprintf( fp, " (BIBL_SRC_USER)\n" );    break;
+		default:                fprintf( fp, " (Illegal value)\n" );    break;
 	}
 	fprintf( fp, "\tutf8in=%d\n", p->utf8in );
 	fprintf( fp, "\tlatexin=%d\n", p->latexin );
@@ -61,22 +61,23 @@ report_params( FILE *fp, const char *f, param *p )
 	fprintf( fp, "\twriteformat=%d", p->writeformat );
 	switch ( p->writeformat ) {
 		case BIBL_INTERNALOUT:  fprintf( fp, " (BIBL_INTERNALOUT)\n" );  break;
-		case BIBL_MODSOUT:      fprintf( fp, " (BIBL_MODSOUT)\n" );      break;
+		case BIBL_ADSABSOUT:    fprintf( fp, " (BIBL_ADSABSOUT)\n" );    break;
 		case BIBL_BIBTEXOUT:    fprintf( fp, " (BIBL_BIBTEXOUT)\n" );    break;
-		case BIBL_RISOUT:       fprintf( fp, " (BIBL_RISOUT)\n" );       break;
 		case BIBL_ENDNOTEOUT:   fprintf( fp, " (BIBL_ENDNOTEOUT)\n" );   break;
 		case BIBL_ISIOUT:       fprintf( fp, " (BIBL_ISIOUT)\n" );       break;
+		case BIBL_MODSOUT:      fprintf( fp, " (BIBL_MODSOUT)\n" );      break;
+		case BIBL_NBIBOUT:      fprintf( fp, " (BIBL_NBIBOUT)\n" );      break;
+		case BIBL_RISOUT:       fprintf( fp, " (BIBL_RISOUT)\n" );       break;
 		case BIBL_WORD2007OUT:  fprintf( fp, " (BIBL_WORD2007OUT)\n" );  break;
-		case BIBL_ADSABSOUT:    fprintf( fp, " (BIBL_ADSABSOUT)\n" );    break;
-		default:                fprintf( fp, " (Illegal value %d)\n", p->writeformat ); break;
+		default:                fprintf( fp, " (Illegal value)\n");      break;
 	}
 	fprintf( fp, "\tcharsetout=%d\n", p->charsetout );
 	fprintf( fp, "\tcharsetout_src=%d", p->charsetout_src );
 	switch ( p->charsetout_src ) {
-		case 0:  fprintf( fp, " (BIBL_SRC_DEFAULT)\n" ); break;
-		case 1:  fprintf( fp, " (BIBL_SRC_FILE)\n" );    break;
-		case 2:  fprintf( fp, " (BIBL_SRC_USER)\n" );    break;
-		default: fprintf( fp, " (Illegal value %d)\n", p->charsetout_src ); break;
+		case BIBL_SRC_DEFAULT:  fprintf( fp, " (BIBL_SRC_DEFAULT)\n" ); break;
+		case BIBL_SRC_FILE:     fprintf( fp, " (BIBL_SRC_FILE)\n" );    break;
+		case BIBL_SRC_USER:     fprintf( fp, " (BIBL_SRC_USER)\n" );    break;
+		default:                fprintf( fp, " (Illegal value)\n" );    break;
 	}
 	fprintf( fp, "\tutf8out=%d\n", p->utf8out );
 	fprintf( fp, "\tutf8bom=%d\n", p->utf8bom );

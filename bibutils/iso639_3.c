@@ -8417,3 +8417,14 @@ iso639_3_from_code( const char *code )
 	}
 	return NULL;
 }
+
+char *
+iso639_3_from_name( const char *name )
+{
+	int i;
+	for ( i=0; i<niso639_3; ++i ) {
+		if ( !strcasecmp( iso639_3[i].language, name ) )
+			return iso639_3[i].code;
+	}
+	return NULL;
+}

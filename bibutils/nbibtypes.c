@@ -29,8 +29,8 @@ static lookups article[] = {
 	{ "AB",     "ABSTRACT",           SIMPLE, LEVEL_MAIN },
 	{ "FAU",    "AUTHOR",             PERSON, LEVEL_MAIN },
 	{ "AU",     "",                   SKIP,   LEVEL_MAIN },
-	{ "AD",     "",                   SKIP,   LEVEL_MAIN },
-	{ "LA",     "",                   SKIP,   LEVEL_MAIN },
+	{ "AD",     "ADDRESS:AUTHOR",     SIMPLE, LEVEL_MAIN },
+	{ "LA",     "LANGUAGE",           SIMPLE, LEVEL_MAIN },
 	{ "GR",     "",                   SKIP,   LEVEL_MAIN },
 	{ "DEP",    "",                   SKIP,   LEVEL_MAIN }, /* a date */
 	{ "PL",     "ADDRESS",            SIMPLE, LEVEL_MAIN }, /* Publisher location */
@@ -39,6 +39,7 @@ static lookups article[] = {
 	{ "JID",    "",                   SKIP,   LEVEL_HOST }, /* Journal ID? */
 	{ "SB",     "",                   SKIP,   LEVEL_MAIN },
 	{ "MH",     "KEYWORD",            SIMPLE, LEVEL_MAIN },
+	{ "OT",     "KEYWORD",            SIMPLE, LEVEL_MAIN },
 	{ "PMC",    "PMC",                SIMPLE, LEVEL_MAIN },
 	{ "OID",    "",                   SKIP,   LEVEL_MAIN },
 	{ "EDAT",   "",                   SKIP,   LEVEL_MAIN },

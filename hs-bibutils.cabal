@@ -1,5 +1,5 @@
 name:               hs-bibutils
-version:            6.5.0.0
+version:            6.6.0.0
 homepage:           https://github.com/wilx/hs-bibutils
 
 synopsis:           Haskell bindings to bibutils, the bibliography
@@ -46,8 +46,8 @@ extra-source-files:
         bibutils/marc_auth.c bibutils/marc_auth.h bibutils/medin.c
         bibutils/modsin.c bibutils/modsout.c bibutils/modstypes.c
         bibutils/modstypes.h bibutils/name.c bibutils/name.h
-        bibutils/nbibin.c bibutils/nbibtypes.c bibutils/notes.c
-        bibutils/notes.h bibutils/pages.c bibutils/pages.h
+        bibutils/nbibin.c bibutils/nbibout.c bibutils/nbibtypes.c
+        bibutils/notes.c bibutils/notes.h bibutils/pages.c bibutils/pages.h
         bibutils/reftypes.c bibutils/reftypes.h bibutils/risin.c
         bibutils/risout.c bibutils/ristypes.c bibutils/serialno.c
         bibutils/serialno.h bibutils/slist.c bibutils/slist.h bibutils/str.c
