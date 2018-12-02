@@ -1,7 +1,7 @@
 /*
  * str.h
  *
- * Version: 2017-07-03
+ * Version: 2018-08-03
  *
  * Copyright (c) Chris Putnam 1999-2018
  *
@@ -11,12 +11,18 @@
 #ifndef STR_H
 #define STR_H
 
+#define STR_OK (0)
+#define STR_MEMERR (-1)
+
 #include <stdio.h>
 
 typedef struct str {
 	char *data;
 	unsigned long dim;
 	unsigned long len;
+#ifndef STR_SMALL
+	int status;
+#endif
 }  str;
 
 str *  str_new         ( void );
@@ -120,6 +126,12 @@ int  str_is_empty( str *s );
  * in str functions...useful for library construction for
  * Linux distributions that don't want libraries calling exit, but
  * not useful during code development
+ */
+
+/* #define STR_SMALL
+ *
+ * set to make the smallest possible struct str, but will get
+ * exit( EXIT_FAILURE ) upon memory failures
  */
 
 #endif

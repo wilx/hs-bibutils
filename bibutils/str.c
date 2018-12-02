@@ -1,7 +1,7 @@
 /*
  * str.c
  *
- * Version: 2017-07-03
+ * Version: 2018-08-03
  *
  * Copyright (c) Chris Putnam 1999-2018
  *
@@ -28,6 +28,41 @@
 
 #define str_initlen (64)
 
+#ifndef STR_SMALL
+
+#define str_clear_status( s ) s->status = STR_OK;
+#define handle_memerr( s, f ) s->status = STR_MEMERR;
+#define return_if_memerr( s ) \
+{ \
+	if ( s->status != STR_OK ) return; \
+}
+#define return_zero_if_memerr( s ) \
+{ \
+	if ( s->status != STR_OK ) return 0; \
+}
+#define return_after_delim_if_memerr( s, p, delim, finalstep ) \
+{ \
+	if ( s->status != STR_OK ) { \
+		while ( p && *p && !strchr( delim, *p ) ) p++; \
+		if ( p && *p && finalstep ) p++; \
+		return p; \
+	} \
+}
+
+#else
+
+#define str_clear_status( s ) {}
+#define handle_memerr( s, f ) \
+{ \
+	fprintf( stderr,"Error.  Cannot allocate memory in %s.\n", f ); \
+	exit( EXIT_FAILURE ); \
+}
+#define return_if_memerr( s ) {}
+#define return_zero_if_memerr( s ) {}
+#define return_after_delim_if_memerr( s, p, delim, finalstep ) {}
+
+#endif
+
 
 /* Clear memory in resize/free if STR_PARANOIA defined */
 
@@ -36,16 +71,18 @@
 static void 
 str_realloc( str *s, unsigned long minsize )
 {
-	char *newptr;
 	unsigned long size;
+	char *newptr;
+
 	assert( s );
+	return_if_memerr( s );
+
 	size = 2 * s->dim;
 	if (size < minsize) size = minsize;
+
 	newptr = (char *) realloc( s->data, sizeof( *(s->data) )*size );
-	if ( !newptr ) {
-		fprintf( stderr,"Error.  Cannot reallocate memory (%lu bytes) in str_realloc.\n", sizeof(*(s->data))*size );
-		exit( EXIT_FAILURE );
-	}
+	if ( !newptr ) handle_memerr( s, __FUNCTION__ );
+
 	s->data = newptr;
 	s->dim = size;
 }
@@ -58,16 +95,18 @@ str_realloc( str *s, unsigned long minsize )
 static void 
 str_realloc( str *s, unsigned long minsize )
 {
-	char *newptr;
 	unsigned long size;
+	char *newptr;
+
 	assert( s );
+	return_if_memerr( s );
+
 	size = 2 * s->dim;
 	if ( size < minsize ) size = minsize;
+
 	newptr = (char *) malloc( sizeof( *(s->data) ) * size );
-	if ( !newptr ) {
-		fprintf( stderr, "Error.  Cannot reallocate memory (%lu bytes) in str_realloc.\n", sizeof(*(s->data))*size );
-		exit( EXIT_FAILURE );
-	}
+	if ( !newptr ) handle_memerr( s, __FUNCTION__ );
+
 	if ( s->data ) {
 		str_nullify( s );
 		free( s->data );
@@ -91,6 +130,7 @@ str_init( str *s )
 	s->dim = 0;
 	s->len = 0;
 	s->data = NULL;
+	str_clear_status( s );
 }
 
 void
@@ -139,16 +179,14 @@ strs_init( str *s, ... )
 	va_end( ap );
 }
 
-/*
- * This is currently a stub. Later it will
- * report whether or not a str function
- * could not be performed due to a memory
- * error.
- */
 int
 str_memerr( str *s )
 {
+#ifndef STR_SMALL
+	return s->status == STR_MEMERR;
+#else
 	return 0;
+#endif
 }
 
 void
@@ -156,6 +194,7 @@ str_mergestrs( str *s, ... )
 {
 	va_list ap;
 	const char *cp;
+	str_clear_status( s );
 	str_empty( s );
 	va_start( ap, s );
 	do {
@@ -229,6 +268,7 @@ void
 str_empty( str *s )
 {
 	assert( s );
+	str_clear_status( s );
 	if ( s->data ) {
 		str_nullify( s );
 		s->data[0] = '\0';
@@ -254,11 +294,16 @@ void
 str_addchar( str *s, char newchar )
 {
 	assert( s );
+
+	return_if_memerr( s );
+
 	if ( newchar=='\0' ) return; /* appending '\0' is a null operation */
+
 	if ( !s->data || s->dim==0 ) 
 		str_initalloc( s, str_initlen );
 	if ( s->len + 2 > s->dim ) 
 		str_realloc( s, s->len*2 );
+
 	s->data[s->len++] = newchar;
 	s->data[s->len] = '\0';
 }
@@ -304,9 +349,14 @@ void
 str_prepend( str *s, const char *addstr )
 {
 	unsigned long lenaddstr, i;
+
 	assert( s && addstr );
+
+	return_if_memerr( s );
+
 	lenaddstr = strlen( addstr );
-	if ( lenaddstr==0 ) return;
+	if ( lenaddstr==0 ) return; /* appending an empty string is a null op */
+
 	if ( !s->data || !s->dim )
 		str_initalloc( s, lenaddstr+1 );
 	else {
@@ -333,6 +383,7 @@ str_strcat_ensurespace( str *s, unsigned long n )
 static inline void 
 str_strcat_internal( str *s, const char *addstr, unsigned long n )
 {
+	return_if_memerr( s );
 	str_strcat_ensurespace( s, n );
 	strncat( &(s->data[s->len]), addstr, n );
 	s->len += n;
@@ -365,6 +416,8 @@ str_segcat( str *s, char *startat, char *endat )
 	assert( s && startat && endat );
 	assert( (size_t) startat < (size_t) endat );
 
+	return_if_memerr( s );
+
 	if ( startat==endat ) return;
 
 	n = 0;
@@ -381,8 +434,12 @@ void
 str_indxcat( str *s, char *p, unsigned long start, unsigned long stop )
 {
 	unsigned long i;
+
 	assert( s && p );
 	assert( start <= stop );
+
+	return_if_memerr( s );
+
 	for ( i=start; i<stop; ++i )
 		str_addchar( s, p[i] );
 }
@@ -396,6 +453,7 @@ char *
 str_cpytodelim( str *s, char *p, const char *delim, unsigned char finalstep )
 {
 	assert( s );
+
 	str_empty( s );
 	return str_cattodelim( s, p, delim, finalstep );
 }
@@ -409,6 +467,9 @@ char *
 str_cattodelim( str *s, char *p, const char *delim, unsigned char finalstep )
 {
 	assert( s );
+
+	return_after_delim_if_memerr( s, p, delim, finalstep );
+
 	while ( p && *p && !strchr( delim, *p ) ) {
 		str_addchar( s, *p );
 		p++;
@@ -430,6 +491,8 @@ str_strcpy_ensurespace( str *s, unsigned long n )
 static inline void
 str_strcpy_internal( str *s, const char *p, unsigned long n )
 {
+	return_if_memerr( s );
+
 	str_strcpy_ensurespace( s, n );
 	strncpy( s->data, p, n );
 	s->data[n] = '\0';
@@ -468,6 +531,8 @@ str_segcpy( str *s, char *startat, char *endat )
 	assert( s && startat && endat );
 	assert( ((size_t) startat) <= ((size_t) endat) );
 
+	return_if_memerr( s );
+
 	if ( startat==endat ) {
 		str_empty( s );
 		return;
@@ -492,8 +557,12 @@ void
 str_indxcpy( str *s, char *p, unsigned long start, unsigned long stop )
 {
 	unsigned long i;
+
 	assert( s && p );
 	assert( start <= stop );
+
+	return_if_memerr( s );
+
 	if ( start == stop ) {
 		str_empty( s );
 		return;
@@ -528,7 +597,11 @@ str_segdel( str *s, char *p, char *q )
 {
 	str tmp1, tmp2;
 	char *r;
+
 	assert( s );
+
+	return_if_memerr( s );
+
 	r = &(s->data[s->len]);
 	str_init( &tmp1 );
 	str_init( &tmp2 );
@@ -560,7 +633,10 @@ str_findreplace( str *s, const char *find, const char *replace )
 	int n = 0;
 
 	assert( s && find );
-	if ( !s->data || !s->dim ) return n;
+
+	return_zero_if_memerr( s );
+
+	if ( !s->data || !s->dim ) return 0;
 	if ( !replace ) replace = empty;
 
 	find_len = strlen( find );
@@ -1015,6 +1091,7 @@ str_fill( str *s, unsigned long n, char fillchar )
 {
 	unsigned long i;
 	assert( s );
+	str_clear_status( s );
 	if ( !s->data || s->dim==0 )
 		str_initalloc( s, n+1 );
 	if ( n + 1 > s->dim )

@@ -116,6 +116,7 @@ string_pattern( char *s, char *pattern, int matchcase )
 }
 
 /* science direct is now doing "M3  - doi: DOI: 10.xxxx/xxxxx" */
+/* elsevier is doing "DO - https://doi.org/xx.xxxx/xxxx..." */
 int
 is_doi( char *s )
 {
@@ -123,6 +124,7 @@ is_doi( char *s )
 	if ( string_pattern( s, "doi:##.####/", 0 ) ) return 4;
 	if ( string_pattern( s, "doi: ##.####/", 0 ) ) return 5;
 	if ( string_pattern( s, "doi: DOI: ##.####/", 0 ) ) return 10;
+	if ( string_pattern( s, "https://doi.org/##.####/", 0 ) ) return 16;
 	return -1;
 }
 

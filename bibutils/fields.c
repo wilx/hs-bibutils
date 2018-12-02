@@ -456,7 +456,7 @@ fields_findv_each_add( fields *f, int mode, int n, vplist *a )
 	if ( mode & FIELDS_STRP_FLAG ) {
 		v = ( void * ) &( f->data[n] );
 	} else if ( mode & FIELDS_POSP_FLAG ) {
-		v = ( void * )( (long) n );
+		v = ( void * )( (long long) n );
 	} else {
 		v = ( void * ) str_cstr( &( f->data[n] ) );
 	}

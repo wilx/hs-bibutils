@@ -357,6 +357,96 @@ output_4digit_value( char *pos, long long n )
 }
 
 static char
+initial_ascii( const char *name )
+{
+	int b1, b2;
+
+	if ( isascii( name[0] )  )
+		return name[0];
+
+        b1 = name[0]+256;
+        b2 = name[1]+256;
+
+	switch( b1 ) {
+
+	case 0xc3:
+		     if ( b2 >= 0x80 && b2 <= 0x86 ) return 'A';
+		else if ( b2 == 0x87 )               return 'C';
+		else if ( b2 >= 0x88 && b2 <= 0x8b ) return 'E';
+		else if ( b2 >= 0x8c && b2 <= 0x8f ) return 'I';
+		else if ( b2 == 0x90 )               return 'D';
+		else if ( b2 == 0x91 )               return 'N';
+		else if ( b2 >= 0x92 && b2 <= 0x98 ) return 'O';
+		else if ( b2 >= 0x99 && b2 <= 0x9c ) return 'U';
+		else if ( b2 == 0x9d )               return 'Y';
+		else if ( b2 == 0x9f )               return 'S';
+		else if ( b2 >= 0xa0 && b2 <= 0xa6 ) return 'A';
+		else if ( b2 == 0xa7 )               return 'C';
+		else if ( b2 >= 0xa8 && b2 <= 0xab ) return 'E';
+		else if ( b2 >= 0xac && b2 <= 0xaf ) return 'I';
+		else if ( b2 == 0xb0 )               return 'D';
+		else if ( b2 == 0xb1 )               return 'N';
+		else if ( b2 >= 0xb2 && b2 <= 0xb8 ) return 'O';
+		else if ( b2 >= 0xb9 && b2 <= 0xbc ) return 'U';
+		else if ( b2 >= 0xbd && b2 <= 0xbf ) return 'Y';
+	break;
+
+	case 0xc4:
+		     if ( b2 >= 0x80 && b2 <= 0x85 ) return 'A';
+		else if ( b2 >= 0x86 && b2 <= 0x8d ) return 'C';
+		else if ( b2 >= 0x8e || b2 <= 0x91 ) return 'D';
+		else if ( b2 >= 0x92 && b2 <= 0x9b ) return 'E';
+		else if ( b2 >= 0x9c && b2 <= 0xa3 ) return 'G';
+		else if ( b2 >= 0xa4 && b2 <= 0xa7 ) return 'H';
+		else if ( b2 >= 0xa8 && b2 <= 0xb3 ) return 'I';
+		else if ( b2 >= 0xb4 && b2 <= 0xb5 ) return 'J';
+		else if ( b2 >= 0xb6 && b2 <= 0xb8 ) return 'K';
+		else if ( b2 >= 0xb9 && b2 <= 0xbf ) return 'L';
+	break;
+
+	case 0xc5:
+		     if ( b2 >= 0x80 && b2 <= 0x82 ) return 'L';
+		else if ( b2 >= 0x83 && b2 <= 0x8b ) return 'N';
+		else if ( b2 >= 0x8c || b2 <= 0x93 ) return 'O';
+		else if ( b2 >= 0x94 && b2 <= 0x99 ) return 'R';
+		else if ( b2 >= 0x9a && b2 <= 0xa1 ) return 'S';
+		else if ( b2 >= 0xa2 && b2 <= 0xa7 ) return 'T';
+		else if ( b2 >= 0xa8 && b2 <= 0xb3 ) return 'U';
+		else if ( b2 >= 0xb4 && b2 <= 0xb5 ) return 'W';
+		else if ( b2 >= 0xb6 && b2 <= 0xb8 ) return 'Y';
+		else if ( b2 >= 0xb9 && b2 <= 0xbf ) return 'Z';
+	break;
+
+	case 0xc6:
+		     if ( b2 >= 0x80 && b2 <= 0x85 ) return 'B';
+		else if ( b2 >= 0x86 && b2 <= 0x88 ) return 'C';
+		else if ( b2 >= 0x89 || b2 <= 0x8d ) return 'D';
+		else if ( b2 >= 0x8e && b2 <= 0x90 ) return 'E';
+		else if ( b2 >= 0x91 && b2 <= 0x92 ) return 'F';
+		else if ( b2 >= 0x93 && b2 <= 0x94 ) return 'G';
+		else if ( b2 == 0x95 )               return 'H';
+		else if ( b2 >= 0x96 && b2 <= 0x97 ) return 'I';
+		else if ( b2 >= 0x98 && b2 <= 0x99 ) return 'K';
+		else if ( b2 >= 0xba && b2 <= 0x9b ) return 'L';
+		else if ( b2 == 0xbc )               return 'M';
+		else if ( b2 >= 0x9d && b2 <= 0x9e ) return 'N';
+		else if ( b2 >= 0x9f && b2 <= 0xa3 ) return 'O';
+		else if ( b2 >= 0xa4 && b2 <= 0xa5 ) return 'P';
+		else if ( b2 == 0xa6 )               return 'R';
+		else if ( b2 >= 0xa7 && b2 <= 0xaa ) return 'S';
+		else if ( b2 >= 0xab && b2 <= 0xae ) return 'T';
+		else if ( b2 >= 0xaf && b2 <= 0xb1 ) return 'U';
+		else if ( b2 == 0xb2 )               return 'V';
+		else if ( b2 >= 0xb3 && b2 <= 0xb4 ) return 'Y';
+		else if ( b2 >= 0xb5 && b2 <= 0xbe ) return 'Z';
+	break;
+
+	}
+
+	return '.';
+}
+
+static char
 get_firstinitial( fields *in )
 {
 	char *name;
@@ -367,7 +457,7 @@ get_firstinitial( fields *in )
 
 	if ( n!=FIELDS_NOTFOUND ) {
 		name = fields_value( in, n, FIELDS_CHRP );
-		return name[0];
+		return initial_ascii( name );
 	} else return '\0';
 }
 
@@ -429,7 +519,7 @@ append_Rtag( fields *in, char *adstag, int type, fields *out, int *status )
 	}
 
 	/** A */
-        ch = toupper( (unsigned char) get_firstinitial( in ) );
+	 ch = toupper( (unsigned char) get_firstinitial( in ) );
 	if ( ch!='\0' ) outstr[18] = ch;
 
 	fstatus = fields_add( out, adstag, outstr, LEVEL_MAIN );
@@ -437,24 +527,34 @@ append_Rtag( fields *in, char *adstag, int type, fields *out, int *status )
 }
 
 static void
-append_easyall( fields *in, char *tag, char *adstag, int level, fields *out, int *status )
+append_easyall( fields *in, char *tag, char *adstag, int level, fields *out, char *prefix, int *status )
 {
 	vplist_index i;
 	int fstatus;
+	str output;
+	char *val;
 	vplist a;
 
 	vplist_init( &a );
+	if ( prefix ) str_init( &output );
 
 	fields_findv_each( in, level, FIELDS_CHRP, &a, tag );
 
 	for ( i=0; i<a.n; ++i ) {
-		fstatus = fields_add( out, adstag, (char*) vplist_get( &a, i ), LEVEL_MAIN );
+		val = ( char * ) vplist_get( &a, i );
+		if ( prefix ) {
+			str_strcpyc( &output, prefix );
+			str_strcatc( &output, val );
+			val = str_cstr( &output );
+		}
+		fstatus = fields_add( out, adstag, val, LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) {
 			*status = BIBL_ERR_MEMERR;
 			goto out;
 		}
 	}
 out:
+	if ( prefix ) str_free( &output );
 	vplist_free( &a );
 }
 
@@ -503,7 +603,8 @@ append_urls( fields *in, fields *out, int *status )
 	int lstatus;
 	slist types;
 
-	lstatus = slist_init_valuesc( &types, "URL", "DOI", "PMID", "PMC", "ARXIV", "JSTOR", "MRNUMBER", "FILEATTACH", "FIGATTACH", NULL );
+	/* skip DOI as we'll add that separately */
+	lstatus = slist_init_valuesc( &types, "URL", "PMID", "PMC", "ARXIV", "JSTOR", "MRNUMBER", "FILEATTACH", "FIGATTACH", NULL );
 	if ( lstatus!=SLIST_OK ) {
 		*status = BIBL_ERR_MEMERR;
 		return;
@@ -556,23 +657,23 @@ append_data( fields *in, fields *out )
 	fields_clearused( in );
 	type = get_type( in );
 
+	append_Rtag   ( in, "%R", type, out, &status );
 	append_people ( in, "AUTHOR", "AUTHOR:ASIS", "AUTHOR:CORP", "%A", LEVEL_MAIN, out, &status );
 	append_people ( in, "EDITOR", "EDITOR:ASIS", "EDITOR:CORP", "%E", LEVEL_ANY,  out, &status );
-	append_easy   ( in, "TITLE",       "%T", LEVEL_ANY, out, &status );
+	append_easy   ( in, "TITLE",	"%T", LEVEL_ANY, out, &status );
 	append_titles ( in, type, out, &status );
 	append_date   ( in,               "%D", LEVEL_ANY, out, &status );
 	append_easy   ( in, "VOLUME",     "%V", LEVEL_ANY, out, &status );
 	append_easy   ( in, "ISSUE",      "%N", LEVEL_ANY, out, &status );
 	append_easy   ( in, "NUMBER",     "%N", LEVEL_ANY, out, &status );
 	append_easy   ( in, "LANGUAGE",   "%M", LEVEL_ANY, out, &status );
-	append_easyall( in, "NOTES",      "%X", LEVEL_ANY, out, &status );
+	append_easyall( in, "NOTES",      "%X", LEVEL_ANY, out, NULL, &status );
 	append_easy   ( in, "ABSTRACT",   "%B", LEVEL_ANY, out, &status );
 	append_keys   ( in, "KEYWORD",    "%K", LEVEL_ANY, out, &status );
 	append_urls   ( in, out, &status );
 	append_pages  ( in, out, &status );
-	append_easyall( in, "DOI",        "%Y", LEVEL_ANY, out, &status );
+	append_easyall( in, "DOI",        "%Y", LEVEL_ANY, out, "DOI:", &status );
 	append_trailer( out, &status );
-	append_Rtag   ( in, "%R", type, out, &status );
 
 	return status;
 }
