@@ -1,7 +1,7 @@
 /*
  * bibtexout.c
  *
- * Copyright (c) Chris Putnam 2003-2018
+ * Copyright (c) Chris Putnam 2003-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -15,37 +15,55 @@
 #include "utf8.h"
 #include "xml.h"
 #include "fields.h"
+#include "generic.h"
 #include "name.h"
 #include "title.h"
+#include "type.h"
 #include "url.h"
 #include "bibformats.h"
 
+/*****************************************************
+ PUBLIC: int bibtexout_initparams()
+*****************************************************/
+
 static int  bibtexout_write( fields *in, FILE *fp, param *p, unsigned long refnum );
-static void bibtexout_writeheader( FILE *outptr, param *p );
+static int  bibtexout_assemble( fields *in, fields *out, param *pm, unsigned long refnum );
 
-void
-bibtexout_initparams( param *p, const char *progname )
+int
+bibtexout_initparams( param *pm, const char *progname )
 {
-	p->writeformat      = BIBL_BIBTEXOUT;
-	p->format_opts      = 0;
-	p->charsetout       = BIBL_CHARSET_DEFAULT;
-	p->charsetout_src   = BIBL_SRC_DEFAULT;
-	p->latexout         = 1;
-	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
-	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
-	p->xmlout           = BIBL_XMLOUT_FALSE;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->singlerefperfile = 0;
+	pm->writeformat      = BIBL_BIBTEXOUT;
+	pm->format_opts      = 0;
+	pm->charsetout       = BIBL_CHARSET_DEFAULT;
+	pm->charsetout_src   = BIBL_SRC_DEFAULT;
+	pm->latexout         = 1;
+	pm->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
+	pm->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
+	pm->xmlout           = BIBL_XMLOUT_FALSE;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->singlerefperfile = 0;
 
-	p->headerf = bibtexout_writeheader;
-	p->footerf = NULL;
-	p->writef  = bibtexout_write;
+	pm->headerf   = generic_writeheader;
+	pm->footerf   = NULL;
+	pm->assemblef = bibtexout_assemble;
+	pm->writef    = bibtexout_write;
 
-	if ( !p->progname && progname )
-		p->progname = strdup( progname );
+	if ( !pm->progname ) {
+		if ( !progname ) pm->progname = NULL;
+		else {
+			pm->progname = strdup( progname );
+			if ( !pm->progname ) return BIBL_ERR_MEMERR;
+		}
+	}
+
+	return BIBL_OK;
 }
+
+/*****************************************************
+ PUBLIC: int bibtexout_assemble()
+*****************************************************/
 
 enum {
 	TYPE_UNKNOWN = 0,
@@ -68,97 +86,61 @@ enum {
 };
 
 static int
-is_genre_element( fields *in, int n )
+bibtexout_type( fields *in, const char *progname, const char *filename, unsigned long refnum )
 {
-	char *tag;
+	match_type genre_matches[] = {
+		{ "periodical",             TYPE_ARTICLE,       LEVEL_ANY  },
+		{ "academic journal",       TYPE_ARTICLE,       LEVEL_ANY  },
+		{ "magazine",               TYPE_ARTICLE,       LEVEL_ANY  },
+		{ "newspaper",              TYPE_ARTICLE,       LEVEL_ANY  },
+		{ "article",                TYPE_ARTICLE,       LEVEL_ANY  },
+		{ "instruction",            TYPE_MANUAL,        LEVEL_ANY  },
+		{ "book",                   TYPE_BOOK,          LEVEL_MAIN },
+		{ "book",                   TYPE_INBOOK,        LEVEL_ANY  },
+		{ "book chapter",           TYPE_INBOOK,        LEVEL_ANY  },
+		{ "unpublished",            TYPE_UNPUBLISHED,   LEVEL_ANY  },
+		{ "manuscript",             TYPE_UNPUBLISHED,   LEVEL_ANY  },
+		{ "conference publication", TYPE_PROCEEDINGS,   LEVEL_MAIN },
+		{ "conference publication", TYPE_INPROCEEDINGS, LEVEL_ANY  },
+		{ "collection",             TYPE_COLLECTION,    LEVEL_MAIN },
+		{ "collection",             TYPE_INCOLLECTION,  LEVEL_ANY  },
+		{ "report",                 TYPE_REPORT,        LEVEL_ANY  },
+		{ "technical report",       TYPE_REPORT,        LEVEL_ANY  },
+		{ "Masters thesis",         TYPE_MASTERSTHESIS, LEVEL_ANY  },
+		{ "Diploma thesis",         TYPE_DIPLOMATHESIS, LEVEL_ANY  },
+		{ "Ph.D. thesis",           TYPE_PHDTHESIS,     LEVEL_ANY  },
+		{ "Licentiate thesis",      TYPE_PHDTHESIS,     LEVEL_ANY  },
+		{ "thesis",                 TYPE_PHDTHESIS,     LEVEL_ANY  },
+		{ "electronic",             TYPE_ELECTRONIC,    LEVEL_ANY  },
+		{ "miscellaneous",          TYPE_MISC,          LEVEL_ANY  },
+	};
+	int ngenre_matches = sizeof( genre_matches ) / sizeof( genre_matches[0] );
 
-	tag = fields_tag( in, n, FIELDS_CHRP );
+	match_type resource_matches[] = {
+		{ "moving image",           TYPE_ELECTRONIC,    LEVEL_ANY  },
+		{ "software, multimedia",   TYPE_ELECTRONIC,    LEVEL_ANY  },
+	};
+	int nresource_matches = sizeof( resource_matches ) /sizeof( resource_matches[0] );
 
-	if ( !strcasecmp( tag, "GENRE:MARC"     ) ) return 1;
-	if ( !strcasecmp( tag, "GENRE:BIBUTILS" ) ) return 1;
-	if ( !strcasecmp( tag, "GENRE:UNKNOWN"  ) ) return 1;
+	match_type issuance_matches[] = {
+		{ "monographic",            TYPE_BOOK,          LEVEL_MAIN },
+		{ "monographic",            TYPE_INBOOK,        LEVEL_ANY  },
+	};
+	int nissuance_matches = sizeof( issuance_matches ) / sizeof( issuance_matches[0] );
 
-	return 0;
-}
+	int type, maxlevel, n;
 
-static int
-is_issuance_element( fields *in, int n )
-{
-	if ( !strcasecmp( fields_tag( in, n, FIELDS_CHRP ), "ISSUANCE" ) ) return 1;
-	else return 0;
-}
-
-static int
-bibtexout_type( fields *in, char *filename, int refnum, param *p )
-{
-	int type = TYPE_UNKNOWN, i, maxlevel, n, level;
-	char *genre;
-
-	/* determine bibliography type from GENRE */
-	for ( i=0; i<in->n; ++i ) {
-		if ( !is_genre_element( in, i ) ) continue;
-		genre = fields_value( in, i, FIELDS_CHRP );
-		level = in->level[i];
-		if ( !strcasecmp( genre, "periodical" ) ||
-		     !strcasecmp( genre, "academic journal" ) ||
-		     !strcasecmp( genre, "magazine" ) ||
-		     !strcasecmp( genre, "newspaper" ) ||
-		     !strcasecmp( genre, "article" ) ) {
-			type = TYPE_ARTICLE;
-		} else if ( !strcasecmp( genre, "instruction" ) ) {
-			type = TYPE_MANUAL;
-		} else if ( !strcasecmp( genre, "unpublished" ) ||
-		            !strcasecmp( genre, "manuscript" ) ) {
-			type = TYPE_UNPUBLISHED;
-		} else if ( !strcasecmp( genre, "conference publication" ) ) {
-			if ( level==0 ) type=TYPE_PROCEEDINGS;
-			else type = TYPE_INPROCEEDINGS;
-		} else if ( !strcasecmp( genre, "collection" ) ) {
-			if ( level==0 ) type=TYPE_COLLECTION;
-			else type = TYPE_INCOLLECTION;
-		} else if ( !strcasecmp( genre, "report" ) ||
-		            !strcasecmp( genre, "technical report" ) ) {
-			type = TYPE_REPORT;
-		} else if ( !strcasecmp( genre, "book chapter" ) ) {
-			type = TYPE_INBOOK;
-		} else if ( !strcasecmp( genre, "book" ) ) {
-			if ( level==0 ) type = TYPE_BOOK;
-			else type = TYPE_INBOOK;
-		} else if ( !strcasecmp( genre, "thesis" ) ) {
-			if ( type==TYPE_UNKNOWN ) type=TYPE_PHDTHESIS;
-		} else if ( !strcasecmp( genre, "Ph.D. thesis" ) ) {
-			type = TYPE_PHDTHESIS;
-		} else if ( !strcasecmp( genre, "Licentiate thesis" ) ) {
-			type = TYPE_PHDTHESIS;
-		} else if ( !strcasecmp( genre, "Masters thesis" ) ) {
-			type = TYPE_MASTERSTHESIS;
-		} else if ( !strcasecmp( genre, "Diploma thesis" ) ) {
-			type = TYPE_DIPLOMATHESIS;
-		} else if ( !strcasecmp( genre, "electronic" ) ) {
-			type = TYPE_ELECTRONIC;
-		} else if ( !strcasecmp( genre, "miscellaneous" ) ) {
-			type = TYPE_MISC;
-		}
-	}
-
-	/* check type from ISSUANCE */
-	if ( type==TYPE_UNKNOWN ) {
-		for ( i=0; i<in->n; ++i ) {
-			if ( !is_issuance_element( in, i ) ) continue;
-			genre = fields_value( in, i, FIELDS_CHRP );
-			if ( !strcasecmp( genre, "monographic" ) ) {
-				if ( level==0 ) type = TYPE_BOOK;
-			}
-		}
-	}
+	type = type_from_mods_hints( in, TYPE_FROM_GENRE, genre_matches, ngenre_matches, TYPE_UNKNOWN );
+	if ( type==TYPE_UNKNOWN ) type = type_from_mods_hints( in, TYPE_FROM_RESOURCE, resource_matches, nresource_matches, TYPE_UNKNOWN );
+	if ( type==TYPE_UNKNOWN ) type = type_from_mods_hints( in, TYPE_FROM_ISSUANCE, issuance_matches, nissuance_matches, TYPE_UNKNOWN );
 
 	/* default to TYPE_MISC */
 	if ( type==TYPE_UNKNOWN ) {
 		maxlevel = fields_maxlevel( in );
 		if ( maxlevel > 0 ) type = TYPE_MISC;
 		else {
-			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-			fprintf( stderr, "Cannot identify TYPE in reference %d ", refnum+1 );
+			if ( progname ) fprintf( stderr, "%s: ", progname );
+			fprintf( stderr, "Cannot identify TYPE in reference %lu ", refnum+1 );
 			n = fields_find( in, "REFNUM", LEVEL_ANY );
 			if ( n!=FIELDS_NOTFOUND ) 
 				fprintf( stderr, " %s", (char*) fields_value( in, n, FIELDS_CHRP ) );
@@ -167,73 +149,6 @@ bibtexout_type( fields *in, char *filename, int refnum, param *p )
 		}
 	}
 	return type;
-}
-
-static void
-output( FILE *fp, fields *out, int format_opts )
-{
-	int i, j, len, nquotes;
-	char *tag, *value, ch;
-
-	/* ...output type information "@article{" */
-	value = ( char * ) fields_value( out, 0, FIELDS_CHRP );
-	if ( !(format_opts & BIBL_FORMAT_BIBOUT_UPPERCASE) ) fprintf( fp, "@%s{", value );
-	else {
-		len = strlen( value );
-		fprintf( fp, "@" );
-		for ( i=0; i<len; ++i )
-			fprintf( fp, "%c", toupper((unsigned char)value[i]) );
-		fprintf( fp, "{" );
-	}
-
-	/* ...output refnum "Smith2001" */
-	value = ( char * ) fields_value( out, 1, FIELDS_CHRP );
-	fprintf( fp, "%s", value );
-
-	/* ...rest of the references */
-	for ( j=2; j<out->n; ++j ) {
-		nquotes = 0;
-		tag   = ( char * ) fields_tag( out, j, FIELDS_CHRP );
-		value = ( char * ) fields_value( out, j, FIELDS_CHRP );
-		fprintf( fp, ",\n" );
-		if ( format_opts & BIBL_FORMAT_BIBOUT_WHITESPACE ) fprintf( fp, "  " );
-		if ( !(format_opts & BIBL_FORMAT_BIBOUT_UPPERCASE ) ) fprintf( fp, "%s", tag );
-		else {
-			len = strlen( tag );
-			for ( i=0; i<len; ++i )
-				fprintf( fp, "%c", toupper((unsigned char)tag[i]) );
-		}
-		if ( format_opts & BIBL_FORMAT_BIBOUT_WHITESPACE ) fprintf( fp, " = \t" );
-		else fprintf( fp, "=" );
-
-		if ( format_opts & BIBL_FORMAT_BIBOUT_BRACKETS ) fprintf( fp, "{" );
-		else fprintf( fp, "\"" );
-
-		len = strlen( value );
-		for ( i=0; i<len; ++i ) {
-			ch = value[i];
-			if ( ch!='\"' ) fprintf( fp, "%c", ch );
-			else {
-				if ( format_opts & BIBL_FORMAT_BIBOUT_BRACKETS || ( i>0 && value[i-1]=='\\' ) )
-					fprintf( fp, "\"" );
-				else {
-					if ( nquotes % 2 == 0 )
-						fprintf( fp, "``" );
-					else    fprintf( fp, "\'\'" );
-					nquotes++;
-				}
-			}
-		}
-
-		if ( format_opts & BIBL_FORMAT_BIBOUT_BRACKETS ) fprintf( fp, "}" );
-		else fprintf( fp, "\"" );
-	}
-
-	/* ...finish reference */
-	if ( format_opts & BIBL_FORMAT_BIBOUT_FINALCOMMA ) fprintf( fp, "," );
-	fprintf( fp, "\n}\n\n" );
-
-	fflush( fp );
 }
 
 static void
@@ -413,10 +328,10 @@ out:
 
 static void
 append_people( fields *in, char *tag, char *ctag, char *atag,
-		char *bibtag, int level, fields *out, int format_opts )
+		char *bibtag, int level, fields *out, int format_opts, int *status )
 {
+	int i, npeople, person, corp, asis, fstatus;
 	str allpeople, oneperson;
-	int i, npeople, person, corp, asis;
 
 	strs_init( &allpeople, &oneperson, NULL );
 
@@ -449,7 +364,8 @@ append_people( fields *in, char *tag, char *ctag, char *atag,
 		}
 	}
 	if ( npeople ) {
-		fields_add( out, bibtag, allpeople.data, LEVEL_MAIN );
+		fstatus = fields_add( out, bibtag, allpeople.data, LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
 	}
 
 	strs_free( &allpeople, &oneperson, NULL );
@@ -820,25 +736,25 @@ append_howpublished( fields *in, fields *out, int *status )
 }
 
 static int
-append_data( fields *in, fields *out, param *p, unsigned long refnum )
+bibtexout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 {
 	int type, status = BIBL_OK;
 
-	type = bibtexout_type( in, "", refnum, p );
+	type = bibtexout_type( in, pm->progname, "", refnum );
 
 	append_type        ( type, out, &status );
-	append_citekey     ( in, out, p->format_opts, &status );
-	append_people      ( in, "AUTHOR",     "AUTHOR:CORP",     "AUTHOR:ASIS",     "author", 0, out, p->format_opts );
-	append_people      ( in, "EDITOR",     "EDITOR:CORP",     "EDITOR:ASIS",     "editor", -1, out, p->format_opts );
-	append_people      ( in, "TRANSLATOR", "TRANSLATOR:CORP", "TRANSLATOR:ASIS", "translator", -1, out, p->format_opts );
-	append_titles      ( in, type, out, p->format_opts, &status );
+	append_citekey     ( in, out, pm->format_opts, &status );
+	append_people      ( in, "AUTHOR",     "AUTHOR:CORP",     "AUTHOR:ASIS",     "author", LEVEL_MAIN, out, pm->format_opts, &status );
+	append_people      ( in, "EDITOR",     "EDITOR:CORP",     "EDITOR:ASIS",     "editor", LEVEL_ANY, out, pm->format_opts, &status );
+	append_people      ( in, "TRANSLATOR", "TRANSLATOR:CORP", "TRANSLATOR:ASIS", "translator", LEVEL_ANY, out, pm->format_opts, &status );
+	append_titles      ( in, type, out, pm->format_opts, &status );
 	append_date        ( in, out, &status );
 	append_simple      ( in, "EDITION",            "edition",   out, &status );
 	append_simple      ( in, "PUBLISHER",          "publisher", out, &status );
 	append_simple      ( in, "ADDRESS",            "address",   out, &status );
 	append_simple      ( in, "VOLUME",             "volume",    out, &status );
 	append_issue_number( in, out, &status );
-	append_pages       ( in, out, p->format_opts, &status );
+	append_pages       ( in, out, pm->format_opts, &status );
 	append_keywords    ( in, out, &status );
 	append_simple      ( in, "CONTENTS",           "contents",  out, &status );
 	append_simple      ( in, "ABSTRACT",           "abstract",  out, &status );
@@ -864,25 +780,75 @@ append_data( fields *in, fields *out, param *p, unsigned long refnum )
 	return status;
 }
 
+/*****************************************************
+ PUBLIC: int bibtexout_write()
+*****************************************************/
+
 static int
-bibtexout_write( fields *in, FILE *fp, param *p, unsigned long refnum )
+bibtexout_write( fields *out, FILE *fp, param *pm, unsigned long refnum )
 {
-	int status;
-	fields out;
+	int i, j, len, nquotes, format_opts = pm->format_opts;
+	char *tag, *value, ch;
 
-	fields_init( &out );
+	/* ...output type information "@article{" */
+	value = ( char * ) fields_value( out, 0, FIELDS_CHRP );
+	if ( !(format_opts & BIBL_FORMAT_BIBOUT_UPPERCASE) ) fprintf( fp, "@%s{", value );
+	else {
+		len = (value) ? strlen( value ) : 0;
+		fprintf( fp, "@" );
+		for ( i=0; i<len; ++i )
+			fprintf( fp, "%c", toupper((unsigned char)value[i]) );
+		fprintf( fp, "{" );
+	}
 
-	status = append_data( in, &out, p, refnum );
-	if ( status==BIBL_OK ) output( fp, &out, p->format_opts );
+	/* ...output refnum "Smith2001" */
+	value = ( char * ) fields_value( out, 1, FIELDS_CHRP );
+	fprintf( fp, "%s", value );
 
-	fields_free( &out );
+	/* ...rest of the references */
+	for ( j=2; j<out->n; ++j ) {
+		nquotes = 0;
+		tag   = ( char * ) fields_tag( out, j, FIELDS_CHRP );
+		value = ( char * ) fields_value( out, j, FIELDS_CHRP );
+		fprintf( fp, ",\n" );
+		if ( format_opts & BIBL_FORMAT_BIBOUT_WHITESPACE ) fprintf( fp, "  " );
+		if ( !(format_opts & BIBL_FORMAT_BIBOUT_UPPERCASE ) ) fprintf( fp, "%s", tag );
+		else {
+			len = strlen( tag );
+			for ( i=0; i<len; ++i )
+				fprintf( fp, "%c", toupper((unsigned char)tag[i]) );
+		}
+		if ( format_opts & BIBL_FORMAT_BIBOUT_WHITESPACE ) fprintf( fp, " = \t" );
+		else fprintf( fp, "=" );
 
-	return status;
+		if ( format_opts & BIBL_FORMAT_BIBOUT_BRACKETS ) fprintf( fp, "{" );
+		else fprintf( fp, "\"" );
+
+		len = strlen( value );
+		for ( i=0; i<len; ++i ) {
+			ch = value[i];
+			if ( ch!='\"' ) fprintf( fp, "%c", ch );
+			else {
+				if ( format_opts & BIBL_FORMAT_BIBOUT_BRACKETS || ( i>0 && value[i-1]=='\\' ) )
+					fprintf( fp, "\"" );
+				else {
+					if ( nquotes % 2 == 0 )
+						fprintf( fp, "``" );
+					else    fprintf( fp, "\'\'" );
+					nquotes++;
+				}
+			}
+		}
+
+		if ( format_opts & BIBL_FORMAT_BIBOUT_BRACKETS ) fprintf( fp, "}" );
+		else fprintf( fp, "\"" );
+	}
+
+	/* ...finish reference */
+	if ( format_opts & BIBL_FORMAT_BIBOUT_FINALCOMMA ) fprintf( fp, "," );
+	fprintf( fp, "\n}\n\n" );
+
+	fflush( fp );
+
+	return BIBL_OK;
 }
-
-static void
-bibtexout_writeheader( FILE *outptr, param *p )
-{
-	if ( p->utf8bom ) utf8_writebom( outptr );
-}
-

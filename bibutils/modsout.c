@@ -1,7 +1,7 @@
 /*
  * modsout.c
  *
- * Copyright (c) Chris Putnam 2003-2018
+ * Copyright (c) Chris Putnam 2003-2019
  *
  * Source code released under the GPL version 2
  *
@@ -22,30 +22,49 @@
 #include "marc_auth.h"
 #include "bibformats.h"
 
+/*****************************************************
+ PUBLIC: int modsout_initparams()
+*****************************************************/
+
 static void modsout_writeheader( FILE *outptr, param *p );
 static void modsout_writefooter( FILE *outptr );
 static int  modsout_write( fields *info, FILE *outptr, param *p, unsigned long numrefs );
 
-void
-modsout_initparams( param *p, const char *progname )
+int
+modsout_initparams( param *pm, const char *progname )
 {
-	p->writeformat      = BIBL_MODSOUT;
-	p->format_opts      = 0;
-	p->charsetout       = BIBL_CHARSET_UNICODE;
-	p->charsetout_src   = BIBL_SRC_DEFAULT;
-	p->latexout         = 0;
-	p->utf8out          = 1;
-	p->utf8bom          = 1;
-	p->xmlout           = BIBL_XMLOUT_TRUE;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->singlerefperfile = 0;
+	pm->writeformat      = BIBL_MODSOUT;
+	pm->format_opts      = 0;
+	pm->charsetout       = BIBL_CHARSET_UNICODE;
+	pm->charsetout_src   = BIBL_SRC_DEFAULT;
+	pm->latexout         = 0;
+	pm->utf8out          = 1;
+	pm->utf8bom          = 1;
+	pm->xmlout           = BIBL_XMLOUT_TRUE;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->singlerefperfile = 0;
 
-	p->headerf = modsout_writeheader;
-	p->footerf = modsout_writefooter;
-	p->writef  = modsout_write;
+	pm->headerf   = modsout_writeheader;
+	pm->footerf   = modsout_writefooter;
+	pm->assemblef = NULL;
+	pm->writef    = modsout_write;
+
+	if ( !pm->progname ) {
+		if ( !progname ) pm->progname = NULL;
+		else {
+			pm->progname = strdup( progname );
+			if ( !pm->progname ) return BIBL_ERR_MEMERR;
+		}
+	}
+
+	return BIBL_OK;
 }
+
+/*****************************************************
+ PUBLIC: int modsout_write()
+*****************************************************/
 
 /* output_tag()
  *
@@ -446,12 +465,13 @@ static void
 output_origin( fields *f, FILE *outptr, int level )
 {
 	convert parts[] = {
-		{ "issuance",	  "ISSUANCE",      0, 0 },
-		{ "publisher",	  "PUBLISHER",     0, 0 },
-		{ "place",	  "ADDRESS",       0, 1 },
-		{ "place",	  "AUTHORADDRESS", 0, 0 },
-		{ "edition",	  "EDITION",       0, 0 },
-		{ "dateCaptured", "URLDATE",       0, 0 }
+		{ "issuance",	  "ISSUANCE",          0, 0 },
+		{ "publisher",	  "PUBLISHER",         0, 0 },
+		{ "place",	  "ADDRESS",           0, 1 },
+		{ "place",        "ADDRESS:PUBLISHER", 0, 0 },
+		{ "place",	  "ADDRESS:AUTHOR",    0, 0 },
+		{ "edition",	  "EDITION",           0, 0 },
+		{ "dateCaptured", "URLDATE",           0, 0 }
 	};
 	int nparts = sizeof( parts ) / sizeof( parts[0] );
 	int i, found, datefound, datepos[ NUM_DATE_TYPES ];
@@ -905,17 +925,19 @@ output_sn( fields *f, FILE *outptr, int level )
 		{ "isrn",      "ISRN",      0, 0 },
 	};
 	int ntypes = sizeof( sn_types ) / sizeof( sn_types[0] );
-	int i, n;
+	int i, n, found;
 
 	/* output call number */
 	n = fields_find( f, "CALLNUMBER", level );
 	output_fil( outptr, lvl2indent(level), "classification", f, n, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 
 	/* output specialized serialnumber */
-	convert_findallfields( f, sn_types, ntypes, level );
-	for ( i=0; i<ntypes; ++i ) {
-		if ( sn_types[i].pos==-1 ) continue;
-		output_fil( outptr, lvl2indent(level), "identifier", f, sn_types[i].pos, TAG_OPENCLOSE, TAG_NEWLINE, "type", sn_types[i].mods, NULL );
+	found = convert_findallfields( f, sn_types, ntypes, level );
+	if ( found ) {
+		for ( i=0; i<ntypes; ++i ) {
+			if ( sn_types[i].pos==-1 ) continue;
+			output_fil( outptr, lvl2indent(level), "identifier", f, sn_types[i].pos, TAG_OPENCLOSE, TAG_NEWLINE, "type", sn_types[i].mods, NULL );
+		}
 	}
 
 	/* output _all_ elements of type SERIALNUMBER */
@@ -1128,6 +1150,10 @@ modsout_write( fields *f, FILE *outptr, param *p, unsigned long numrefs )
 	return BIBL_OK;
 }
 
+/*****************************************************
+ PUBLIC: int modsout_writeheader()
+*****************************************************/
+
 static void
 modsout_writeheader( FILE *outptr, param *p )
 {
@@ -1136,6 +1162,10 @@ modsout_writeheader( FILE *outptr, param *p )
 			charset_get_xmlname( p->charsetout ) );
 	fprintf(outptr,"<modsCollection xmlns=\"http://www.loc.gov/mods/v3\">\n");
 }
+
+/*****************************************************
+ PUBLIC: int modsout_writefooter()
+*****************************************************/
 
 static void
 modsout_writefooter( FILE *outptr )

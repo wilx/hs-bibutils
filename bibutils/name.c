@@ -3,7 +3,7 @@
  *
  * mangle names w/ and w/o commas
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Source code released under the GPL version 2
  *
@@ -26,10 +26,10 @@
  * to 'family suffix, given given
  */
 void
-name_build_withcomma( str *s, char *p )
+name_build_withcomma( str *s, const char *p )
 {
+	const char *suffix, *stopat;
 	int nseps = 0, nch;
-	char *suffix, *stopat;
 
 	str_empty( s );
 
@@ -361,7 +361,7 @@ name_construct_multi( str *outname, slist *tokens, int begin, int end )
 }
 
 int
-name_addmultielement( fields *info, char *tag, slist *tokens, int begin, int end, int level )
+name_addmultielement( fields *info, const char *tag, slist *tokens, int begin, int end, int level )
 {
 	int status, ok = 1;
 	str name;
@@ -385,16 +385,20 @@ name_addmultielement( fields *info, char *tag, slist *tokens, int begin, int end
  * is set).
  */
 int
-name_addsingleelement( fields *info, char *tag, char *name, int level, int corp )
+name_addsingleelement( fields *info, const char *tag, const char *name, int level, int corp )
 {
 	int status, ok = 1;
 	str outtag;
+
 	str_init( &outtag );
+
 	str_strcpyc( &outtag, tag );
 	if ( !corp ) str_strcatc( &outtag, ":ASIS" );
 	else str_strcatc( &outtag, ":CORP" );
+
 	status = fields_add_can_dup( info, outtag.data, name, level );
 	if ( status!=FIELDS_OK ) ok = 0;
+
 	str_free( &outtag );
 	return ok;
 }
@@ -452,10 +456,10 @@ out:
 	return ret;
 }
 
-static char *
-name_copy( str *name, char *p )
+static const char *
+name_copy( str *name, const char *p )
 {
-	char *start, *end, *q;
+	const char *start, *end, *q;
 
 	str_empty( name );
 
@@ -491,7 +495,7 @@ name_copy( str *name, char *p )
  * "Author, H. F."
  */
 int
-name_add( fields *info, char *tag, char *q, int level, slist *asis, slist *corps )
+name_add( fields *info, const char *tag, const char *q, int level, slist *asis, slist *corps )
 {
 	int ok, status, nametype, ret = 1;
 	str inname, outname;

@@ -1,7 +1,7 @@
 /*
  * nbibout.c
  *
- * Copyright (c) Chris Putnam 2018
+ * Copyright (c) Chris Putnam 2018-2019
  *
  * Source code released under the GPL version 2
  *
@@ -13,40 +13,57 @@
 #include "utf8.h"
 #include "str.h"
 #include "is_ws.h"
-#include "strsearch.h"
 #include "fields.h"
+#include "generic.h"
 #include "iso639_3.h"
 #include "title.h"
 #include "bibutils.h"
 #include "bibformats.h"
 
+/*****************************************************
+ PUBLIC: int nbibout_initparams()
+*****************************************************/
+
 static int  nbibout_write( fields *info, FILE *fp, param *p, unsigned long refnum );
-static void nbibout_writeheader( FILE *outptr, param *p );
 
-void
-nbibout_initparams( param *p, const char *progname )
+int
+nbibout_initparams( param *pm, const char *progname )
 {
-	p->writeformat      = BIBL_NBIBOUT;
-	p->format_opts      = 0;
-	p->charsetout       = BIBL_CHARSET_DEFAULT;
-	p->charsetout_src   = BIBL_SRC_DEFAULT;
-	p->latexout         = 0;
-	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
-	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
-	p->xmlout           = BIBL_XMLOUT_FALSE;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->singlerefperfile = 0;
+	pm->writeformat      = BIBL_NBIBOUT;
+	pm->format_opts      = 0;
+	pm->charsetout       = BIBL_CHARSET_DEFAULT;
+	pm->charsetout_src   = BIBL_SRC_DEFAULT;
+	pm->latexout         = 0;
+	pm->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
+	pm->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
+	pm->xmlout           = BIBL_XMLOUT_FALSE;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->singlerefperfile = 0;
 
-	if ( p->charsetout == BIBL_CHARSET_UNICODE ) {
-		p->utf8out = p->utf8bom = 1;
+	if ( pm->charsetout == BIBL_CHARSET_UNICODE ) {
+		pm->utf8out = pm->utf8bom = 1;
 	}
 
-	p->headerf = nbibout_writeheader;
-	p->footerf = NULL;
-	p->writef  = nbibout_write;
+	pm->headerf = generic_writeheader;
+	pm->footerf = NULL;
+	pm->writef  = nbibout_write;
+
+	if ( !pm->progname ) {
+		if ( !progname ) pm->progname = NULL;
+		else {
+			pm->progname = strdup( progname );
+			if ( !pm->progname ) return BIBL_ERR_MEMERR;
+		}
+	}
+
+	return BIBL_OK;
 }
+
+/*****************************************************
+ PUBLIC: int nbibout_write()
+*****************************************************/
 
 enum {
         TYPE_UNKNOWN = 0,
@@ -535,10 +552,4 @@ nbibout_write( fields *in, FILE *fp, param *p, unsigned long refnum )
 	fields_free( &out );
 
 	return status;
-}
-
-static void
-nbibout_writeheader( FILE *outptr, param *p )
-{
-	if ( p->utf8bom ) utf8_writebom( outptr );
 }

@@ -1,7 +1,7 @@
 /*
  * nbibin.c
  *
- * Copyright (c) Chris Putnam 2016-2018
+ * Copyright (c) Chris Putnam 2016-2019
  *
  * Source code released under the GPL version 2
  *
@@ -30,37 +30,42 @@ extern int nbib_nall;
 *****************************************************/
 
 static int nbib_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int nbib_processf( fields *nbib, char *p, char *filename, long nref, param *pm );
-static int nbib_typef( fields *nbib, char *filename, int nref, param *p );
+static int nbib_processf( fields *nbib, const char *p, const char *filename, long nref, param *pm );
+static int nbib_typef( fields *nbib, const char *filename, int nref, param *p );
 static int nbib_convertf( fields *nbib, fields *info, int reftype, param *p );
 
-void
-nbibin_initparams( param *p, const char *progname )
+int
+nbibin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_NBIBIN;
-	p->charsetin        = BIBL_CHARSET_DEFAULT;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->xmlin            = 0;
-	p->utf8in           = 0;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = 0;
+	pm->readformat       = BIBL_NBIBIN;
+	pm->charsetin        = BIBL_CHARSET_DEFAULT;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->xmlin            = 0;
+	pm->utf8in           = 0;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = 0;
 
-	p->readf    = nbib_readf;
-	p->processf = nbib_processf;
-	p->cleanf   = NULL;
-	p->typef    = nbib_typef;
-	p->convertf = nbib_convertf;
-	p->all      = nbib_all;
-	p->nall     = nbib_nall;
+	pm->readf    = nbib_readf;
+	pm->processf = nbib_processf;
+	pm->cleanf   = NULL;
+	pm->typef    = nbib_typef;
+	pm->convertf = nbib_convertf;
+	pm->all      = nbib_all;
+	pm->nall     = nbib_nall;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -75,15 +80,15 @@ nbibin_initparams( param *p, const char *progname )
     character 5 = dash (ansi 45)
     character 6 = space (ansi 32)
 */
-static int
-is_upperchar( char c )
+static inline int
+is_upperchar( const char c )
 {
 	if ( c>='A' && c<='Z' ) return 1;
 	else return 0;
 }
 
-static int
-is_upperchar_space( char c )
+static inline int
+is_upperchar_space( const char c )
 {
 	if ( c==' ' ) return 1;
 	if ( c>='A' && c<='Z' ) return 1;
@@ -91,7 +96,7 @@ is_upperchar_space( char c )
 }
 
 static int
-nbib_istag( char *buf )
+nbib_istag( const char *buf )
 {
 	if ( !is_upperchar( buf[0] ) ) return 0;
 	if ( !is_upperchar( buf[1] ) ) return 0;
@@ -136,7 +141,7 @@ nbib_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refer
 	while ( !haveref && readmore( fp, buf, bufsize, bufpos, line ) ) {
 
 		/* ...references are terminated by an empty line */
-		if ( !line->data || line->len==0 ) {
+		if ( str_is_empty( line ) ) {
 			if ( reference->len ) haveref = 1;
 			continue;
 		}
@@ -181,18 +186,18 @@ nbib_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refer
  PUBLIC: int nbib_processf()
 *****************************************************/
 
-static char*
-process_line2( str *tag, str *data, char *p )
+static const char*
+process_line2( str *tag, str *value, const char *p )
 {
 	while ( *p==' ' || *p=='\t' ) p++;
 	while ( *p && *p!='\r' && *p!='\n' )
-		str_addchar( data, *p++ );
+		str_addchar( value, *p++ );
 	while ( *p=='\r' || *p=='\n' ) p++;
 	return p;
 }
 
-static char*
-process_line( str *tag, str *data, char *p )
+static const char*
+process_line( str *tag, str *value, const char *p )
 {
 	int i;
 
@@ -204,41 +209,41 @@ process_line( str *tag, str *data, char *p )
 	}
 	while ( *p==' ' || *p=='\t' ) p++;
 	while ( *p && *p!='\r' && *p!='\n' )
-		str_addchar( data, *p++ );
-	str_trimendingws( data );
+		str_addchar( value, *p++ );
+	str_trimendingws( value );
 	while ( *p=='\n' || *p=='\r' ) p++;
 	return p;
 }
 
 static int
-nbib_processf( fields *nbib, char *p, char *filename, long nref, param *pm )
+nbib_processf( fields *nbib, const char *p, const char *filename, long nref, param *pm )
 {
-	str tag, data;
+	str tag, value;
 	int status, n;
 
-	strs_init( &tag, &data, NULL );
+	strs_init( &tag, &value, NULL );
 
 	while ( *p ) {
 		if ( nbib_istag( p ) )
-			p = process_line( &tag, &data, p );
+			p = process_line( &tag, &value, p );
 		/* no anonymous fields allowed */
 		if ( str_has_value( &tag ) ) {
-			status = fields_add( nbib, str_cstr( &tag ), str_cstr( &data ), 0 );
+			status = fields_add( nbib, str_cstr( &tag ), str_cstr( &value ), 0 );
 			if ( status!=FIELDS_OK ) return 0;
 		} else {
-			p = process_line2( &tag, &data, p );
+			p = process_line2( &tag, &value, p );
 			n = fields_num( nbib );
-			if ( data.len && n>0 ) {
+			if ( value.len && n>0 ) {
 				str *od;
 				od = fields_value( nbib, n-1, FIELDS_STRP );
 				str_addchar( od, ' ' );
-				str_strcat( od, &data );
+				str_strcat( od, &value );
 			}
 		}
-		strs_empty( &tag, &data, NULL );
+		strs_empty( &tag, &value, NULL );
 	}
 
-	strs_free( &tag, &data, NULL );
+	strs_free( &tag, &value, NULL );
 	return 1;
 }
 
@@ -253,9 +258,9 @@ nbib_processf( fields *nbib, char *p, char *filename, long nref, param *pm )
  * PT  - Review
  */
 static int
-nbib_typef( fields *nbib, char *filename, int nref, param *p )
+nbib_typef( fields *nbib, const char *filename, int nref, param *p )
 {
-	int reftype, nrefname, is_default;
+	int reftype = 0, nrefname, is_default;
 	char *typename, *refname = "";
 	vplist_index i;
 	vplist a;
@@ -489,8 +494,8 @@ nbib_convertf( fields *bibin, fields *bibout, int reftype, param *p )
 
 	for ( i=0; i<nfields; ++i ) {
 		intag = fields_tag( bibin, i, FIELDS_STRP );
-		if ( !translate_oldtag( intag->data, reftype, p->all, p->nall, &process, &level, &outtag ) ) {
-			nbib_report_notag( p, intag->data );
+		if ( !translate_oldtag( str_cstr( intag ), reftype, p->all, p->nall, &process, &level, &outtag ) ) {
+			nbib_report_notag( p, str_cstr( intag ) );
 			continue;
 		}
 		invalue = fields_value( bibin, i, FIELDS_STRP );

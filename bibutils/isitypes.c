@@ -1,7 +1,7 @@
 /*
  * isitypes.c
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -22,7 +22,7 @@ static lookups article[] = {
 	{ "PU",     "PUBLISHER",             SIMPLE,   LEVEL_HOST },
 	{ "PI",     "ADDRESS",               SIMPLE,   LEVEL_HOST }, /* publisher city */
 	{ "C1",     "ADDRESS",               SIMPLE,   LEVEL_MAIN }, /* author address */
-	{ "PA",     "ADDRESS",               SIMPLE,   LEVEL_HOST }, /* publisher address */
+	{ "PA",     "ADDRESS:PUBLISHER",     SIMPLE,   LEVEL_HOST }, /* publisher address */
 	{ "RP",     "REPRINTADDRESS",        SIMPLE,   LEVEL_MAIN },
 	{ "PY",     "PARTDATE:YEAR",         SIMPLE,   LEVEL_MAIN },
 	{ "PD",     "PARTDATE:MONTH",        SIMPLE,   LEVEL_MAIN },
@@ -64,7 +64,7 @@ static lookups book[] = {
 	{ "PU",     "PUBLISHER",             SIMPLE,   LEVEL_MAIN },
 	{ "PI",     "ADDRESS",               SIMPLE,   LEVEL_MAIN }, /* publisher city */
 	{ "C1",     "ADDRESS",               SIMPLE,   LEVEL_MAIN }, /* author address */
-	{ "PA",     "ADDRESS",               SIMPLE,   LEVEL_MAIN }, /* publisher address */
+	{ "PA",     "ADDRESS:PUBLISHER",     SIMPLE,   LEVEL_MAIN }, /* publisher address */
 	{ "RP",     "REPRINTADDRESS",        SIMPLE,   LEVEL_MAIN },
 	{ "PY",     "DATE:YEAR",             SIMPLE,   LEVEL_MAIN },
 	{ "PD",     "DATE:MONTH",            SIMPLE,   LEVEL_MAIN },
@@ -104,7 +104,7 @@ static lookups inbook[] = {
 	{ "PU",     "PUBLISHER",             SIMPLE,   LEVEL_HOST },
 	{ "PI",     "ADDRESS",               SIMPLE,   LEVEL_HOST }, /* publisher city */
 	{ "C1",     "ADDRESS",               SIMPLE,   LEVEL_MAIN }, /* author address */
-	{ "PA",     "ADDRESS",               SIMPLE,   LEVEL_HOST }, /* publisher address */
+	{ "PA",     "ADDRESS:PUBLISHER",     SIMPLE,   LEVEL_HOST }, /* publisher address */
 	{ "RP",     "REPRINTADDRESS",        SIMPLE,   LEVEL_MAIN },
 	{ "PY",     "PARTDATE:YEAR",         SIMPLE,   LEVEL_MAIN },
 	{ "PD",     "PARTDATE:MONTH",        SIMPLE,   LEVEL_MAIN },
@@ -146,7 +146,7 @@ static lookups bookinseries[] = {
 	{ "PU",     "PUBLISHER",             SIMPLE,   LEVEL_HOST },
 	{ "PI",     "ADDRESS",               SIMPLE,   LEVEL_HOST }, /* publisher city */
 	{ "C1",     "ADDRESS",               SIMPLE,   LEVEL_MAIN }, /* author address */
-	{ "PA",     "ADDRESS",               SIMPLE,   LEVEL_HOST }, /* publisher address */
+	{ "PA",     "ADDRESS:PUBLISHER",     SIMPLE,   LEVEL_HOST }, /* publisher address */
 	{ "RP",     "REPRINTADDRESS",        SIMPLE,   LEVEL_MAIN },
 	{ "PY",     "PARTDATE:YEAR",         SIMPLE,   LEVEL_MAIN },
 	{ "PD",     "PARTDATE:MONTH",        SIMPLE,   LEVEL_MAIN },

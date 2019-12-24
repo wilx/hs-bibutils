@@ -1,7 +1,7 @@
 /*
  * notes.c
  *
- * Copyright (c) Chris Putnam 2016-2018
+ * Copyright (c) Chris Putnam 2016-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -42,7 +42,7 @@ notes_added_url( fields *bibout, str *invalue, int level, int *ok )
 	};
 	int nprefixes = sizeof( prefixes ) / sizeof( prefixes[0] );
 
-	char *p = invalue->data;
+	const char *p = str_cstr( invalue );
 	char *tag = "URL";
 	int fstatus;
 	int i;
@@ -70,7 +70,7 @@ notes_added_doi( fields *bibout, str *invalue, int level, int *ok )
 {
 	int doi, fstatus;
 
-	doi = is_doi( invalue->data );
+	doi = is_doi( str_cstr( invalue ) );
 
 	if ( doi != -1 ) {
 		fstatus = fields_add( bibout, "DOI", &(invalue->data[doi]), level );
@@ -86,8 +86,8 @@ notes_add( fields *bibout, str *invalue, int level )
 {
 	int fstatus, done = 0, ok = 1;
 
-	if ( !is_embedded_link( invalue->data ) ) {
-		fstatus = fields_add( bibout, "NOTES", invalue->data, level );
+	if ( !is_embedded_link( str_cstr( invalue ) ) ) {
+		fstatus = fields_add( bibout, "NOTES", str_cstr( invalue ), level );
 		if ( fstatus != FIELDS_OK ) ok = 0;
 	}
 

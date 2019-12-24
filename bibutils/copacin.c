@@ -1,7 +1,7 @@
 /*
  * copacin.c
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -27,36 +27,41 @@ extern int copac_nall;
 *****************************************************/
 
 static int copacin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int copacin_processf( fields *bibin, char *p, char *filename, long nref, param *pm );
+static int copacin_processf( fields *bibin, const char *p, const char *filename, long nref, param *pm );
 static int copacin_convertf( fields *bibin, fields *info, int reftype, param *pm );
 
-void
-copacin_initparams( param *p, const char *progname )
+int
+copacin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_COPACIN;
-	p->charsetin        = BIBL_CHARSET_DEFAULT;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->xmlin            = 0;
-	p->utf8in           = 0;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = 0;
+	pm->readformat       = BIBL_COPACIN;
+	pm->charsetin        = BIBL_CHARSET_DEFAULT;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->xmlin            = 0;
+	pm->utf8in           = 0;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = 0;
 
-	p->readf    = copacin_readf;
-	p->processf = copacin_processf;
-	p->cleanf   = NULL;
-	p->typef    = NULL;
-	p->convertf = copacin_convertf;
-	p->all      = copac_all;
-	p->nall     = copac_nall;
+	pm->readf    = copacin_readf;
+	pm->processf = copacin_processf;
+	pm->cleanf   = NULL;
+	pm->typef    = NULL;
+	pm->convertf = copacin_convertf;
+	pm->all      = copac_all;
+	pm->nall     = copac_nall;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -70,7 +75,7 @@ copacin_initparams( param *p, const char *progname )
     character 4 = space
 */
 static int
-copacin_istag( char *buf )
+copacin_istag( const char *buf )
 {
 	if (! ((buf[0]>='A' && buf[0]<='Z')) || (buf[0]>='a' && buf[0]<='z') )
 		return 0;
@@ -109,21 +114,18 @@ copacin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *re
 		if ( copacin_istag( p ) ) {
 			if ( inref ) str_addchar( reference, '\n' );
 			str_strcatc( reference, p );
-			str_empty( line );
 			inref = 1;
 		} else if ( inref ) {
-			if ( p ) {
-				/* copac puts tag only on 1st line */
+			/* copac puts tag only on 1st line */
+			if ( *p ) p++;
+			if ( *p ) p++;
+			if ( *p ) p++;
+			if ( *p ) {
 				str_addchar( reference, ' ' );
-				if ( *p ) p++;
-				if ( *p ) p++;
-				if ( *p ) p++;
 				str_strcatc( reference, p );
 			}
-			str_empty( line );
-		} else {
-			str_empty( line );
 		}
+		str_empty( line );
 	}
 	return haveref;
 }
@@ -132,8 +134,8 @@ copacin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *re
  PUBLIC: int copacin_processf()
 *****************************************************/
 
-static char*
-copacin_addtag2( char *p, str *tag, str *data )
+static const char*
+copacin_addtag2( const char *p, str *tag, str *data )
 {
 	int  i;
 	i =0;
@@ -151,8 +153,8 @@ copacin_addtag2( char *p, str *tag, str *data )
 	return p;
 }
 
-static char *
-copacin_nextline( char *p )
+static const char *
+copacin_nextline( const char *p )
 {
 	while ( *p && *p!='\n' && *p!='\r') p++;
 	while ( *p=='\n' || *p=='\r' ) p++;
@@ -160,7 +162,7 @@ copacin_nextline( char *p )
 }
 
 static int
-copacin_processf( fields *copacin, char *p, char *filename, long nref, param *pm )
+copacin_processf( fields *copacin, const char *p, const char *filename, long nref, param *pm )
 {
 	str tag, data;
 	int status;

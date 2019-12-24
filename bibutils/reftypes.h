@@ -1,7 +1,7 @@
 /*
  * reftypes.h
  *
- * Copyright (c) Chris Putnam 2003-2018
+ * Copyright (c) Chris Putnam 2003-2019
  *
  * Source code released under the GPL version 2
  *
@@ -56,8 +56,8 @@ typedef struct {
 	int     ntags;
 } variants;
 
-int get_reftype( char *q, long refnum, char *progname, variants *all, int nall, char *tag, int *is_default, int chattiness );
-int process_findoldtag( char *oldtag, int reftype, variants all[], int nall );
-int translate_oldtag( char *oldtag, int reftype, variants all[], int nall, int *processingtype, int *level, char **newtag );
+int get_reftype( const char *q, long refnum, char *progname, variants *all, int nall, char *tag, int *is_default, int chattiness );
+int process_findoldtag( const char *oldtag, int reftype, variants all[], int nall );
+int translate_oldtag( const char *oldtag, int reftype, variants all[], int nall, int *processingtype, int *level, char **newtag );
 
 #endif

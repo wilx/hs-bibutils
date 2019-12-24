@@ -1,7 +1,7 @@
 /*
  * endxmlin.c
  *
- * Copyright (c) Chris Putnam 2006-2018
+ * Copyright (c) Chris Putnam 2006-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -26,8 +26,8 @@ extern variants end_all[];
 extern int end_nall;
 
 static int endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int endxmlin_processf( fields *endin, char *p, char *filename, long nref, param *pm );
-extern int endin_typef( fields *endin, char *filename, int nrefs, param *p );
+static int endxmlin_processf( fields *endin, const char *p, const char *filename, long nref, param *pm );
+extern int endin_typef( fields *endin, const char *filename, int nrefs, param *p );
 extern int endin_convertf( fields *endin, fields *info, int reftype, param *p );
 extern int endin_cleanf( bibl *bin, param *p );
 
@@ -35,33 +35,38 @@ extern int endin_cleanf( bibl *bin, param *p );
 /*****************************************************
  PUBLIC: void endxmlin_initparams()
 *****************************************************/
-void
-endxmlin_initparams( param *p, const char *progname )
+int
+endxmlin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_ENDNOTEXMLIN;
-	p->charsetin        = BIBL_CHARSET_DEFAULT;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->xmlin            = 1;
-	p->utf8in           = 1;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = 0;
+	pm->readformat       = BIBL_ENDNOTEXMLIN;
+	pm->charsetin        = BIBL_CHARSET_DEFAULT;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->xmlin            = 1;
+	pm->utf8in           = 1;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = 0;
 
-	p->readf    = endxmlin_readf;
-	p->processf = endxmlin_processf;
-	p->cleanf   = NULL;
-	p->typef    = endin_typef;
-	p->convertf = endin_convertf;
-	p->all      = end_all;
-	p->nall     = end_nall;
+	pm->readf    = endxmlin_readf;
+	pm->processf = endxmlin_processf;
+	pm->cleanf   = NULL;
+	pm->typef    = endin_typef;
+	pm->convertf = endin_convertf;
+	pm->all      = end_all;
+	pm->nall     = end_nall;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -78,18 +83,24 @@ xml_readmore( FILE *fp, char *buf, int bufsize, int *bufpos )
 static int
 endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset )
 {
-	str tmp;
-	char *startptr = NULL, *endptr = NULL;
 	int haveref = 0, inref = 0, done = 0, file_charset = CHARSET_UNKNOWN, m;
+	char *startptr = NULL, *endptr = NULL;
+	str tmp;
+
 	str_init( &tmp );
+
 	while ( !haveref && !done ) {
-		if ( line->data ) {
-			if ( !inref ) {
-				startptr = xml_find_start( line->data, "RECORD" );
-				if ( startptr ) inref = 1;
-			} else
-				endptr = xml_find_end( line->data, "RECORD" );
+
+		if ( !line->data ) {
+			done = xml_readmore( fp, buf, bufsize, bufpos );
+			str_strcatc( line, buf );
 		}
+
+		if ( !inref ) {
+			startptr = xml_find_start( line->data, "RECORD" );
+			if ( startptr ) inref = 1;
+		}
+		else    endptr = xml_find_end( line->data, "RECORD" );
 
 		/* If no <record> tag, we can trim up to last 8 bytes */
 		/* Emptying string can lose fragments of <record> tag */
@@ -102,11 +113,13 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *r
 			}
 		}
 
+		/* ...entire reference is not in line, read more */
 		if ( !startptr || !endptr ) {
 			done = xml_readmore( fp, buf, bufsize, bufpos );
 			str_strcatc( line, buf );
-		} else {
-			/* we can reallocate in the str_strcat, so re-find */
+		}
+		/* ...we can reallocate in str_strcat; must re-find the tags */
+		else {
 			startptr = xml_find_start( line->data, "RECORD" );
 			endptr = xml_find_end( line->data, "RECORD" );
 			str_segcpy( reference, startptr, endptr );
@@ -115,13 +128,15 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *r
 			str_strcpy( line, &tmp );
 			haveref = 1;
 		}
-		if ( line->data ) {
-			m = xml_getencoding( line );
-			if ( m!=CHARSET_UNKNOWN ) file_charset = m;
-		}
+
+		m = xml_getencoding( line );
+		if ( m!=CHARSET_UNKNOWN ) file_charset = m;
+
 	}
+
 	str_free( &tmp );
 	*fcharset = file_charset;
+
 	return haveref;
 }
 
@@ -557,7 +572,7 @@ endxmlin_assembleref( xml *node, fields *info )
  * as the tags used in the Refer format output
  */
 static int
-endxmlin_processf( fields *fin, char *data, char *filename, long nref, param *pm )
+endxmlin_processf( fields *fin, const char *data, const char *filename, long nref, param *pm )
 {
 	int status;
 	xml top;

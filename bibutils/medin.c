@@ -1,7 +1,7 @@
 /*
  * medin.c
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Source code released under the GPL version 2
  *
@@ -19,40 +19,45 @@
 #include "bibformats.h"
 
 static int medin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int medin_processf( fields *medin, char *data, char *filename, long nref, param *p );
+static int medin_processf( fields *medin, const char *data, const char *filename, long nref, param *p );
 
 
 /*****************************************************
  PUBLIC: void medin_initparams()
 *****************************************************/
-void
-medin_initparams( param *p, const char *progname )
+int
+medin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_MEDLINEIN;
-	p->charsetin        = BIBL_CHARSET_UNICODE;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->xmlin            = 1;
-	p->utf8in           = 1;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = BIBL_RAW_WITHMAKEREFID |
+	pm->readformat       = BIBL_MEDLINEIN;
+	pm->charsetin        = BIBL_CHARSET_UNICODE;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->xmlin            = 1;
+	pm->utf8in           = 1;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = BIBL_RAW_WITHMAKEREFID |
 	                      BIBL_RAW_WITHCHARCONVERT;
 
-	p->readf    = medin_readf;
-	p->processf = medin_processf;
-	p->cleanf   = NULL;
-	p->typef    = NULL;
-	p->convertf = NULL;
-	p->all      = NULL;
-	p->nall     = 0;
+	pm->readf    = medin_readf;
+	pm->processf = medin_processf;
+	pm->cleanf   = NULL;
+	pm->typef    = NULL;
+	pm->convertf = NULL;
+	pm->all      = NULL;
+	pm->nall     = 0;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -172,7 +177,7 @@ medin_articletitle( xml *node, fields *info )
 
 /*            <MedlineDate>2003 Jan-Feb</MedlineDate> */
 static int
-medin_medlinedate( fields *info, char *p, int level )
+medin_medlinedate( fields *info, const char *p, int level )
 {
 	int fstatus;
 	str tmp;
@@ -303,7 +308,7 @@ medin_pagination( xml *node, fields *info )
 {
 	int i, fstatus, status;
 	str sp, ep;
-	char *p, *pp;
+	const char *p, *pp;
 	if ( xml_tag_matches( node, "MedlinePgn" ) && node->value.len ) {
 		strs_init( &sp, &ep, NULL );
 		p = str_cpytodelim( &sp, xml_value_cstr( node ), "-", 1 );
@@ -522,7 +527,7 @@ medin_pubmeddata( xml *node, fields *info )
 		if ( status!=BIBL_OK ) return status;
 	}
 	if ( node->down ) {
-		medin_pubmeddata( node->down, info );
+		status = medin_pubmeddata( node->down, info );
 		if ( status!=BIBL_OK ) return status;
 	}
 	return BIBL_OK;
@@ -625,7 +630,7 @@ medin_assembleref( xml *node, fields *info )
 }
 
 static int
-medin_processf( fields *medin, char *data, char *filename, long nref, param *p )
+medin_processf( fields *medin, const char *data, const char *filename, long nref, param *p )
 {
 	int status;
 	xml top;

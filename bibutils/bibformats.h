@@ -1,7 +1,7 @@
 /*
  * bibformats.h
  *
- * Copyright (c) Chris Putnam 2007-2018
+ * Copyright (c) Chris Putnam 2007-2019
  *
  * Source code released under the GPL version 2
  *
@@ -11,26 +11,25 @@
 
 #include "bibutils.h"
 
-void adsout_initparams    ( param *p, const char *progname );
-void biblatexin_initparams( param *p, const char *progname );
-void bibtexin_initparams  ( param *p, const char *progname );
-void bibtexout_initparams ( param *p, const char *progname );
-void copacin_initparams   ( param *p, const char *progname );
-void ebiin_initparams     ( param *p, const char *progname );
-void endin_initparams     ( param *p, const char *progname );
-void endout_initparams    ( param *p, const char *progname );
-void endxmlin_initparams  ( param *p, const char *progname );
-void isiin_initparams     ( param *p, const char *progname );
-void isiout_initparams    ( param *p, const char *progname );
-void medin_initparams     ( param *p, const char *progname );
-void modsin_initparams    ( param *p, const char *progname );
-void modsout_initparams   ( param *p, const char *progname );
-void nbibin_initparams    ( param *p, const char *progname );
-void nbibout_initparams   ( param *p, const char *progname );
-void risin_initparams     ( param *p, const char *progname );
-void risout_initparams    ( param *p, const char *progname );
-void wordin_initparams    ( param *p, const char *progname );
-void wordout_initparams   ( param *p, const char *progname );
+int adsout_initparams    ( param *pm, const char *progname );
+int biblatexin_initparams( param *pm, const char *progname );
+int bibtexin_initparams  ( param *pm, const char *progname );
+int bibtexout_initparams ( param *pm, const char *progname );
+int copacin_initparams   ( param *pm, const char *progname );
+int ebiin_initparams     ( param *pm, const char *progname );
+int endin_initparams     ( param *pm, const char *progname );
+int endout_initparams    ( param *pm, const char *progname );
+int endxmlin_initparams  ( param *pm, const char *progname );
+int isiin_initparams     ( param *pm, const char *progname );
+int isiout_initparams    ( param *pm, const char *progname );
+int medin_initparams     ( param *pm, const char *progname );
+int modsin_initparams    ( param *pm, const char *progname );
+int modsout_initparams   ( param *pm, const char *progname );
+int nbibin_initparams    ( param *pm, const char *progname );
+int nbibout_initparams   ( param *pm, const char *progname );
+int risin_initparams     ( param *pm, const char *progname );
+int risout_initparams    ( param *pm, const char *progname );
+int wordin_initparams    ( param *pm, const char *progname );
+int wordout_initparams   ( param *pm, const char *progname );
 
 #endif
-

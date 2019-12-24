@@ -1,7 +1,7 @@
 /*
  * endin.c
  *
- * Copyright (c) Chris Putnam 2003-2018
+ * Copyright (c) Chris Putnam 2003-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -27,38 +27,43 @@ extern int end_nall;
 *****************************************************/
 
 static int endin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int endin_processf( fields *endin, char *p, char *filename, long nref, param *pm );
-int endin_typef( fields *endin, char *filename, int nrefs, param *p );
+static int endin_processf( fields *endin, const char *p, const char *filename, long nref, param *pm );
+int endin_typef( fields *endin, const char *filename, int nrefs, param *p );
 int endin_convertf( fields *endin, fields *info, int reftype, param *p );
 int endin_cleanf( bibl *bin, param *p );
 
-void
-endin_initparams( param *p, const char *progname )
+int
+endin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_ENDNOTEIN;
-	p->charsetin        = BIBL_CHARSET_DEFAULT;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->xmlin            = 0;
-	p->utf8in           = 0;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = 0;
+	pm->readformat       = BIBL_ENDNOTEIN;
+	pm->charsetin        = BIBL_CHARSET_DEFAULT;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->xmlin            = 0;
+	pm->utf8in           = 0;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = 0;
 
-	p->readf    = endin_readf;
-	p->processf = endin_processf;
-	p->cleanf   = endin_cleanf;
-	p->typef    = endin_typef;
-	p->convertf = endin_convertf;
-	p->all      = end_all;
-	p->nall     = end_nall;
+	pm->readf    = endin_readf;
+	pm->processf = endin_processf;
+	pm->cleanf   = endin_cleanf;
+	pm->typef    = endin_typef;
+	pm->convertf = endin_convertf;
+	pm->all      = end_all;
+	pm->nall     = end_nall;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 
@@ -72,7 +77,7 @@ endin_initparams( param *p, const char *progname )
     character 3 = space (ansi 32)
 */
 static int
-endin_istag( char *buf )
+endin_istag( const char *buf )
 {
 	const char others[]="!@#$^&*()+=?[~>";
 	if ( buf[0]!='%' ) return 0;
@@ -98,6 +103,7 @@ endin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refe
 	char *p;
 	*fcharset = CHARSET_UNKNOWN;
 	while ( !haveref && readmore( fp, buf, bufsize, bufpos, line ) ) {
+
 		if ( !line->data ) continue;
 		p = &(line->data[0]);
 
@@ -119,7 +125,7 @@ endin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refe
 			if ( reference->len ) str_addchar( reference, '\n' );
 			str_strcatc( reference, p );
 			inref = 1;
-		} else if ( inref && p ) {
+		} else if ( inref && *p ) {
 			str_addchar( reference, '\n' );
 			str_strcatc( reference, p );
 		}
@@ -132,8 +138,8 @@ endin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refe
 /*****************************************************
  PUBLIC: int endin_processf()
 *****************************************************/
-static char*
-process_endline( str *tag, str *data, char *p )
+static const char*
+process_endline( str *tag, str *data, const char *p )
 {
 	int  i;
 
@@ -153,8 +159,8 @@ process_endline( str *tag, str *data, char *p )
 	return p;
 }
 
-static char *
-process_endline2( str *tag, str *data, char *p )
+static const char *
+process_endline2( str *tag, str *data, const char *p )
 {
 	while ( *p==' ' || *p=='\t' ) p++;
 	while ( *p && *p!='\r' && *p!='\n' )
@@ -165,7 +171,7 @@ process_endline2( str *tag, str *data, char *p )
 }
 
 static int
-endin_processf( fields *endin, char *p, char *filename, long nref, param *pm )
+endin_processf( fields *endin, const char *p, const char *filename, long nref, param *pm )
 {
 	str tag, data;
 	int status, n;
@@ -209,7 +215,7 @@ endin_processf( fields *endin, char *p, char *filename, long nref, param *pm )
  * if !%B & !%J & !%R & !%I - journal article
  */
 int
-endin_typef( fields *endin, char *filename, int nrefs, param *p )
+endin_typef( fields *endin, const char *filename, int nrefs, param *p )
 {
 	int ntypename, nrefname, is_default, nj, nv, nb, nr, nt, ni;
 	char *refname = "", *typename="";
@@ -406,7 +412,7 @@ endin_date( fields *bibin, int n, str *intag, str *invalue, int level, param *pm
 		{ "DATE:MONTH", "PARTDATE:MONTH" },
 		{ "DATE:DAY",   "PARTDATE:DAY" }
 	};
-	char *p = invalue->data;
+	const char *p = invalue->data;
 	char month[10], *m;
 	int part, status;
 	str date;

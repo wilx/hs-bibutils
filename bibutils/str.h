@@ -1,9 +1,9 @@
 /*
  * str.h
  *
- * Version: 2018-08-03
+ * Version: 2018-09-21
  *
- * Copyright (c) Chris Putnam 1999-2018
+ * Copyright (c) Chris Putnam 1999-2019
  *
  * Source code released under the GPL version 2
  *
@@ -67,8 +67,8 @@ void str_addchar     ( str *s, char newchar );
 void str_reverse     ( str *s );
 const char *str_addutf8    ( str *s, const char *p );
 void str_segcat      ( str *s, char *startat, char *endat );
-char *str_cpytodelim  ( str *s, char *p, const char *delim, unsigned char finalstep );
-char *str_cattodelim  ( str *s, char *p, const char *delim, unsigned char finalstep );
+const char *str_cpytodelim  ( str *s, const char *p, const char *delim, unsigned char finalstep );
+const char *str_cattodelim  ( str *s, const char *p, const char *delim, unsigned char finalstep );
 void str_prepend     ( str *s, const char *addstr );
 void str_segcpy      ( str *s, char *startat, char *endat );
 void str_segdel      ( str *s, char *startat, char *endat );

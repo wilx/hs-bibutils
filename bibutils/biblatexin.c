@@ -1,8 +1,8 @@
 /*
  * biblatexin.c
  *
- * Copyright (c) Chris Putnam 2008-2018
- * Copyright (c) Johannes Wilm 2010-2018
+ * Copyright (c) Chris Putnam 2008-2019
+ * Copyright (c) Johannes Wilm 2010-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -34,38 +34,43 @@ static slist replace = { 0, 0, 0, NULL };
 *****************************************************/
 
 static int  biblatexin_convertf( fields *bibin, fields *info, int reftype, param *p );
-static int  biblatexin_processf( fields *bibin, char *data, char *filename, long nref, param *p );
+static int  biblatexin_processf( fields *bibin, const char *data, const char *filename, long nref, param *p );
 static int  biblatexin_cleanf( bibl *bin, param *p );
 static int  biblatexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int  biblatexin_typef( fields *bibin, char *filename, int nrefs, param *p );
+static int  biblatexin_typef( fields *bibin, const char *filename, int nrefs, param *p );
 
-void
-biblatexin_initparams( param *p, const char *progname )
+int
+biblatexin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_BIBLATEXIN;
-	p->charsetin        = BIBL_CHARSET_DEFAULT;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 1;
-	p->xmlin            = 0;
-	p->utf8in           = 0;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = 0;
+	pm->readformat       = BIBL_BIBLATEXIN;
+	pm->charsetin        = BIBL_CHARSET_DEFAULT;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 1;
+	pm->xmlin            = 0;
+	pm->utf8in           = 0;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = 0;
 
-	p->readf    = biblatexin_readf;
-	p->processf = biblatexin_processf;
-	p->cleanf   = biblatexin_cleanf;
-	p->typef    = biblatexin_typef;
-	p->convertf = biblatexin_convertf;
-	p->all      = biblatex_all;
-	p->nall     = biblatex_nall;
+	pm->readf    = biblatexin_readf;
+	pm->processf = biblatexin_processf;
+	pm->cleanf   = biblatexin_cleanf;
+	pm->typef    = biblatexin_typef;
+	pm->convertf = biblatexin_convertf;
+	pm->all      = biblatex_all;
+	pm->nall     = biblatex_nall;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -97,7 +102,7 @@ static int
 biblatexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset )
 {
 	int haveref = 0;
-	char *p;
+	const char *p;
 	while ( haveref!=2 && readmore( fp, buf, bufsize, bufpos, line ) ) {
 		if ( line->len == 0 ) continue; /* blank line */
 		p = &(line->data[0]);
@@ -112,7 +117,6 @@ biblatexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str 
 			str_addchar( reference, '\n' );
 			str_empty( line );
 		} else if ( !haveref ) str_empty( line );
-	
 	}
 	*fcharset = CHARSET_UNKNOWN;
 	return haveref;
@@ -122,8 +126,8 @@ biblatexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str 
  PUBLIC: int biblatexin_processf()
 *****************************************************/
 
-static char *
-process_biblatextype( char *p, str *type )
+static const char *
+process_biblatextype( const char *p, str *type )
 {
 	str tmp;
 	str_init( &tmp );
@@ -141,10 +145,10 @@ process_biblatextype( char *p, str *type )
 	return p;
 }
 
-static char *
-process_biblatexid( char *p, str *id )
+static const char *
+process_biblatexid( const char *p, str *id )
 {
-	char *start_p = p;
+	const char *start_p = p;
 	str tmp;
 
 	str_init( &tmp );
@@ -170,19 +174,20 @@ process_biblatexid( char *p, str *id )
 	return skip_ws( p );
 }
 
-static char *
-biblatex_tag( char *p, str *tag )
+static const char *
+biblatex_tag( const char *p, str *tag )
 {
 	p = str_cpytodelim( tag, skip_ws( p ), "= \t\r\n", 0 );
 	return skip_ws( p );
 }
 
-static char *
-biblatex_data( char *p, fields *bibin, slist *tokens, long nref, param *pm )
+static const char *
+biblatex_data( const char *p, fields *bibin, slist *tokens, long nref, param *pm )
 {
 	unsigned int nbracket = 0, nquotes = 0;
-	char *startp = p;
-	str tok, *s;
+	const char *startp = p;
+	int status;
+	str tok;
 
 	str_init( &tok );
 	while ( p && *p ) {
@@ -194,18 +199,18 @@ biblatex_data( char *p, fields *bibin, slist *tokens, long nref, param *pm )
 			nquotes = !nquotes;
 			str_addchar( &tok, *p );
 			if ( !nquotes ) {
-				s = slist_add( tokens, &tok );
-				if ( !s ) { p = NULL; goto outerr; }
+				status = slist_add( tokens, &tok );
+				if ( status!=SLIST_OK ) { p = NULL; goto outerr; }
 				str_empty( &tok );
 			}
 		} else if ( *p=='#' && !nquotes && !nbracket ) {
 			if ( str_has_value( &tok ) ) {
-				s = slist_add( tokens, &tok );
-				if ( !s ) { p = NULL; goto outerr; }
+				status = slist_add( tokens, &tok );
+				if ( status!=SLIST_OK ) { p = NULL; goto outerr; }
 			}
 			str_strcpyc( &tok, "#" );
-			s = slist_add( tokens, &tok );
-			if ( !s ) { p = NULL; goto outerr; }
+			status = slist_add( tokens, &tok );
+			if ( status!=SLIST_OK ) { p = NULL; goto outerr; }
 			str_empty( &tok );
 		} else if ( *p=='{' && !nquotes && ( p==startp || *(p-1)!='\\' ) ) {
 			nbracket++;
@@ -214,8 +219,8 @@ biblatex_data( char *p, fields *bibin, slist *tokens, long nref, param *pm )
 			nbracket--;
 			str_addchar( &tok, *p );
 			if ( nbracket==0 ) {
-				s = slist_add( tokens, &tok );
-				if ( !s ) { p = NULL; goto outerr; }
+				status = slist_add( tokens, &tok );
+				if ( status!=SLIST_OK ) { p = NULL; goto outerr; }
 				str_empty( &tok );
 			}
 		} else if ( !is_ws( *p ) || nquotes || nbracket ) {
@@ -230,8 +235,8 @@ biblatex_data( char *p, fields *bibin, slist *tokens, long nref, param *pm )
 			}
 		} else if ( is_ws( *p ) ) {
 			if ( str_has_value( &tok ) ) {
-				s = slist_add( tokens, &tok );
-				if ( !s ) { p = NULL; goto outerr; }
+				status = slist_add( tokens, &tok );
+				if ( status!=SLIST_OK ) { p = NULL; goto outerr; }
 				str_empty( &tok );
 			}
 		}
@@ -245,8 +250,8 @@ out:
 		fprintf( stderr, "%s: Mismatch in number of quotes in reference %ld\n", pm->progname, nref );
 	}
 	if ( str_has_value( &tok ) ) {
-		s = slist_add( tokens, &tok );
-		if ( !s ) p = NULL;
+		status = slist_add( tokens, &tok );
+		if ( status!=SLIST_OK ) p = NULL;
 	}
 outerr:
 	str_free( &tok );
@@ -310,7 +315,7 @@ string_concatenate( slist *tokens, fields *bibin, long nref, param *pm )
 				fprintf( stderr, "%s: Warning: String concentation should "
 					"be used in context of quotations marks in reference %ld\n", pm->progname, nref );
 			t = slist_str( tokens, i+1 );
-			if ( t->data[0]!='\"' && t->data[s->len-1]!='\"' )
+			if ( t->data[0]!='\"' && t->data[t->len-1]!='\"' )
 				fprintf( stderr, "%s: Warning: String concentation should "
 					"be used in context of quotations marks in reference %ld\n", pm->progname, nref );
 			if ( ( s->data[s->len-1]=='\"' && t->data[0]=='\"') || (s->data[s->len-1]=='}' && t->data[0]=='{') ) {
@@ -329,8 +334,8 @@ string_concatenate( slist *tokens, fields *bibin, long nref, param *pm )
 	return BIBL_OK;
 }
 
-static char *
-process_biblatexline( char *p, str *tag, str *data, uchar stripquotes, long nref, param *pm )
+static const char *
+process_biblatexline( const char *p, str *tag, str *data, uchar stripquotes, long nref, param *pm )
 {
 	int i, status;
 	slist tokens;
@@ -373,7 +378,7 @@ out:
 }
 
 static int
-process_cite( fields *bibin, char *p, char *filename, long nref, param *pm )
+process_cite( fields *bibin, const char *p, const char *filename, long nref, param *pm )
 {
 	int fstatus, status = BIBL_OK;
 	str type, id, tag, data;
@@ -418,7 +423,7 @@ out:
  *
  */
 static int
-process_string( char *p, long nref, param *pm )
+process_string( const char *p, long nref, param *pm )
 {
 	int n, status = BIBL_OK;
 	str s1, s2, *s;
@@ -429,15 +434,16 @@ process_string( char *p, long nref, param *pm )
 	if ( str_has_value( &s2 ) ) {
 		str_findreplace( &s2, "\\ ", " " );
 		if ( str_memerr( &s2 ) ) { status = BIBL_ERR_MEMERR; goto out; }
+	} else {
+		str_strcpyc( &s2, "" );
 	}
 	if ( str_has_value( &s1 ) ) {
 		n = slist_find( &find, &s1 );
 		if ( n==-1 ) {
-			s = slist_add( &find, &s1 );
-			if ( s==NULL ) { status = BIBL_ERR_MEMERR; goto out; }
-			if ( str_has_value( &s2 ) ) s = slist_add( &replace, &s2 );
-			else s = slist_addc( &replace, "" );
-			if ( s==NULL ) { status = BIBL_ERR_MEMERR; goto out; }
+			status = slist_add_ret( &find, &s1, BIBL_OK, BIBL_ERR_MEMERR );
+			if ( status!=BIBL_OK ) goto out;
+			status = slist_add_ret( &replace, &s2, BIBL_OK, BIBL_ERR_MEMERR );
+			if ( status!=BIBL_OK ) goto out;
 		} else {
 			if ( str_has_value( &s2 ) ) s = slist_set( &replace, n, &s2 );
 			else s = slist_setc( &replace, n, "" );
@@ -450,7 +456,7 @@ out:
 }
 
 static int
-biblatexin_processf( fields *bibin, char *data, char *filename, long nref, param *p )
+biblatexin_processf( fields *bibin, const char *data, const char *filename, long nref, param *p )
 {
 	if ( !strncasecmp( data, "@STRING", 7 ) ) {
 		process_string( data+7, nref, p );
@@ -570,16 +576,16 @@ biblatex_split( slist *tokens, str *s )
 		} else if ( is_ws( s->data[i] ) ) {
 			if ( str_memerr( &tok ) ) { status = BIBL_ERR_MEMERR; goto out; }
 			if ( str_has_value( &tok ) ) {
-				t = slist_add( tokens, &tok );
-				if ( !t ) { status = BIBL_ERR_MEMERR; goto out; }
+				status = slist_add_ret( tokens, &tok, BIBL_OK, BIBL_ERR_MEMERR );
+				if ( status!=BIBL_OK ) goto out;
 			}
 			str_empty( &tok );
 		}
 	}
 	if ( str_has_value( &tok ) ) {
 		if ( str_memerr( &tok ) ) { status = BIBL_ERR_MEMERR; goto out; }
-		t = slist_add( tokens, &tok );
-		if ( !t ) { status = BIBL_ERR_MEMERR; goto out; }
+		status = slist_add_ret( tokens, &tok, BIBL_OK, BIBL_ERR_MEMERR );
+		if ( status!=BIBL_OK ) goto out;
 	}
 
 	for ( i=0; i<tokens->n; ++i ) {
@@ -597,7 +603,7 @@ static int
 biblatexin_addtitleurl( fields *info, str *in )
 {
 	int fstatus, status = BIBL_OK;
-	char *p;
+	const char *p;
 	str s;
 
 	str_init( &s );
@@ -802,7 +808,7 @@ biblatexin_cleanf( bibl *bin, param *p )
 *****************************************************/
 
 static int
-biblatexin_typef( fields *bibin, char *filename, int nrefs, param *p )
+biblatexin_typef( fields *bibin, const char *filename, int nrefs, param *p )
 {
 	int ntypename, nrefname, is_default;
 	char *refname = "", *typename="";

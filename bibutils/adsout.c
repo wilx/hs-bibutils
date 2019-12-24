@@ -1,8 +1,8 @@
 /*
  * adsout.c
  *
- * Copyright (c) Richard Mathar 2007-2018
- * Copyright (c) Chris Putnam 2007-2018
+ * Copyright (c) Richard Mathar 2007-2019
+ * Copyright (c) Chris Putnam 2007-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -16,38 +16,59 @@
 #include "str.h"
 #include "strsearch.h"
 #include "fields.h"
+#include "generic.h"
 #include "name.h"
 #include "title.h"
+#include "type.h"
 #include "url.h"
 #include "bibformats.h"
 
-static int  adsout_write( fields *in, FILE *fp, param *p, unsigned long refnum );
-static void adsout_writeheader( FILE *outptr, param *p );
+/*****************************************************
+ PUBLIC: int adsout_initparams()
+*****************************************************/
 
-void
-adsout_initparams( param *p, const char *progname )
+static int adsout_write( fields *in, FILE *fp, param *p, unsigned long refnum );
+static int adsout_assemble( fields *in, fields *out, param *pm, unsigned long refnum );
+
+int
+adsout_initparams( param *pm, const char *progname )
 {
-	p->writeformat      = BIBL_ADSABSOUT;
-	p->format_opts      = 0;
-	p->charsetout       = BIBL_CHARSET_DEFAULT;
-	p->charsetout_src   = BIBL_SRC_DEFAULT;
-	p->latexout         = 0;
-	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
-	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
-	p->xmlout           = BIBL_XMLOUT_FALSE;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->singlerefperfile = 0;
+	pm->writeformat      = BIBL_ADSABSOUT;
+	pm->format_opts      = 0;
+	pm->charsetout       = BIBL_CHARSET_DEFAULT;
+	pm->charsetout_src   = BIBL_SRC_DEFAULT;
+	pm->latexout         = 0;
+	pm->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
+	pm->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
+	pm->xmlout           = BIBL_XMLOUT_FALSE;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->singlerefperfile = 0;
 
-	if ( p->charsetout == BIBL_CHARSET_UNICODE ) {
-		p->utf8out = p->utf8bom = 1;
+	if ( pm->charsetout == BIBL_CHARSET_UNICODE ) {
+		pm->utf8out = pm->utf8bom = 1;
 	}
 
-	p->headerf = adsout_writeheader;
-	p->footerf = NULL;
-	p->writef  = adsout_write;
+	pm->headerf   = generic_writeheader;
+	pm->footerf   = NULL;
+	pm->assemblef = adsout_assemble;
+	pm->writef    = adsout_write;
+
+	if ( !pm->progname ) {
+		if ( !progname ) pm->progname=NULL;
+		else {
+			pm->progname = strdup( progname );
+			if ( !pm->progname ) return BIBL_ERR_MEMERR;
+		}
+	}
+
+	return BIBL_OK;
 }
+
+/*****************************************************
+ PUBLIC: int adsout_assemble()
+*****************************************************/
 
 enum {
 	TYPE_UNKNOWN = 0,
@@ -76,84 +97,57 @@ enum {
 	TYPE_PROGRAM
 };
 
-typedef struct match_type {
-	char *name;
-	int type;
-} match_type;
-
 static int
 get_type( fields *in )
 {
-	match_type match_genres[] = {
-		{ "academic journal",          TYPE_ARTICLE },
-		{ "magazine",                  TYPE_MAGARTICLE },
-		{ "conference publication",    TYPE_INPROCEEDINGS },
-		{ "hearing",                   TYPE_HEARING },
-		{ "Ph.D. thesis",              TYPE_PHDTHESIS },
-		{ "Masters thesis",            TYPE_MASTERSTHESIS },
-		{ "Diploma thesis",            TYPE_DIPLOMATHESIS },
-		{ "Doctoral thesis",           TYPE_DOCTORALTHESIS },
-		{ "Habilitation thesis",       TYPE_HABILITATIONTHESIS },
-		{ "Licentiate thesis",         TYPE_LICENTIATETHESIS },
-		{ "legislation",               TYPE_BILL },
-		{ "newspaper",                 TYPE_NEWSPAPER },
-		{ "communication",             TYPE_COMMUNICATION },
-		{ "manuscript",                TYPE_MANUSCRIPT },
-		{ "unpublished",               TYPE_MANUSCRIPT },
-		{ "report",                    TYPE_REPORT },
-		{ "technical report",          TYPE_REPORT },
-		{ "legal case and case notes", TYPE_CASE },
-		{ "patent",                    TYPE_PATENT },
+	match_type genre_matches[] = {
+		{ "academic journal",          TYPE_ARTICLE,            LEVEL_ANY },
+		{ "communication",             TYPE_COMMUNICATION,      LEVEL_ANY },
+		{ "conference publication",    TYPE_INPROCEEDINGS,      LEVEL_ANY },
+		{ "Diploma thesis",            TYPE_DIPLOMATHESIS,      LEVEL_ANY },
+		{ "Doctoral thesis",           TYPE_DOCTORALTHESIS,     LEVEL_ANY },
+		{ "Habilitation thesis",       TYPE_HABILITATIONTHESIS, LEVEL_ANY },
+		{ "hearing",                   TYPE_HEARING,            LEVEL_ANY },
+		{ "legal case and case notes", TYPE_CASE,               LEVEL_ANY },
+		{ "legislation",               TYPE_BILL,               LEVEL_ANY },
+		{ "Licentiate thesis",         TYPE_LICENTIATETHESIS,   LEVEL_ANY },
+		{ "magazine",                  TYPE_MAGARTICLE,         LEVEL_ANY },
+		{ "manuscript",                TYPE_MANUSCRIPT,         LEVEL_ANY },
+		{ "Masters thesis",            TYPE_MASTERSTHESIS,      LEVEL_ANY },
+		{ "newspaper",                 TYPE_NEWSPAPER,          LEVEL_ANY },
+		{ "patent",                    TYPE_PATENT,             LEVEL_ANY },
+		{ "Ph.D. thesis",              TYPE_PHDTHESIS,          LEVEL_ANY },
+		{ "report",                    TYPE_REPORT,             LEVEL_ANY },
+		{ "technical report",          TYPE_REPORT,             LEVEL_ANY },
+		{ "unpublished",               TYPE_MANUSCRIPT,         LEVEL_ANY },
+		{ "periodical",                TYPE_ARTICLE,            LEVEL_ANY  },
+		{ "thesis",                    TYPE_THESIS,             LEVEL_ANY  },
+		{ "book",                      TYPE_BOOK,               LEVEL_MAIN },
+		{ "book",                      TYPE_INBOOK,             LEVEL_ANY  },
+		{ "collection",                TYPE_BOOK,               LEVEL_MAIN },
+		{ "collection",                TYPE_INBOOK,             LEVEL_ANY  },
 	};
-	int nmatch_genres = sizeof( match_genres ) / sizeof( match_genres[0] );
+	int ngenre_matches = sizeof( genre_matches ) / sizeof( genre_matches[0] );
 
-	char *tag, *data;
-	int i, j, type = TYPE_UNKNOWN;
+	match_type resource_matches[] = {
+		{ "moving image",              TYPE_BROADCAST,          LEVEL_ANY  },
+		{ "software, multimedia",      TYPE_PROGRAM,            LEVEL_ANY  },
+	};
+	int nresource_matches = sizeof( resource_matches ) /sizeof( resource_matches[0] );
 
-	for ( i=0; i<in->n; ++i ) {
-		tag = in->tag[i].data;
-		if ( strcasecmp( tag, "GENRE:MARC" ) &&
-		     strcasecmp( tag, "GENRE:BIBUTILS" ) &&
-		     strcasecmp( tag, "GENRE:UNKNOWN" ) ) continue;
-		data = in->data[i].data;
-		for ( j=0; j<nmatch_genres; ++j ) {
-			if ( !strcasecmp( data, match_genres[j].name ) ) {
-				type = match_genres[j].type;
-				fields_setused( in, i );
-			}
-		}
-		if ( type==TYPE_UNKNOWN ) {
-			if ( !strcasecmp( data, "periodical" ) )
-				type = TYPE_ARTICLE;
-			else if ( !strcasecmp( data, "thesis" ) )
-				type = TYPE_THESIS;
-			else if ( !strcasecmp( data, "book" ) ) {
-				if ( in->level[i]==0 ) type = TYPE_BOOK;
-				else type = TYPE_INBOOK;
-			}
-			else if ( !strcasecmp( data, "collection" ) ) {
-				if ( in->level[i]==0 ) type = TYPE_BOOK;
-				else type = TYPE_INBOOK;
-			}
-			if ( type!=TYPE_UNKNOWN ) fields_setused( in, i );
-		}
-	}
-	if ( type==TYPE_UNKNOWN ) {
-		for ( i=0; i<in->n; ++i ) {
-			if ( strcasecmp( in->tag[i].data, "RESOURCE" ) )
-				continue;
-			data = in->data[i].data;
-			if ( !strcasecmp( data, "moving image" ) )
-				type = TYPE_BROADCAST;
-			else if ( !strcasecmp( data, "software, multimedia" ) )
-				type = TYPE_PROGRAM;
-			if ( type!=TYPE_UNKNOWN ) fields_setused( in, i );
-		}
-	}
+	match_type issuance_matches[] = {
+		{ "monographic",               TYPE_BOOK,               LEVEL_MAIN },
+		{ "monographic",               TYPE_INBOOK,             LEVEL_ANY  },
+	};
+	int nissuance_matches = sizeof( issuance_matches ) /sizeof( issuance_matches[0] );
 
-	/* default to generic */
+	int type;
+
+	type = type_from_mods_hints( in, TYPE_FROM_GENRE, genre_matches, ngenre_matches, TYPE_UNKNOWN );
+	if ( type==TYPE_UNKNOWN ) type = type_from_mods_hints( in, TYPE_FROM_RESOURCE, resource_matches, nresource_matches, TYPE_UNKNOWN );
+	if ( type==TYPE_UNKNOWN ) type = type_from_mods_hints( in, TYPE_FROM_ISSUANCE, issuance_matches, nissuance_matches, TYPE_UNKNOWN );
 	if ( type==TYPE_UNKNOWN ) type = TYPE_GENERIC;
-	
+
 	return type;
 }
 
@@ -318,7 +312,7 @@ get_month( fields *in, int level )
 	str *month;
 
 	month = fields_findv_firstof( in, level, FIELDS_STRP, "DATE:MONTH", "PARTDATE:MONTH", NULL );
-	if ( str_has_value( month ) ) return mont2mont( month->data );
+	if ( str_has_value( month ) ) return mont2mont( str_cstr( month ) );
 	else return 0;
 }
 
@@ -633,24 +627,8 @@ append_trailer( fields *out, int *status )
 	}
 }
 
-static void
-output( FILE *fp, fields *out )
-{
-	char *tag, *value;
-	int i;
-
-	for ( i=0; i<out->n; ++i ) {
-		tag   = fields_tag( out, i, FIELDS_CHRP );
-		value = fields_value( out, i, FIELDS_CHRP );
-		fprintf( fp, "%s %s\n", tag, value );
-	}
-
-	fprintf( fp, "\n" );
-	fflush( fp );
-}
-
 static int
-append_data( fields *in, fields *out )
+adsout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 {
 	int type, status = BIBL_OK;
 
@@ -678,25 +656,23 @@ append_data( fields *in, fields *out )
 	return status;
 }
 
+/*****************************************************
+ PUBLIC: int adsout_write()
+*****************************************************/
+
 static int
-adsout_write( fields *in, FILE *fp, param *p, unsigned long refnum )
+adsout_write( fields *out, FILE *fp, param *p, unsigned long refnum )
 {
-	int status;
-	fields out;
+	const char *tag, *value;
+	int i;
 
-	fields_init( &out );
+	for ( i=0; i<out->n; ++i ) {
+		tag   = fields_tag( out, i, FIELDS_CHRP );
+		value = fields_value( out, i, FIELDS_CHRP );
+		fprintf( fp, "%s %s\n", tag, value );
+	}
 
-	status = append_data( in, &out );
-	if ( status==BIBL_OK ) output( fp, &out );
-
-	fields_free( &out );
-
-	return status;
+	fprintf( fp, "\n" );
+	fflush( fp );
+	return BIBL_OK;
 }
-
-static void
-adsout_writeheader( FILE *outptr, param *p )
-{
-	if ( p->utf8bom ) utf8_writebom( outptr );
-}
-

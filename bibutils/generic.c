@@ -1,6 +1,6 @@
 /* generic.c
  *
- * Copyright (c) Chris Putnam 2016-2018
+ * Copyright (c) Chris Putnam 2016-2019
  *
  * Source code released under GPL version 2
  *
@@ -14,6 +14,7 @@
 #include "serialno.h"
 #include "title.h"
 #include "url.h"
+#include "utf8.h"
 #include "generic.h"
 
 /* stub for processtypes that aren't used, such as DEFAULT and ALWAYS handled by bibcore.c  */
@@ -96,4 +97,10 @@ generic_genre( fields *bibin, int n, str *intag, str *invalue, int level, param 
 
 	if ( status == FIELDS_OK ) return BIBL_OK;
 	else return BIBL_ERR_MEMERR;
+}
+
+void
+generic_writeheader( FILE *outptr, param *pm )
+{
+	if ( pm->utf8bom ) utf8_writebom( outptr );
 }

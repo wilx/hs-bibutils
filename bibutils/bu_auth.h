@@ -3,7 +3,7 @@
  *
  * Recognize added vocabulary for genre terms added by bibutils.
  *
- * Copyright (c) Chris Putnam 2017-2018
+ * Copyright (c) Chris Putnam 2017-2019
  *
  * Source code released under the GPL version 2
  *

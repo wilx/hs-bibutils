@@ -1,9 +1,9 @@
 /*
  * slist.h
  *
- * version: 2017-11-14
+ * version: 2019-01-14
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Source code released under the GPL version 2
  *
@@ -52,22 +52,33 @@ void    slist_deletev( void *v );
 
 slist * slist_dup( slist *a );
 int     slist_copy( slist *to, slist *from );
+int     slist_copy_ret( slist *to, slist *from, int retok, int reterr );
 void    slist_swap( slist *a, slist_index n1, slist_index n2 );
 
-str *   slist_addvp( slist *a, int mode, void *vp );
-str *   slist_addc( slist *a, const char *value );
-str *   slist_add( slist *a, str *value );
+int     slist_addvp( slist *a, int mode, void *vp );
+int     slist_addc( slist *a, const char *value );
+int     slist_add( slist *a, str *value );
+
+int     slist_addvp_ret( slist *a, int mode, void *vp, int retok, int reterr );
+int     slist_addc_ret( slist *a, const char *value, int retok, int reterr );
+int     slist_add_ret( slist *a, str *value, int retok, int reterr );
 
 int     slist_addvp_all( slist *a, int mode, ... );
 int     slist_addc_all( slist *a, ... );
 int     slist_add_all( slist *a, ... );
 
-str *   slist_addvp_unique( slist *a, int mode, void *vp );
-str *   slist_addc_unique( slist *a, const char *value );
-str *   slist_add_unique( slist *a, str *value );
+int     slist_addvp_unique( slist *a, int mode, void *vp );
+int     slist_addc_unique( slist *a, const char *value );
+int     slist_add_unique( slist *a, str *value );
+
+int     slist_addvp_unique_ret( slist *a, int mode, void *vp, int retok, int reterr );
+int     slist_addc_unique_ret( slist *a, const char *value, int retok, int reterr );
+int     slist_add_unique_ret( slist *a, str *value, int retok, int reterr );
 
 int     slist_append( slist *a, slist *toadd );
+int     slist_append_ret( slist *a, slist *toadd, int retok, int reterr );
 int     slist_append_unique( slist *a, slist *toadd );
+int     slist_append_unique_ret( slist *a, slist *toadd, int retok, int reterr );
 
 int     slist_remove( slist *a, slist_index n );
 
@@ -78,6 +89,7 @@ str *   slist_set( slist *a, slist_index n, str *s );
 str *   slist_setc( slist *a, slist_index n, const char *s );
 
 void    slist_sort( slist *a );
+void    slist_revsort( slist *a );
 
 int     slist_find( slist *a, str *searchstr );
 int     slist_findc( slist *a, const char *searchstr );

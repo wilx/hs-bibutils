@@ -1,7 +1,7 @@
 /*
  * pages.c
  *
- * Copyright (c) Chris Putnam 2016-2018
+ * Copyright (c) Chris Putnam 2016-2019
  *
  * Program and source code released under GPL verison 2
  */
@@ -27,14 +27,14 @@ extract_range( str *input, str *begin, str *end )
 {
 	/* -30 is the first character of a UTF8 em-dash and en-dash */
 	const char terminators[] = { ' ', '-', '\t', '\r', '\n', -30, '\0' };
-	char *p;
+	const char *p;
 
 	str_empty( begin );
 	str_empty( end );
 
 	if ( input->len==0 ) return;
 
-	p = skip_ws( input->data );
+	p = skip_ws( str_cstr( input ) );
 	while ( *p && !strchr( terminators, *p ) )
 		str_addchar( begin, *p++ );
 
@@ -67,7 +67,7 @@ pages_add( fields *bibout, char *outtag, str *invalue, int level )
 	}
 
 	if ( start.len>0 ) {
-		fstatus = fields_add( bibout, "PAGES:START", start.data, level );
+		fstatus = fields_add( bibout, "PAGES:START", str_cstr( &start ), level );
 		if ( fstatus!=FIELDS_OK ) {
 			status = 0;
 			goto out;
@@ -75,7 +75,7 @@ pages_add( fields *bibout, char *outtag, str *invalue, int level )
 	}
 
 	if ( stop.len>0 ) {
-		fstatus = fields_add( bibout, "PAGES:STOP", stop.data, level );
+		fstatus = fields_add( bibout, "PAGES:STOP", str_cstr( &stop ), level );
 		if ( fstatus!=FIELDS_OK ) status = 0;
 	}
 

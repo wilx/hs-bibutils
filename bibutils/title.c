@@ -3,7 +3,7 @@
  *
  * process titles into title/subtitle pairs for MODS
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Source code released under the GPL version 2
  *
@@ -17,11 +17,10 @@
 #include "is_ws.h"
 
 int
-title_process( fields *info, char *tag, char *data, int level, 
-	unsigned char nosplittitle )
+title_process( fields *info, const char *tag, const char *value, int level, unsigned char nosplittitle )
 {
 	str title, subtitle;
-	char *p, *q;
+	const char *p, *q;
 	int status;
 
 	str_init( &title );
@@ -29,13 +28,13 @@ title_process( fields *info, char *tag, char *data, int level,
 
 	if ( nosplittitle ) q = NULL;
 	else {
-		q = strstr( data, ": " );
-		if ( !q ) q = strstr( data, "? " );
+		q = strstr( value, ": " );
+		if ( !q ) q = strstr( value, "? " );
 	}
 
-	if ( !q ) str_strcpyc( &title, data );
+	if ( !q ) str_strcpyc( &title, value );
 	else {
-		p = data;
+		p = value;
 		while ( p!=q ) str_addchar( &title, *p++ );
 		if ( *q=='?' ) str_addchar( &title, '?' );
 		q++;

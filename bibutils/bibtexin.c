@@ -1,7 +1,7 @@
 /*
  * bibtexin.c
  *
- * Copyright (c) Chris Putnam 2003-2018
+ * Copyright (c) Chris Putnam 2003-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -33,39 +33,44 @@ extern int bibtex_nall;
  PUBLIC: void bibtexin_initparams()
 *****************************************************/
 
-static int  bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p );
-static int  bibtexin_processf( fields *bibin, char *data, char *filename, long nref, param *p );
-static int  bibtexin_cleanf( bibl *bin, param *p );
-static int  bibtexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int  bibtexin_typef( fields *bibin, char *filename, int nrefs, param *p );
+static int bibtexin_convertf( fields *bibin, fields *info, int reftype, param *p );
+static int bibtexin_processf( fields *bibin, const char *data, const char *filename, long nref, param *p );
+static int bibtexin_cleanf( bibl *bin, param *p );
+static int bibtexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
+static int bibtexin_typef( fields *bibin, const char *filename, int nrefs, param *p );
 
-void
-bibtexin_initparams( param *p, const char *progname )
+int
+bibtexin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_BIBTEXIN;
-	p->charsetin        = BIBL_CHARSET_DEFAULT;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 1;
-	p->xmlin            = 0;
-	p->utf8in           = 0;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = 0;
+	pm->readformat       = BIBL_BIBTEXIN;
+	pm->charsetin        = BIBL_CHARSET_DEFAULT;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 1;
+	pm->xmlin            = 0;
+	pm->utf8in           = 0;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = 0;
 
-	p->readf    = bibtexin_readf;
-	p->processf = bibtexin_processf;
-	p->cleanf   = bibtexin_cleanf;
-	p->typef    = bibtexin_typef;
-	p->convertf = bibtexin_convertf;
-	p->all      = bibtex_all;
-	p->nall     = bibtex_nall;
+	pm->readf    = bibtexin_readf;
+	pm->processf = bibtexin_processf;
+	pm->cleanf   = bibtexin_cleanf;
+	pm->typef    = bibtexin_typef;
+	pm->convertf = bibtexin_convertf;
+	pm->all      = bibtex_all;
+	pm->nall     = bibtex_nall;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( pm->progname==NULL ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -97,7 +102,7 @@ static int
 bibtexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset )
 {
 	int haveref = 0;
-	char *p;
+	const char *p;
 	*fcharset = CHARSET_UNKNOWN;
 	while ( haveref!=2 && readmore( fp, buf, bufsize, bufpos, line ) ) {
 		if ( line->len == 0 ) continue; /* blank line */
@@ -130,15 +135,34 @@ bibtexin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *r
  PUBLIC: int bibtexin_processf()
 *****************************************************/
 
-static char*
-process_bibtextype( char *p, str *type )
+typedef struct loc {
+	const char *progname;
+	const char *filename;
+	long nref;
+} loc;
+
+/* process_bibtextype()
+ *
+ * extract 'article', 'book', etc. from:
+ *
+ * @article{...}
+ * @book(...)
+ *
+ * return pointer after '{' or '(' character
+ */
+static const char*
+process_bibtextype( const char *p, str *type )
 {
 	str tmp;
+
 	str_init( &tmp );
 
 	if ( *p=='@' ) p++;
+	p = skip_ws( p );
+
 	p = str_cpytodelim( &tmp, p, "{( \t\r\n", 0 );
 	p = skip_ws( p );
+
 	if ( *p=='{' || *p=='(' ) p++;
 	p = skip_ws( p );
 
@@ -146,13 +170,14 @@ process_bibtextype( char *p, str *type )
 	else str_empty( type );
 
 	str_free( &tmp );
+
 	return p;
 }
 
-static char*
-process_bibtexid( char *p, str *id )
+static const char *
+process_bibtexid( const char *p, str *id )
 {
-	char *start_p = p;
+	const char *start_p = p;
 	str tmp;
 
 	str_init( &tmp );
@@ -178,219 +203,342 @@ process_bibtexid( char *p, str *id )
 	return skip_ws( p );
 }
 
-static char *
-bibtex_tag( char *p, str *tag )
+/* bibtex_tag()
+ *
+ * returns NULL on memory error, else position after tag+whitespace
+ */
+static const char *
+bibtex_tag( const char *p, str *tag )
 {
-	p = str_cpytodelim( tag, skip_ws( p ), "= \t\r\n", 0 );
+	p = str_cpytodelim( tag, p, "= \t\r\n", 0 );
 	if ( str_memerr( tag ) ) return NULL;
 	return skip_ws( p );
 }
 
-static char *
-bibtex_data( char *p, fields *bibin, slist *tokens, long nref, param *pm )
+static int
+quotation_mark_is_escaped( int nbraces, const char *p, const char *startp )
 {
-	unsigned int nbracket = 0, nquotes = 0;
-	char *startp = p;
-	str tok, *t;
+	if ( nbraces!=0 ) return 1;
+	if ( p!=startp && *(p-1)=='\\' ) return 1;
+	return 0;
+}
 
-	str_init( &tok );
+static int
+brace_is_escaped( int nquotes, const char *p, const char *startp )
+{
+	if ( nquotes!=0 ) return 1;
+	if ( p!=startp && *(p-1)=='\\' ) return 1;
+	return 0;
+}
+
+static int
+char_is_escaped( int nquotes, int nbraces )
+{
+	if ( nquotes!=0 || nbraces!=0 ) return 1;
+	return 0;
+}
+
+static int
+add_token( slist *tokens, str *token )
+{
+	int status;
+
+	if ( str_memerr( token ) ) return BIBL_ERR_MEMERR;
+
+	status = slist_add( tokens, token );
+	if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
+
+	str_empty( token );
+
+	return BIBL_OK;
+}
+
+static const char *
+bibtex_data( const char *p, slist *tokens, loc *currloc )
+{
+	int nbraces = 0, nquotes = 0;
+	const char *startp = p;
+	int status;
+	str token;
+
+	str_init( &token );
+
 	while ( p && *p ) {
-		if ( !nquotes && !nbracket ) {
-			if ( *p==',' || *p=='=' || *p=='}' || *p==')' )
-				goto out;
+
+		/* ...have we reached end-of-data? */
+		if ( nquotes==0 && nbraces==0 ) {
+			if ( *p==',' || *p=='=' || *p=='}' || *p==')' ) goto out;
 		}
-		if ( *p=='\"' && nbracket==0 && ( p==startp || *(p-1)!='\\' ) ) {
-			nquotes = !nquotes;
-			str_addchar( &tok, *p );
-			if ( !nquotes ) {
-				if ( str_memerr( &tok ) ) { p=NULL; goto out; }
-				t = slist_add( tokens, &tok );
-				if ( !t ) { p=NULL; goto out0; }
-				str_empty( &tok );
+
+		if ( *p=='\"' ) {
+			str_addchar( &token, *p );
+			if ( !quotation_mark_is_escaped( nbraces, p, startp ) ) {
+				nquotes = !nquotes;
+				if ( nquotes==0 ) {
+					status = add_token( tokens, &token );
+					if ( status!=BIBL_OK ) { p=NULL; goto out0; }
+				}
 			}
-		} else if ( *p=='#' && !nquotes && !nbracket ) {
-			if ( str_has_value( &tok ) ) {
-				if ( str_memerr( &tok ) ) { p=NULL; goto out; }
-				t = slist_add( tokens, &tok );
-				if ( !t ) { p=NULL; goto out0; }
+		}
+
+		else if ( *p=='{' ) {
+			str_addchar( &token, *p );
+			if ( !brace_is_escaped( nquotes, p, startp ) ) {
+				nbraces++;
 			}
-			str_strcpyc( &tok, "#" );
-			t = slist_add( tokens, &tok );
-			if ( !t ) { p=NULL; goto out0; }
-			str_empty( &tok );
-		} else if ( *p=='{' && !nquotes && ( p==startp || *(p-1)!='\\' ) ) {
-			nbracket++;
-			str_addchar( &tok, *p );
-		} else if ( *p=='}' && !nquotes && ( p==startp || *(p-1)!='\\' ) ) {
-			nbracket--;
-			str_addchar( &tok, *p );
-			if ( nbracket==0 ) {
-				if ( str_memerr( &tok ) ) { p=NULL; goto out; }
-				t = slist_add( tokens, &tok );
-				if ( !t ) { p=NULL; goto out; }
-				str_empty( &tok );
+		}
+
+		else if ( *p=='}' ) {
+			str_addchar( &token, *p );
+			if ( !brace_is_escaped( nquotes, p, startp ) ) {
+				nbraces--;
+				if ( nbraces==0 ) {
+					status = add_token( tokens, &token );
+					if ( status!=BIBL_OK ) { p=NULL; goto out0; }
+				}
+				if ( nbraces<0 ) {
+					goto out;
+				}
 			}
-		} else if ( !is_ws( *p ) || nquotes || nbracket ) {
-			if ( !is_ws( *p ) ) str_addchar( &tok, *p );
+		}
+
+		else if ( *p=='#' ) {
+			if ( char_is_escaped( nquotes, nbraces ) ) {
+				str_addchar( &token, *p );
+			}
+			/* ...this is a bibtex string concatentation token */
 			else {
-				if ( tok.len!=0 && *p!='\n' && *p!='\r' )
-					str_addchar( &tok, *p );
-				else if ( tok.len!=0 && (*p=='\n' || *p=='\r')) {
-					str_addchar( &tok, ' ' );
+				if ( str_has_value( &token ) ) {
+					status = add_token( tokens, &token );
+					if ( status!=BIBL_OK ) { p=NULL; goto out0; }
+				}
+				status = slist_addc( tokens, "#" );
+				if ( status!=SLIST_OK ) { p=NULL; goto out0; }
+			}
+		}
+
+		/* ...add escaped white-space and non-white-space to current token */
+		else if ( !is_ws( *p ) || char_is_escaped( nquotes, nbraces ) ) {
+			/* always add non-whitespace characters */
+			if ( !is_ws( *p ) ) {
+				str_addchar( &token, *p );
+			}
+			/* only add whitespace if token is non-empty; convert CR/LF to space */
+			else if ( token.len!=0 ) {
+				if ( *p!='\n' && *p!='\r' )
+					str_addchar( &token, *p );
+				else {
+					str_addchar( &token, ' ' );
 					while ( is_ws( *(p+1) ) ) p++;
 				}
 			}
-		} else if ( is_ws( *p ) ) {
-			if ( tok.len ) {
-				if ( str_memerr( &tok ) ) { p=NULL; goto out; }
-				t = slist_add( tokens, &tok );
-				if ( !t ) { p=NULL; goto out; }
-				str_empty( &tok );
+		}
+
+		/* ...unescaped white-space marks the end of a token */
+		else if ( is_ws( *p ) ) {
+			if ( token.len ) {
+				status = add_token( tokens, &token );
+				if ( status!=BIBL_OK ) { p=NULL; goto out0; }
 			}
 		}
+
 		p++;
 	}
 out:
-	if ( nbracket!=0 ) {
-		fprintf( stderr, "%s: Mismatch in number of brackets in reference %ld.\n", pm->progname, nref );
+	if ( nbraces!=0 ) {
+		fprintf( stderr, "%s: Mismatch in number of braces in file %s reference %ld.\n", currloc->progname, currloc->filename, currloc->nref );
 	}
 	if ( nquotes!=0 ) {
-		fprintf( stderr, "%s: Mismatch in number of quotes in reference %ld.\n", pm->progname, nref );
+		fprintf( stderr, "%s: Mismatch in number of quotes in file %s reference %ld.\n", currloc->progname, currloc->filename, currloc->nref );
 	}
-	if ( str_has_value( &tok ) ) {
-		if ( str_memerr( &tok ) ) { p = NULL; goto out; }
-		t = slist_add( tokens, &tok );
-		if ( !t ) p = NULL;
+	if ( str_has_value( &token ) ) {
+		if ( str_memerr( &token ) ) { p = NULL; goto out; }
+		status = slist_add( tokens, &token );
+		if ( status!=SLIST_OK ) p = NULL;
 	}
 out0:
-	str_free( &tok );
+	str_free( &token );
 	return p;
+}
+
+#define NOT_ESCAPED    (0)
+#define ESCAPED_QUOTES (1)
+#define ESCAPED_BRACES (2)
+
+static int
+token_is_escaped( str *s )
+{
+	if ( s->data[0]=='\"' && s->data[s->len-1]=='\"' ) return ESCAPED_QUOTES;
+	if ( s->data[0]=='{'  && s->data[s->len-1]=='}'  ) return ESCAPED_BRACES;
+	return NOT_ESCAPED;
 }
 
 /* replace_strings()
  *
- * do string replacement -- only if unprotected by quotation marks or curly brackets
+ * do bibtex string replacement for data tokens
  */
-static void
-replace_strings( slist *tokens, fields *bibin, param *pm )
-{
-	int i, n, ok;
-	char *q;
-	str *s;
-	i = 0;
-	while ( i < tokens->n ) {
-		s = slist_str( tokens, i );
-		if ( !strcmp( s->data, "#" ) ) {
-		} else if ( s->data[0]!='\"' && s->data[0]!='{' ) {
-			n = slist_find( &find, s );
-			if ( n!=-1 ) {
-				str_strcpy( s, slist_str( &replace, n ) );
-			} else {
-				q = s->data;
-				ok = 1;
-				while ( *q && ok ) {
-					if ( !isdigit( *q ) ) ok = 0;
-					q++;
-				}
-			}
-		}
-		i++;
-	}
-}
-
 static int
-string_concatenate( slist *tokens, fields *bibin, long nref, param *pm )
+replace_strings( slist *tokens )
 {
-	int i, status;
-	str *s, *t;
-	i = 0;
-	while ( i < tokens->n ) {
+	int i, n;
+	str *s;
+
+	for ( i=0; i<tokens->n; ++i ) {
+
 		s = slist_str( tokens, i );
-		if ( !strcmp( s->data, "#" ) ) {
-			if ( i==0 || i==tokens->n-1 ) {
-				fprintf( stderr, "%s: Warning: Stray string concatenation "
-					"('#' character) in reference %ld\n", pm->progname, nref );
-				status = slist_remove( tokens, i );
-				if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
-				continue;
-			}
-			s = slist_str( tokens, i-1 );
-			if ( s->data[0]!='\"' && s->data[s->len-1]!='\"' )
-				fprintf( stderr, "%s: Warning: String concentation should "
-					"be used in context of quotations marks in reference %ld\n", pm->progname, nref );
-			t = slist_str( tokens, i+1 );
-			if ( t->data[0]!='\"' && t->data[s->len-1]!='\"' )
-				fprintf( stderr, "%s: Warning: String concentation should "
-					"be used in context of quotations marks in reference %ld\n", pm->progname, nref );
-			if ( ( s->data[s->len-1]=='\"' && t->data[0]=='\"') || (s->data[s->len-1]=='}' && t->data[0]=='{') ) {
-				str_trimend( s, 1 );
-				str_trimbegin( t, 1 );
-				str_strcat( s, t );
-			} else {
-				str_strcat( s, t );
-			}
-			status = slist_remove( tokens, i );
-			if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
-			status = slist_remove( tokens, i );
-			if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
-		} else i++;
+
+		/* ...skip if token is protected by quotation marks or braces */
+		if ( token_is_escaped( s ) ) continue;
+
+		/* ...skip if token is string concatentation symbol */
+		if ( !str_strcmpc( s, "#" ) ) continue;
+
+		n = slist_find( &find, s );
+		if ( slist_wasnotfound( &find, n ) ) continue;
+
+		str_strcpy( s, slist_str( &replace, n ) );
+		if ( str_memerr( s ) ) return BIBL_ERR_MEMERR;
+
 	}
+
 	return BIBL_OK;
 }
 
-/* return NULL on memory error */
-static char *
-process_bibtexline( char *p, str *tag, str *data, uchar stripquotes, fields *bibin, long nref, param *pm )
+static int
+string_concatenate( slist *tokens, loc *currloc )
 {
-	int i, status;
-	slist tokens;
+	int i, status, esc_s, esc_t;
+	str *s, *t;
+
+	i = 0;
+	while ( i < tokens->n ) {
+
+		s = slist_str( tokens, i );
+		if ( str_strcmpc( s, "#" ) ) {
+			i++;
+			continue;
+		}
+
+		if ( i==0 || i==tokens->n-1 ) {
+			fprintf( stderr, "%s: Warning: Stray string concatenation ('#' character) in file %s reference %ld\n",
+					currloc->progname, currloc->filename, currloc->nref );
+			status = slist_remove( tokens, i );
+			if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
+			continue;
+		}
+
+		s = slist_str( tokens, i-1 );
+		t = slist_str( tokens, i+1 );
+
+		esc_s = token_is_escaped( s );
+		esc_t = token_is_escaped( t );
+
+		if ( esc_s != NOT_ESCAPED ) str_trimend( s, 1 );
+		if ( esc_t != NOT_ESCAPED ) str_trimbegin( t, 1 );
+		if ( esc_s != esc_t ) {
+			if ( esc_s == NOT_ESCAPED ) {
+				if ( esc_t == ESCAPED_QUOTES ) str_prepend( s, "\"" );
+				else                           str_prepend( s, "{" );
+			}
+			else {
+				if ( esc_t != NOT_ESCAPED ) str_trimend( t, 1 );
+				if ( esc_s == ESCAPED_QUOTES ) str_addchar( t, '\"' );
+				else                           str_addchar( t, '}' );
+			}
+		}
+
+		str_strcat( s, t );
+		if ( str_memerr( s ) ) return BIBL_ERR_MEMERR;
+
+		/* ...remove concatenated string t */
+		status = slist_remove( tokens, i+1 );
+		if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
+
+		/* ...remove concatentation token '#' */
+		status = slist_remove( tokens, i );
+		if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
+
+	}
+
+	return BIBL_OK;
+}
+
+#define KEEP_QUOTES  (0)
+#define STRIP_QUOTES (1)
+
+static int
+merge_tokens_into_data( str *data, slist *tokens, int stripquotes )
+{
+	int i, esc_s;
 	str *s;
 
-	str_empty( data );
+	for ( i=0; i<tokens->n; i++ ) {
 
-	p = bibtex_tag( p, tag );
+		s     = slist_str( tokens, i );
+		esc_s = token_is_escaped( s );
 
-	if ( str_is_empty( tag ) ) {
-		/* ...skip this line */
-		while ( *p && *p!='\n' && *p!='\r' ) p++;
-		while ( *p=='\n' || *p=='\r' ) p++;
-		return p;
-	}
-
-	slist_init( &tokens );
-
-	if ( *p=='=' ) {
-		p = bibtex_data( p+1, bibin, &tokens, nref, pm );
-		if ( p==NULL ) goto out;
-	}
-
-	replace_strings( &tokens, bibin, pm );
-
-	status = string_concatenate( &tokens, bibin, nref, pm );
-	if ( status!=BIBL_OK ) {
-		p = NULL;
-		goto out;
-	}
-
-	for ( i=0; i<tokens.n; i++ ) {
-		s = slist_str( &tokens, i );
-		if ( ( stripquotes && s->data[0]=='\"' && s->data[s->len-1]=='\"' ) ||
-		     ( s->data[0]=='{' && s->data[s->len-1]=='}' ) ) {
+		if ( ( esc_s == ESCAPED_BRACES ) ||
+		     ( stripquotes == STRIP_QUOTES && esc_s == ESCAPED_QUOTES ) ) {
 			str_trimbegin( s, 1 );
 			str_trimend( s, 1 );
 		}
-		str_strcat( data, slist_str( &tokens, i ) );
+
+		str_strcat( data, s );
+
 	}
+
+	if ( str_memerr( data ) ) return BIBL_ERR_MEMERR;
+	else return BIBL_OK;
+}
+
+/* return NULL on memory error */
+static const char *
+process_bibtexline( const char *p, str *tag, str *data, uchar stripquotes, loc *currloc )
+{
+	slist tokens;
+	int status;
+
+	str_empty( data );
+
+	slist_init( &tokens );
+
+	p = bibtex_tag( skip_ws( p ), tag );
+	if ( p ) {
+		if ( str_is_empty( tag ) ) {
+			p = skip_line( p );
+			goto out;
+		}
+	}
+
+	if ( p && *p=='=' ) {
+		p = bibtex_data( p+1, &tokens, currloc );
+	}
+
+	if ( p ) {
+		status = replace_strings( &tokens );
+		if ( status!=BIBL_OK ) p = NULL;
+	}
+
+	if ( p ) {
+		status = string_concatenate( &tokens, currloc );
+		if ( status!=BIBL_OK ) p = NULL;
+	}
+
+	if ( p ) {
+		status = merge_tokens_into_data( data, &tokens, stripquotes );
+		if ( status!=BIBL_OK ) p = NULL;
+	}
+
 out:
 	slist_free( &tokens );
 	return p;
 }
 
-/* process_cite()
+/* process_ref()
  *
  */
 static int
-process_cite( fields *bibin, char *p, char *filename, long nref, param *pm )
+process_ref( fields *bibin, const char *p, loc *currloc )
 {
 	int fstatus, status = BIBL_OK;
 	str type, id, tag, data;
@@ -402,21 +550,22 @@ process_cite( fields *bibin, char *p, char *filename, long nref, param *pm )
 
 	if ( str_is_empty( &type ) || str_is_empty( &id ) ) goto out;
 
-	fstatus = fields_add( bibin, "INTERNAL_TYPE", str_cstr( &type ), 0 );
+	fstatus = fields_add( bibin, "INTERNAL_TYPE", str_cstr( &type ), LEVEL_MAIN );
 	if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
 
-	fstatus = fields_add( bibin, "REFNUM", str_cstr( &id), 0 );
+	fstatus = fields_add( bibin, "REFNUM", str_cstr( &id ), LEVEL_MAIN );
 	if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
 
 	while ( *p ) {
-		p = process_bibtexline( p, &tag, &data, 1, bibin, nref, pm );
+
+		p = process_bibtexline( p, &tag, &data, STRIP_QUOTES, currloc );
 		if ( p==NULL ) { status = BIBL_ERR_MEMERR; goto out; }
-		/* no anonymous or empty fields allowed */
-		if ( str_has_value( &tag ) && str_has_value( &data ) ) {
-			fstatus = fields_add( bibin, str_cstr( &tag ), str_cstr( &data ), 0 );
-			if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
-		}
-		strs_empty( &tag, &data, NULL );
+
+		if ( !str_has_value( &tag ) || !str_has_value( &data ) ) continue;
+
+		fstatus = fields_add( bibin, str_cstr( &tag ), str_cstr( &data ), LEVEL_MAIN );
+		if ( fstatus!=FIELDS_OK ) { status = BIBL_ERR_MEMERR; goto out; }
+
 	}
 out:
 	strs_free( &type, &id, &tag, &data, NULL );
@@ -435,32 +584,38 @@ out:
  *
  */
 static int
-process_string( char *p, long nref, param *pm )
+process_string( const char *p, loc *currloc )
 {
 	int n, status = BIBL_OK;
 	str s1, s2, *t;
+
 	strs_init( &s1, &s2, NULL );
+
 	while ( *p && *p!='{' && *p!='(' ) p++;
 	if ( *p=='{' || *p=='(' ) p++;
-	p = process_bibtexline( skip_ws( p ), &s1, &s2, 0, NULL, nref, pm );
+
+	p = process_bibtexline( skip_ws( p ), &s1, &s2, KEEP_QUOTES, currloc );
 	if ( p==NULL ) { status = BIBL_ERR_MEMERR; goto out; }
+
 	if ( str_has_value( &s2 ) ) {
 		str_findreplace( &s2, "\\ ", " " );
+	} else {
+		str_strcpyc( &s2, "" );
 	}
+
 	if ( str_has_value( &s1 ) ) {
 		n = slist_find( &find, &s1 );
 		if ( n==-1 ) {
-			t = slist_add( &find, &s1 );
-			if ( t==NULL ) { status = BIBL_ERR_MEMERR; goto out; }
-			if ( str_has_value( &s2 ) ) t = slist_add( &replace, &s2 );
-			else t = slist_addc( &replace, "" );
-			if ( t==NULL ) { status = BIBL_ERR_MEMERR; goto out; }
+			status = slist_add_ret( &find,    &s1, BIBL_OK, BIBL_ERR_MEMERR );
+			if ( status!=BIBL_OK ) goto out;
+			status = slist_add_ret( &replace, &s2, BIBL_OK, BIBL_ERR_MEMERR );
+			if ( status!=BIBL_OK ) goto out;
 		} else {
-			if ( str_has_value( &s2 ) ) t = slist_set( &replace, n, &s2 );
-			else t = slist_setc( &replace, n, "" );
+			t = slist_set( &replace, n, &s2 );
 			if ( t==NULL ) { status = BIBL_ERR_MEMERR; goto out; }
 		}
 	}
+
 out:
 	strs_free( &s1, &s2, NULL );
 	return status;
@@ -471,16 +626,22 @@ out:
  * Handle '@STRING', '@reftype', and ignore '@COMMENT'
  */
 static int
-bibtexin_processf( fields *bibin, char *data, char *filename, long nref, param *p )
+bibtexin_processf( fields *bibin, const char *data, const char *filename, long nref, param *pm )
 {
+	loc currloc;
+
+	currloc.progname = pm->progname;
+	currloc.filename = filename;
+	currloc.nref     = nref;
+
 	if ( !strncasecmp( data, "@STRING", 7 ) ) {
-		process_string( data+7, nref, p );
+		process_string( data+7, &currloc );
 		return 0;
 	} else if ( !strncasecmp( data, "@COMMENT", 8 ) ) {
 		/* Not sure if these are real Bibtex, but not references */
 		return 0;
 	} else {
-		process_cite( bibin, data, filename, nref, p );
+		process_ref( bibin, data, &currloc );
 		return 1;
 	}
 }
@@ -501,7 +662,7 @@ static int
 bibtex_split( slist *tokens, str *s )
 {
 	int i, n = s->len, nbrackets = 0, status = BIBL_OK;
-	str tok, *t;
+	str tok;
 
 	str_init( &tok );
 
@@ -516,21 +677,15 @@ bibtex_split( slist *tokens, str *s )
 			str_addchar( &tok, s->data[i] );
 		} else if ( is_ws( s->data[i] ) ) {
 			if ( str_has_value( &tok ) ) {
-				t = slist_add( tokens, &tok );
-				if ( !t ) {
-					status = BIBL_ERR_MEMERR;
-					goto out;
-				}
+				status = slist_add_ret( tokens, &tok, BIBL_OK, BIBL_ERR_MEMERR );
+				if ( status!=BIBL_OK ) goto out;
 			}
 			str_empty( &tok );
 		}
 	}
 	if ( str_has_value( &tok ) ) {
-		t = slist_add( tokens, &tok );
-		if ( !t ) {
-			status = BIBL_ERR_MEMERR;
-			goto out;
-		}
+		status = slist_add_ret( tokens, &tok, BIBL_OK, BIBL_ERR_MEMERR );
+		if ( status!=BIBL_OK ) goto out;
 	}
 
 	for ( i=0; i<tokens->n; ++i ) {
@@ -546,8 +701,8 @@ static int
 bibtex_addtitleurl( fields *info, str *in )
 {
 	int fstatus, status = BIBL_OK;
+	const char *p;
 	str s;
-	char *p;
 
 	str_init( &s );
 
@@ -591,10 +746,12 @@ is_name_tag( str *tag )
 static void
 bibtex_process_tilde( str *s )
 {
-	char *p, *q;
+	const char *p;
+	char *q;
 	int n = 0;
 
-	p = q = s->data;
+	p = s->data;
+	q = s->data;
 	if ( !p ) return;
 	while ( *p ) {
 		if ( *p=='~' ) {
@@ -817,7 +974,7 @@ bibtexin_cleanf( bibl *bin, param *p )
 *****************************************************/
 
 static int
-bibtexin_typef( fields *bibin, char *filename, int nrefs, param *p )
+bibtexin_typef( fields *bibin, const char *filename, int nrefs, param *p )
 {
 	int ntypename, nrefname, is_default;
 	char *refname = "", *typename = "";
@@ -1127,8 +1284,8 @@ static int
 bibtexin_keyword( fields *bibin, int m, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout )
 {
 	int fstatus, status = BIBL_OK;
+	const char *p;
 	str keyword;
-	char *p;
 
 	p = invalue->data;
 	str_init( &keyword );

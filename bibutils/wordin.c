@@ -1,7 +1,7 @@
 /*
  * wordin.c
  *
- * Copyright (c) Chris Putnam 2010-2018
+ * Copyright (c) Chris Putnam 2010-2019
  *
  * Source code released under the GPL version 2
  *
@@ -17,41 +17,46 @@
 #include "bibformats.h"
 
 static int wordin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int wordin_processf( fields *wordin, char *data, char *filename, long nref, param *p );
+static int wordin_processf( fields *wordin, const char *data, const char *filename, long nref, param *p );
 
 
 /*****************************************************
  PUBLIC: void wordin_initparams()
 *****************************************************/
 
-void
-wordin_initparams( param *p, const char *progname )
+int
+wordin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_WORDIN;
-	p->charsetin        = BIBL_CHARSET_DEFAULT;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->xmlin            = 1;
-	p->utf8in           = 1;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = BIBL_RAW_WITHMAKEREFID |
+	pm->readformat       = BIBL_WORDIN;
+	pm->charsetin        = BIBL_CHARSET_DEFAULT;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->xmlin            = 1;
+	pm->utf8in           = 1;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = BIBL_RAW_WITHMAKEREFID |
 	                      BIBL_RAW_WITHCHARCONVERT;
 
-	p->readf    = wordin_readf;
-	p->processf = wordin_processf;
-	p->cleanf   = NULL;
-	p->typef    = NULL;
-	p->convertf = NULL;
-	p->all      = NULL;
-	p->nall     = 0;
+	pm->readf    = wordin_readf;
+	pm->processf = wordin_processf;
+	pm->cleanf   = NULL;
+	pm->typef    = NULL;
+	pm->convertf = NULL;
+	pm->all      = NULL;
+	pm->nall     = 0;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -302,7 +307,7 @@ wordin_assembleref( xml *node, fields *info )
 }
 
 static int
-wordin_processf( fields *wordin, char *data, char *filename, long nref, param *p )
+wordin_processf( fields *wordin, const char *data, const char *filename, long nref, param *p )
 {
 	int status, ret = 1;
 	xml top;

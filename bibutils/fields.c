@@ -1,7 +1,7 @@
 /*
  * fields.c
  *
- * Copyright (c) Chris Putnam 2003-2018
+ * Copyright (c) Chris Putnam 2003-2019
  *
  * Source code released under the GPL version 2
  *
@@ -90,8 +90,8 @@ fields_realloc( fields *f )
 
 	newtags = (str*) realloc( f->tag, sizeof(str) * alloc );
 	newdata = (str*) realloc( f->data, sizeof(str) * alloc );
-	newused = (int*)    realloc( f->used, sizeof(int) * alloc );
-	newlevel= (int*)    realloc( f->level, sizeof(int) * alloc );
+	newused = (int*) realloc( f->used, sizeof(int) * alloc );
+	newlevel= (int*) realloc( f->level, sizeof(int) * alloc );
 
 	if ( newtags )  f->tag   = newtags;
 	if ( newdata )  f->data  = newdata;
@@ -112,7 +112,7 @@ fields_realloc( fields *f )
 }
 
 int
-_fields_add( fields *f, char *tag, char *data, int level, int mode )
+_fields_add( fields *f, const char *tag, const char *data, int level, int mode )
 {
 	int i, n, status;
 	str *t, *d;
@@ -154,8 +154,8 @@ _fields_add( fields *f, char *tag, char *data, int level, int mode )
 }
 
 int
-_fields_add_tagsuffix( fields *f, char *tag, char *suffix,
-		char *data, int level, int mode )
+_fields_add_tagsuffix( fields *f, const char *tag, const char *suffix,
+		const char *data, int level, int mode )
 {
 	str newtag;
 	int ret;
@@ -189,28 +189,28 @@ fields_match_level( fields *f, int n, int level )
  *
  */
 int
-fields_match_tag( fields *info, int n, char *tag )
+fields_match_tag( fields *info, int n, const char *tag )
 {
 	if ( !strcmp( fields_tag( info, n, FIELDS_CHRP ), tag ) ) return 1;
 	return 0;
 }
 
 int
-fields_match_casetag( fields *info, int n, char *tag )
+fields_match_casetag( fields *info, int n, const char *tag )
 {
 	if ( !strcasecmp( fields_tag( info, n, FIELDS_CHRP ), tag ) ) return 1;
 	return 0;
 }
 
 int
-fields_match_tag_level( fields *info, int n, char *tag, int level )
+fields_match_tag_level( fields *info, int n, const char *tag, int level )
 {
 	if ( !fields_match_level( info, n, level ) ) return 0;
 	return fields_match_tag( info, n, tag );
 }
 
 int
-fields_match_casetag_level( fields *info, int n, char *tag, int level )
+fields_match_casetag_level( fields *info, int n, const char *tag, int level )
 {
 	if ( !fields_match_level( info, n, level ) ) return 0;
 	return fields_match_casetag( info, n, tag );
@@ -218,11 +218,11 @@ fields_match_casetag_level( fields *info, int n, char *tag, int level )
 
 /* fields_find()
  *
- * Return position [0,f->n) for match of the tag.
+ * Return position [0,f->n) for first match of the tag.
  * Return FIELDS_NOTFOUND if tag isn't found.
  */
 int
-fields_find( fields *f, char *tag, int level )
+fields_find( fields *f, const char *tag, int level )
 {
 	int i;
 
@@ -277,7 +277,7 @@ fields_setused( fields *f, int n )
  * return FIELDS_OK on success, FIELDS_ERR on memory error
  */
 int
-fields_replace_or_add( fields *f, char *tag, char *data, int level )
+fields_replace_or_add( fields *f, const char *tag, const char *data, int level )
 {
 	int n = fields_find( f, tag, level );
 	if ( n==FIELDS_NOTFOUND ) return fields_add( f, tag, data, level );
@@ -389,7 +389,7 @@ fields_level( fields *f, int n )
 }
 
 void *
-fields_findv( fields *f, int level, int mode, char *tag )
+fields_findv( fields *f, int level, int mode, const char *tag )
 {
 	int i, found = FIELDS_NOTFOUND;
 	intptr_t retn;
@@ -468,7 +468,7 @@ fields_findv_each_add( fields *f, int mode, int n, vplist *a )
 }
 
 int
-fields_findv_each( fields *f, int level, int mode, vplist *a, char *tag )
+fields_findv_each( fields *f, int level, int mode, vplist *a, const char *tag )
 {
 	int i, status;
 

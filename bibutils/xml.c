@@ -1,7 +1,7 @@
 /*
  * xml.c
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Source code released under the GPL version 2
  *
@@ -61,7 +61,7 @@ enum {
 };
 
 static int
-xml_is_terminator( char *p, int *type )
+xml_is_terminator( const char *p, int *type )
 {
 	if ( *p=='>' ) {
 		return 1;
@@ -82,27 +82,27 @@ xml_is_terminator( char *p, int *type )
 static int
 xml_add_attribute( xml *node, char *attribute, char *attribute_value  )
 {
-	str *s;
+	int status;
 
 	if ( attribute )
-		s = slist_addc( &(node->attributes), attribute );
+		status = slist_addc( &(node->attributes), attribute );
 	else
-		s = slist_addc( &(node->attributes), "" );
-	if ( s==NULL ) return 0;
+		status = slist_addc( &(node->attributes), "" );
+	if ( status!=SLIST_OK ) return 0;
 
 	if ( attribute_value )
-		s = slist_addc( &(node->attribute_values), attribute_value );
+		status = slist_addc( &(node->attribute_values), attribute_value );
 	else
-		s = slist_addc( &(node->attribute_values), "" );
-	if ( s==NULL ) {
+		status = slist_addc( &(node->attribute_values), "" );
+	if ( status!=SLIST_OK ) {
 		(void) slist_remove( &(node->attributes), node->attributes.n-1 );
 		return 0;
 	}
 	return 1;
 }
 
-static char *
-xml_processattrib( char *p, xml *node, int *type )
+static const char *
+xml_processattrib( const char *p, xml *node, int *type )
 {
 	char quote_character = '\"';
 	int inquotes = 0;
@@ -161,8 +161,8 @@ xml_processattrib( char *p, xml *node, int *type )
  * 	XML_CLOSE        </A>
  * 	XML_OPENCLOSE    <A/>
  */
-static char *
-xml_processtag( char *p, xml *node, int *type )
+static const char *
+xml_processtag( const char *p, xml *node, int *type )
 {
 	str tag;
 
@@ -215,8 +215,8 @@ xml_appendnode( xml *onode, xml *nnode )
 	}
 }
 
-char *
-xml_parse( char *p, xml *onode )
+const char *
+xml_parse( const char *p, xml *onode )
 {
 	int type, is_style = 0;
 	xml *nnode;

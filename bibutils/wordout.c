@@ -3,7 +3,7 @@
  * 
  * (Word 2007 format)
  *
- * Copyright (c) Chris Putnam 2007-2018
+ * Copyright (c) Chris Putnam 2007-2019
  *
  * Source code released under the GPL version 2
  *
@@ -16,33 +16,52 @@
 #include "utf8.h"
 #include "bibformats.h"
 
+/*****************************************************
+ PUBLIC: int wordout_initparams()
+*****************************************************/
+
 static void wordout_writeheader( FILE *outptr, param *p );
 static void wordout_writefooter( FILE *outptr );
 static int  wordout_write( fields *info, FILE *outptr, param *p, unsigned long numrefs );
 
-void
-wordout_initparams( param *p, const char *progname )
+int
+wordout_initparams( param *pm, const char *progname )
 {
-	p->writeformat      = BIBL_WORD2007OUT;
-	p->format_opts      = 0;
-	p->charsetout       = BIBL_CHARSET_UNICODE;
-	p->charsetout_src   = BIBL_SRC_DEFAULT;
-	p->latexout         = 0;
-	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
-	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
-	if ( !p->utf8out )
-		p->xmlout   = BIBL_XMLOUT_ENTITIES;
+	pm->writeformat      = BIBL_WORD2007OUT;
+	pm->format_opts      = 0;
+	pm->charsetout       = BIBL_CHARSET_UNICODE;
+	pm->charsetout_src   = BIBL_SRC_DEFAULT;
+	pm->latexout         = 0;
+	pm->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
+	pm->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
+	if ( !pm->utf8out )
+		pm->xmlout   = BIBL_XMLOUT_ENTITIES;
 	else
-		p->xmlout   = BIBL_XMLOUT_TRUE;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->singlerefperfile = 0;
+		pm->xmlout   = BIBL_XMLOUT_TRUE;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->singlerefperfile = 0;
 
-	p->headerf = wordout_writeheader;
-	p->footerf = wordout_writefooter;
-	p->writef  = wordout_write;
+	pm->headerf   = wordout_writeheader;
+	pm->footerf   = wordout_writefooter;
+	pm->assemblef = NULL;
+	pm->writef    = wordout_write;
+
+	if ( !pm->progname ) {
+		if ( !progname ) pm->progname = NULL;
+		else {
+			pm->progname = strdup( progname );
+			if ( !pm->progname ) return BIBL_ERR_MEMERR;
+		}
+	}
+
+	return BIBL_OK;
 }
+
+/*****************************************************
+ PUBLIC: int wordout_write()
+*****************************************************/
 
 typedef struct convert {
 	char *oldtag;
@@ -647,6 +666,10 @@ wordout_write( fields *info, FILE *outptr, param *p, unsigned long numrefs )
 	return BIBL_OK;
 }
 
+/*****************************************************
+ PUBLIC: void wordout_writeheader()
+*****************************************************/
+
 static void
 wordout_writeheader( FILE *outptr, param *p )
 {
@@ -656,6 +679,10 @@ wordout_writeheader( FILE *outptr, param *p )
 		"xmlns:b=\"http://schemas.openxmlformats.org/officeDocument/2006/bibliography\" "
 		" xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/bibliography\" >\n");
 }
+
+/*****************************************************
+ PUBLIC: void wordout_writefooter()
+*****************************************************/
 
 static void
 wordout_writefooter( FILE *outptr )

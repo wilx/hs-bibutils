@@ -1,7 +1,7 @@
 /*
  * endout.c
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -14,39 +14,59 @@
 #include "str.h"
 #include "strsearch.h"
 #include "fields.h"
+#include "generic.h"
 #include "name.h"
 #include "title.h"
+#include "type.h"
 #include "url.h"
 #include "bibformats.h"
 
-static int  endout_write( fields *in, FILE *fp, param *p, unsigned long refnum );
-static void endout_writeheader( FILE *outptr, param *p );
+/*****************************************************
+ PUBLIC: int endout_initparams()
+*****************************************************/
 
+static int endout_write( fields *in, FILE *fp, param *p, unsigned long refnum );
+static int endout_assemble( fields *in, fields *out, param *pm, unsigned long refnum );
 
-void
-endout_initparams( param *p, const char *progname )
+int
+endout_initparams( param *pm, const char *progname )
 {
-	p->writeformat      = BIBL_ENDNOTEOUT;
-	p->format_opts      = 0;
-	p->charsetout       = BIBL_CHARSET_DEFAULT;
-	p->charsetout_src   = BIBL_SRC_DEFAULT;
-	p->latexout         = 0;
-	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
-	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
-	p->xmlout           = BIBL_XMLOUT_FALSE;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->singlerefperfile = 0;
+	pm->writeformat      = BIBL_ENDNOTEOUT;
+	pm->format_opts      = 0;
+	pm->charsetout       = BIBL_CHARSET_DEFAULT;
+	pm->charsetout_src   = BIBL_SRC_DEFAULT;
+	pm->latexout         = 0;
+	pm->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
+	pm->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
+	pm->xmlout           = BIBL_XMLOUT_FALSE;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->singlerefperfile = 0;
 
-	if ( p->charsetout == BIBL_CHARSET_UNICODE ) {
-		p->utf8out = p->utf8bom = 1;
+	if ( pm->charsetout == BIBL_CHARSET_UNICODE ) {
+		pm->utf8out = pm->utf8bom = 1;
 	}
 
-	p->headerf = endout_writeheader;
-	p->footerf = NULL;
-	p->writef  = endout_write;
+	pm->headerf   = generic_writeheader;
+	pm->footerf   = NULL;
+	pm->assemblef = endout_assemble;
+	pm->writef    = endout_write;
+
+	if ( !pm->progname ) {
+		if ( !progname ) pm->progname = NULL;
+		else {
+			pm->progname = strdup( progname );
+			if ( !pm->progname ) return BIBL_ERR_MEMERR;
+		}
+	}
+
+	return BIBL_OK;
 }
+
+/*****************************************************
+ PUBLIC: int endout_assemble()
+*****************************************************/
 
 enum {
 	TYPE_UNKNOWN = 0,
@@ -142,233 +162,188 @@ write_type( FILE *fp, int type )
 	}
 }
 
-typedef struct match_type {
-	char *name;
-	int type;
-} match_type;
+static void
+type_report_progress( param *p, const char *element_type, int type, unsigned long refnum )
+{
+	if ( p->verbose ) {
+		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+		fprintf( stderr, "Type from %s element in reference %lu: ", element_type, refnum+1 );
+		write_type( stderr, type );
+		fprintf( stderr, "\n" );
+	}
+}
+
+static int
+type_from_default( fields *in, param *p, unsigned long refnum )
+{
+	int n, type;
+
+	/* default to chapter if host terms */
+	if ( fields_maxlevel( in ) > 0 ) type = TYPE_INBOOK;
+
+	/* default to generic if no host terms */
+	else type = TYPE_GENERIC;
+
+
+	if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
+	fprintf( stderr, "Cannot identify TYPE in reference %lu ", refnum+1 );
+	n = fields_find( in, "REFNUM", LEVEL_ANY );
+	if ( n!=FIELDS_NOTFOUND )
+		fprintf( stderr, " %s", (char *) fields_value( in, n, FIELDS_CHRP ) );
+	if ( type==TYPE_INBOOK )
+		fprintf( stderr, " (defaulting to book chapter)\n" );
+	else
+		fprintf( stderr, " (defaulting to generic)\n" );
+
+	return type;
+}
 
 static int
 get_type( fields *in, param *p, unsigned long refnum )
 {
 	/* Comment out TYPE_GENERIC entries as that is default, but
          * keep in source as record of mapping decision. */
-	match_type match_genres[] = {
+	match_type genre_matches[] = {
 		/* MARC Authority elements */
-		{ "art original",              TYPE_ARTWORK },
-		{ "art reproduction",          TYPE_ARTWORK },
-		{ "article",                   TYPE_ARTICLE },
-		{ "atlas",                     TYPE_MAP },
-		{ "autobiography",             TYPE_BOOK },
-/*		{ "bibliography",              TYPE_GENERIC },*/
-		{ "biography",                 TYPE_BOOK },
-		{ "book",                      TYPE_BOOK },
-/*		{ "calendar",                  TYPE_GENERIC },*/
-/*		{ "catalog",                   TYPE_GENERIC },*/
-		{ "chart",                     TYPE_CHARTTABLE },
-/*		{ "comic or graphic novel",    TYPE_GENERIC },*/
-/*		{ "comic strip",               TYPE_GENERIC },*/
-		{ "conference publication",    TYPE_PROCEEDINGS },
-		{ "database",                  TYPE_ONLINEDATABASE },
-/*		{ "dictionary",                TYPE_GENERIC },*/
-		{ "diorama",                   TYPE_ARTWORK },
-/*		{ "directory",                 TYPE_GENERIC },*/
-		{ "discography",               TYPE_AUDIOVISUAL },
-/*		{ "drama",                     TYPE_GENERIC },*/
-		{ "encyclopedia",              TYPE_BOOK },
-/*		{ "essay",                     TYPE_GENERIC }, */
-/*		{ "festschrift",               TYPE_GENERIC },*/
-		{ "fiction",                   TYPE_BOOK },
-		{ "filmography",               TYPE_FILMBROADCAST },
-		{ "filmstrip",                 TYPE_FILMBROADCAST },
-/*		{ "finding aid",               TYPE_GENERIC },*/
-/*		{ "flash card",                TYPE_GENERIC },*/
-		{ "folktale",                  TYPE_CLASSICALWORK },
-		{ "font",                      TYPE_ELECTRONIC },
-/*		{ "game",                      TYPE_GENERIC },*/
-		{ "government publication",    TYPE_GOVERNMENT },
-		{ "graphic",                   TYPE_FIGURE },
-		{ "globe",                     TYPE_MAP },
-/*		{ "handbook",                  TYPE_GENERIC },*/
-		{ "history",                   TYPE_BOOK },
-		{ "hymnal",                    TYPE_BOOK },
-/*		{ "humor, satire",             TYPE_GENERIC },*/
-/*		{ "index",                     TYPE_GENERIC },*/
-/*		{ "instruction",               TYPE_GENERIC },*/
-/*		{ "interview",                 TYPE_GENERIC },*/
-		{ "issue",                     TYPE_ARTICLE },
-		{ "journal",                   TYPE_ARTICLE },
-/*		{ "kit",                       TYPE_GENERIC },*/
-/*		{ "language instruction",      TYPE_GENERIC },*/
-/*		{ "law report or digest",      TYPE_GENERIC },*/
-/*		{ "legal article",             TYPE_GENERIC },*/
-		{ "legal case and case notes", TYPE_CASE },
-		{ "legislation",               TYPE_BILL },
-		{ "letter",                    TYPE_COMMUNICATION },
-		{ "loose-leaf",                TYPE_GENERIC },
-		{ "map",                       TYPE_MAP },
-/*		{ "memoir",                    TYPE_GENERIC },*/
-/*		{ "microscope slide",          TYPE_GENERIC },*/
-/*		{ "model",                     TYPE_GENERIC },*/
-		{ "motion picture",            TYPE_AUDIOVISUAL },
-		{ "multivolume monograph",     TYPE_BOOK },
-		{ "newspaper",                 TYPE_NEWSARTICLE },
-		{ "novel",                     TYPE_BOOK },
-/*		{ "numeric data",              TYPE_GENERIC },*/
-/*		{ "offprint",                  TYPE_GENERIC },*/
-		{ "online system or service",  TYPE_ELECTRONIC },
-		{ "patent",                    TYPE_PATENT },
-		{ "periodical",                TYPE_MAGARTICLE },
-		{ "picture",                   TYPE_ARTWORK },
-/*		{ "poetry",                    TYPE_GENERIC },*/
-		{ "programmed text",           TYPE_PROGRAM },
-/*		{ "realia",                    TYPE_GENERIC },*/
-		{ "rehearsal",                 TYPE_AUDIOVISUAL },
-/*		{ "remote sensing image",      TYPE_GENERIC },*/
-/*		{ "reporting",                 TYPE_GENERIC },*/
-		{ "report",                    TYPE_REPORT },
-/*		{ "review",                    TYPE_GENERIC },*/
-/*		{ "script",                    TYPE_GENERIC },*/
-/*		{ "series",                    TYPE_GENERIC },*/
-/*		{ "short story",               TYPE_GENERIC },*/
-/*		{ "slide",                     TYPE_GENERIC },*/
-		{ "sound",                     TYPE_AUDIOVISUAL },
-/*		{ "speech",                    TYPE_GENERIC },*/
-/*		{ "standard or specification", TYPE_GENERIC },*/
-/*		{ "statistics",                TYPE_GENERIC },*/
-/*		{ "survey of literature",      TYPE_GENERIC },*/
-		{ "technical drawing",         TYPE_ARTWORK },
-		{ "technical report",          TYPE_REPORT },
-		{ "thesis",                    TYPE_THESIS },
-/*		{ "toy",                       TYPE_GENERIC },*/
-/*		{ "transparency",              TYPE_GENERIC },*/
-/*		{ "treaty",                    TYPE_GENERIC },*/
-		{ "videorecording",            TYPE_AUDIOVISUAL },
-		{ "web site",                  TYPE_ELECTRONIC },
+		{ "art original",              TYPE_ARTWORK,            LEVEL_ANY  },
+		{ "art reproduction",          TYPE_ARTWORK,            LEVEL_ANY  },
+		{ "article",                   TYPE_ARTICLE,            LEVEL_ANY  },
+		{ "atlas",                     TYPE_MAP,                LEVEL_ANY  },
+		{ "autobiography",             TYPE_BOOK,               LEVEL_ANY  },
+/*		{ "bibliography",              TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "biography",                 TYPE_BOOK,               LEVEL_ANY  },
+		{ "book",                      TYPE_BOOK,               LEVEL_MAIN },
+		{ "book",                      TYPE_INBOOK,             LEVEL_ANY  },
+/*		{ "calendar",                  TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "catalog",                   TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "chart",                     TYPE_CHARTTABLE,         LEVEL_ANY  },
+/*		{ "comic or graphic novel",    TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "comic strip",               TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "conference publication",    TYPE_PROCEEDINGS,        LEVEL_ANY  },
+		{ "database",                  TYPE_ONLINEDATABASE,     LEVEL_ANY  },
+/*		{ "dictionary",                TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "diorama",                   TYPE_ARTWORK,            LEVEL_ANY  },
+/*		{ "directory",                 TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "discography",               TYPE_AUDIOVISUAL,        LEVEL_ANY  },
+/*		{ "drama",                     TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "encyclopedia",              TYPE_BOOK,               LEVEL_ANY  },
+/*		{ "essay",                     TYPE_GENERIC,            LEVEL_ANY  }, */
+		{ "festschrift",               TYPE_BOOK,               LEVEL_MAIN },
+		{ "festschrift",               TYPE_INBOOK,             LEVEL_ANY  },
+		{ "fiction",                   TYPE_BOOK,               LEVEL_ANY  },
+		{ "filmography",               TYPE_FILMBROADCAST,      LEVEL_ANY  },
+		{ "filmstrip",                 TYPE_FILMBROADCAST,      LEVEL_ANY  },
+/*		{ "finding aid",               TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "flash card",                TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "folktale",                  TYPE_CLASSICALWORK,      LEVEL_ANY  },
+		{ "font",                      TYPE_ELECTRONIC,         LEVEL_ANY  },
+/*		{ "game",                      TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "government publication",    TYPE_GOVERNMENT,         LEVEL_ANY  },
+		{ "graphic",                   TYPE_FIGURE,             LEVEL_ANY  },
+		{ "globe",                     TYPE_MAP,                LEVEL_ANY  },
+/*		{ "handbook",                  TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "history",                   TYPE_BOOK,               LEVEL_ANY  },
+		{ "hymnal",                    TYPE_BOOK,               LEVEL_MAIN },
+		{ "hymnal",                    TYPE_INBOOK,             LEVEL_ANY  },
+/*		{ "humor, satire",             TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "index",                     TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "instruction",               TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "interview",                 TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "issue",                     TYPE_ARTICLE,            LEVEL_ANY  },
+		{ "journal",                   TYPE_ARTICLE,            LEVEL_ANY  },
+/*		{ "kit",                       TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "language instruction",      TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "law report or digest",      TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "legal article",             TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "legal case and case notes", TYPE_CASE,               LEVEL_ANY  },
+		{ "legislation",               TYPE_BILL,               LEVEL_ANY  },
+		{ "letter",                    TYPE_COMMUNICATION,      LEVEL_ANY  },
+		{ "loose-leaf",                TYPE_GENERIC,            LEVEL_ANY  },
+		{ "map",                       TYPE_MAP,                LEVEL_ANY  },
+/*		{ "memoir",                    TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "microscope slide",          TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "model",                     TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "motion picture",            TYPE_AUDIOVISUAL,        LEVEL_ANY  },
+		{ "multivolume monograph",     TYPE_BOOK,               LEVEL_ANY  },
+		{ "newspaper",                 TYPE_NEWSARTICLE,        LEVEL_ANY  },
+		{ "novel",                     TYPE_BOOK,               LEVEL_ANY  },
+/*		{ "numeric data",              TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "offprint",                  TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "online system or service",  TYPE_ELECTRONIC,         LEVEL_ANY  },
+		{ "patent",                    TYPE_PATENT,             LEVEL_ANY  },
+		{ "picture",                   TYPE_ARTWORK,            LEVEL_ANY  },
+/*		{ "poetry",                    TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "programmed text",           TYPE_PROGRAM,            LEVEL_ANY  },
+/*		{ "realia",                    TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "rehearsal",                 TYPE_AUDIOVISUAL,        LEVEL_ANY  },
+/*		{ "remote sensing image",      TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "reporting",                 TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "report",                    TYPE_REPORT,             LEVEL_ANY  },
+/*		{ "review",                    TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "script",                    TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "series",                    TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "short story",               TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "slide",                     TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "sound",                     TYPE_AUDIOVISUAL,        LEVEL_ANY  },
+/*		{ "speech",                    TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "standard or specification", TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "statistics",                TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "survey of literature",      TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "technical drawing",         TYPE_ARTWORK,            LEVEL_ANY  },
+		{ "technical report",          TYPE_REPORT,             LEVEL_ANY  },
+/*		{ "toy",                       TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "transparency",              TYPE_GENERIC,            LEVEL_ANY  },*/
+/*		{ "treaty",                    TYPE_GENERIC,            LEVEL_ANY  },*/
+		{ "videorecording",            TYPE_AUDIOVISUAL,        LEVEL_ANY  },
+		{ "web site",                  TYPE_ELECTRONIC,         LEVEL_ANY  },
 		/* Non-MARC Authority elements */
-		{ "academic journal",          TYPE_ARTICLE },
-		{ "magazine",                  TYPE_MAGARTICLE },
-		{ "hearing",                   TYPE_HEARING },
-		{ "Ph.D. thesis",              TYPE_PHDTHESIS },
-		{ "Masters thesis",            TYPE_MASTERSTHESIS },
-		{ "Diploma thesis",            TYPE_DIPLOMATHESIS },
-		{ "Doctoral thesis",           TYPE_DOCTORALTHESIS },
-		{ "Habilitation thesis",       TYPE_HABILITATIONTHESIS },
-		{ "Licentiate thesis",         TYPE_LICENTIATETHESIS },
-		{ "communication",             TYPE_COMMUNICATION },
-		{ "manuscript",                TYPE_MANUSCRIPT },
-		{ "unpublished",               TYPE_UNPUBLISHED },
+		{ "academic journal",          TYPE_ARTICLE,            LEVEL_ANY  },
+		{ "collection",                TYPE_BOOK,               LEVEL_MAIN },
+		{ "collection",                TYPE_INBOOK,             LEVEL_ANY  },
+		{ "magazine",                  TYPE_MAGARTICLE,         LEVEL_ANY  },
+		{ "hearing",                   TYPE_HEARING,            LEVEL_ANY  },
+		{ "Ph.D. thesis",              TYPE_PHDTHESIS,          LEVEL_ANY  },
+		{ "Masters thesis",            TYPE_MASTERSTHESIS,      LEVEL_ANY  },
+		{ "Diploma thesis",            TYPE_DIPLOMATHESIS,      LEVEL_ANY  },
+		{ "Doctoral thesis",           TYPE_DOCTORALTHESIS,     LEVEL_ANY  },
+		{ "Habilitation thesis",       TYPE_HABILITATIONTHESIS, LEVEL_ANY  },
+		{ "Licentiate thesis",         TYPE_LICENTIATETHESIS,   LEVEL_ANY  },
+		{ "communication",             TYPE_COMMUNICATION,      LEVEL_ANY  },
+		{ "manuscript",                TYPE_MANUSCRIPT,         LEVEL_ANY  },
+		{ "unpublished",               TYPE_UNPUBLISHED,        LEVEL_ANY  },
+		/* Delayed MARC Authority elements */
+		{ "thesis",                    TYPE_THESIS,             LEVEL_ANY  },
+		{ "periodical",                TYPE_MAGARTICLE,         LEVEL_ANY  },
 	};
-	int nmatch_genres = sizeof( match_genres ) / sizeof( match_genres[0] );
+	int ngenre_matches = sizeof( genre_matches ) / sizeof( genre_matches[0] );
 
-	int i, j, n, maxlevel, type = TYPE_UNKNOWN;
-	char *tag, *data;
+	match_type resource_matches[] = {
+		{ "moving image",              TYPE_FILMBROADCAST,      LEVEL_ANY  },
+		{ "software, multimedia",      TYPE_PROGRAM,            LEVEL_ANY  },
+	};
+	int nresource_matches = sizeof( resource_matches ) / sizeof( resource_matches[0] );
 
-	/* Determine type from genre information */
-	for ( i=0; i<in->n; ++i ) {
-		tag = fields_tag( in, i, FIELDS_CHRP );
-		if ( strcasecmp( tag, "GENRE:MARC" )!=0 &&
-		     strcasecmp( tag, "GENRE:BIBUTILS" )!=0 &&
-		     strcasecmp( tag, "GENRE:UNKNOWN" )!=0 ) continue;
-		data = fields_value( in, i, FIELDS_CHRP );
-		for ( j=0; j<nmatch_genres; ++j ) {
-			if ( !strcasecmp( data, match_genres[j].name ) ) {
-				type = match_genres[j].type;
-				fields_setused( in, i );
-			}
-		}
-		if ( p->verbose ) {
-			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-			fprintf( stderr, "Type from tag '%s' data '%s': ", tag, data );
-			write_type( stderr, type );
-			fprintf( stderr, "\n" );
-		}
-		if ( type==TYPE_UNKNOWN ) {
-			if ( !strcasecmp( data, "periodical" ) )
-				type = TYPE_ARTICLE;
-			else if ( !strcasecmp( data, "thesis" ) )
-				type = TYPE_THESIS;
-			else if ( !strcasecmp( data, "book" ) ) {
-				if ( in->level[i]==0 ) type = TYPE_BOOK;
-				else type = TYPE_INBOOK;
-			}
-			else if ( !strcasecmp( data, "collection" ) ) {
-				if ( in->level[i]==0 ) type = TYPE_BOOK;
-				else type = TYPE_INBOOK;
-			}
-			if ( type!=TYPE_UNKNOWN ) fields_setused( in, i );
-		}
-		/* the inbook type should be defined if 'book' in host */
-		if ( type==TYPE_BOOK && in->level[i]>0 ) type = TYPE_INBOOK;
-	}
-	if ( p->verbose ) {
-		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-		fprintf( stderr, "Type from genre element: " );
-		write_type( stderr, type );
-		fprintf( stderr, "\n" );
-	}
+	match_type issuance_matches[] = {
+		{ "monographic",               TYPE_BOOK,               LEVEL_MAIN },
+		{ "monographic",               TYPE_INBOOK,             LEVEL_ANY  },
+	};
+	int nissuance_matches = sizeof( issuance_matches ) / sizeof( issuance_matches[0] );
 
-	/* Determine from resource information */
-	if ( type==TYPE_UNKNOWN ) {
-		for ( i=0; i<in->n; ++i ) {
-			if ( strcasecmp( fields_tag( in, i, FIELDS_CHRP ), "RESOURCE" ) )
-				continue;
-			data = fields_value( in, i, FIELDS_CHRP );
-			if ( !strcasecmp( data, "moving image" ) )
-				type = TYPE_FILMBROADCAST;
-			else if ( !strcasecmp( data, "software, multimedia" ) )
-				type = TYPE_PROGRAM;
-			if ( type!=TYPE_UNKNOWN ) fields_setused( in, i );
-		}
-		if ( p->verbose ) {
-			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-			fprintf( stderr, "Type from resource element: " );
-			write_type( stderr, type );
-			fprintf( stderr, "\n" );
-		}
-	}
+	int type;
 
-	/* Determine from issuance information */
-	if ( type==TYPE_UNKNOWN ) {
-		for ( i=0; i<in->n; ++i ) {
-			if ( strcasecmp( fields_tag( in, i, FIELDS_CHRP ), "ISSUANCE" ) )
-				continue;
-			data = fields_value( in, i, FIELDS_CHRP );
-			if ( !strcasecmp( data, "monographic" ) ) {
-				if ( in->level[i]==0 ) type = TYPE_BOOK;
-				else type = TYPE_INBOOK;
-			}
-		}
-		if ( p->verbose ) {
-			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-			fprintf( stderr, "Type from issuance element: " );
-			write_type( stderr, type );
-			fprintf( stderr, "\n" );
-		}
-	}
+	type = type_from_mods_hints( in, TYPE_FROM_GENRE, genre_matches, ngenre_matches, TYPE_UNKNOWN );
+	type_report_progress( p, "genre", type, refnum );
+	if ( type!=TYPE_UNKNOWN ) return type;
 
-	/* default to generic or book chapter, depending on maxlevel */
-	if ( type==TYPE_UNKNOWN ) {
-		maxlevel = fields_maxlevel( in );
-		if ( maxlevel > 0 ) type = TYPE_INBOOK;
-		else {
-			if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-			fprintf( stderr, "Cannot identify TYPE in reference %lu ", refnum+1 );
-			n = fields_find( in, "REFNUM", LEVEL_ANY );
-			if ( n!=FIELDS_NOTFOUND )
-				fprintf( stderr, " %s", (char *) fields_value( in, n, FIELDS_CHRP ) );
-			fprintf( stderr, " (defaulting to generic)\n" );
-			type = TYPE_GENERIC;
-		}
-	}
+	type = type_from_mods_hints( in, TYPE_FROM_RESOURCE, resource_matches, nresource_matches, TYPE_UNKNOWN );
+	type_report_progress( p, "resource", type, refnum );
+	if ( type!=TYPE_UNKNOWN ) return type;
 
-	if ( p->verbose ) {
-		if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-		fprintf( stderr, "Final type: " );
-		write_type( stderr, type );
-		fprintf( stderr, "\n" );
-	}
-	
-	return type;
+	type = type_from_mods_hints( in, TYPE_FROM_ISSUANCE, issuance_matches, nissuance_matches, TYPE_UNKNOWN );
+	type_report_progress( p, "issuance", type, refnum );
+	if ( type!=TYPE_UNKNOWN ) return type;
+
+	return type_from_default( in, p, refnum );
 }
 
 static void
@@ -673,15 +648,15 @@ append_easy( fields *in, char *tag, char *entag, int level, fields *out, int *st
 }
 
 static int
-append_data( fields *in, fields *out, param *p, unsigned long refnum )
+endout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 {
 	int added, type, status = BIBL_OK;
 
 	fields_clearused( in );
 
-	type = get_type( in, p, refnum );
+	type = get_type( in, pm, refnum );
 
-	append_type( type, out, p, &status );
+	append_type( type, out, pm, &status );
 
 	added = append_title( in, "TITLE",      "SUBTITLE",      "%T", LEVEL_MAIN, out, &status );
 	if ( added==0 ) append_title( in, "SHORTTITLE", "SHORTSUBTITLE", "%T", LEVEL_MAIN, out, &status );
@@ -779,8 +754,12 @@ append_data( fields *in, fields *out, param *p, unsigned long refnum )
 	return status;
 }
 
-static void
-output( FILE *fp, fields *out )
+/*****************************************************
+ PUBLIC: int endout_write()
+*****************************************************/
+
+static int
+endout_write( fields *out, FILE *fp, param *pm, unsigned long refnum )
 {
 	int i;
 
@@ -793,25 +772,5 @@ output( FILE *fp, fields *out )
 
 	fprintf( fp, "\n" );
 	fflush( fp );
+	return BIBL_OK;
 }
-
-static int
-endout_write( fields *in, FILE *fp, param *p, unsigned long refnum )
-{
-	int status;
-	fields out;
-
-	fields_init( &out );
-	status = append_data( in, &out, p, refnum );
-	if ( status==BIBL_OK ) output( fp, &out );
-	fields_free( &out );
-
-	return status;
-}
-
-static void
-endout_writeheader( FILE *outptr, param *p )
-{
-	if ( p->utf8bom ) utf8_writebom( outptr );
-}
-

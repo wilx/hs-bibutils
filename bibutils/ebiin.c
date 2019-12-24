@@ -1,7 +1,7 @@
 /*
  * ebiin.c
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -19,40 +19,45 @@
 #include "bibformats.h"
 
 static int ebiin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int ebiin_processf( fields *ebiin, char *data, char *filename, long nref, param *p );
+static int ebiin_processf( fields *ebiin, const char *data, const char *filename, long nref, param *p );
 
 
 /*****************************************************
  PUBLIC: void ebiin_initparams()
 *****************************************************/
-void
-ebiin_initparams( param *p, const char *progname )
+int
+ebiin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_EBIIN;
-	p->charsetin        = BIBL_CHARSET_UNICODE;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->xmlin            = 1;
-	p->utf8in           = 1;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = BIBL_RAW_WITHMAKEREFID |
-	                      BIBL_RAW_WITHCHARCONVERT;
+	pm->readformat       = BIBL_EBIIN;
+	pm->charsetin        = BIBL_CHARSET_UNICODE;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->xmlin            = 1;
+	pm->utf8in           = 1;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = BIBL_RAW_WITHMAKEREFID |
+	                       BIBL_RAW_WITHCHARCONVERT;
 
-	p->readf    = ebiin_readf;
-	p->processf = ebiin_processf;
-	p->cleanf   = NULL;
-	p->typef    = NULL;
-	p->convertf = NULL;
-	p->all      = NULL;
-	p->nall     = 0;
+	pm->readf    = ebiin_readf;
+	pm->processf = ebiin_processf;
+	pm->cleanf   = NULL;
+	pm->typef    = NULL;
+	pm->convertf = NULL;
+	pm->all      = NULL;
+	pm->nall     = 0;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -154,7 +159,7 @@ ebiin_title( xml *node, fields *info, int title_level )
  *             <MedlineDate>2003 Jan-Feb</MedlineDate>
  */
 static int
-ebiin_medlinedate_year( fields *info, char *p, int level, char **end )
+ebiin_medlinedate_year( fields *info, const char *p, int level, const char **end )
 {
 	int fstatus, status = BIBL_OK;
 	str s;
@@ -175,7 +180,7 @@ out:
 	return status;
 }
 static int
-ebiin_medlinedate_month( fields *info, char *p, int level, char **end )
+ebiin_medlinedate_month( fields *info, const char *p, int level, const char **end )
 {
 	int fstatus, status = BIBL_OK;
 	str s;
@@ -198,7 +203,7 @@ out:
 }
 
 static int
-ebiin_medlinedate_day( fields *info, char *p, int level, char **end )
+ebiin_medlinedate_day( fields *info, const char *p, int level, const char **end )
 {
 	int fstatus, status = BIBL_OK;
 	str s;
@@ -223,7 +228,7 @@ static int
 ebiin_medlinedate( fields *info, xml *node, int level )
 {
 	int status = BIBL_OK;
-	char *p;
+	const char *p;
 
 	if ( !xml_has_value( node ) ) return status;
 
@@ -306,7 +311,7 @@ ebiin_journal1( xml *node, fields *info )
  * </Pagination>
  */
 static int
-ebiin_pages( fields *info, char *p )
+ebiin_pages( fields *info, const char *p )
 {
 	int i, status, ret = BIBL_OK;
 	const int level = 1;
@@ -744,7 +749,7 @@ ebiin_assembleref( xml *node, fields *info )
 }
 
 static int
-ebiin_processf( fields *ebiin, char *data, char *filename, long nref, param *p )
+ebiin_processf( fields *ebiin, const char *data, const char *filename, long nref, param *p )
 {
 	int status;
 	xml top;

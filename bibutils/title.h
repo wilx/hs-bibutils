@@ -3,7 +3,7 @@
  *
  * process titles into title/subtitle pairs for MODS
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Source code released under the GPL verison 2
  *
@@ -14,7 +14,7 @@
 #include "str.h"
 #include "fields.h"
 
-int  title_process( fields *info, char *tag, char *data, int level, unsigned char nosplittitle );
+int  title_process( fields *info, const char *tag, const char *value, int level, unsigned char nosplittitle );
 void title_combine( str *fullttl, str *mainttl, str *subttl );
 
 #endif

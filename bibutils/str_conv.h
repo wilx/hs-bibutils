@@ -1,7 +1,7 @@
 /*
  * str_conv.h
  *
- * Copyright (c) Chris Putnam 1999-2018
+ * Copyright (c) Chris Putnam 1999-2019
  *
  * Source code released under the GPL version 2
  *

@@ -1,9 +1,9 @@
 /*
  * str.c
  *
- * Version: 2018-08-03
+ * Version: 2018-09-21
  *
- * Copyright (c) Chris Putnam 1999-2018
+ * Copyright (c) Chris Putnam 1999-2019
  *
  * Source code released under the GPL version 2
  *
@@ -210,7 +210,7 @@ str_initalloc( str *s, unsigned long minsize )
 	unsigned long size = str_initlen;
 	assert( s );
 	if ( minsize > str_initlen ) size = minsize;
-	s->data = (char *) malloc (sizeof( *(s->data) ) * size);
+	s->data = (char *) malloc( sizeof( *(s->data) ) * size );
 	if ( !s->data ) {
 		fprintf(stderr,"Error.  Cannot allocate memory in str_initalloc, requested %lu characters.\n", size );
 		exit( EXIT_FAILURE );
@@ -218,6 +218,7 @@ str_initalloc( str *s, unsigned long minsize )
 	s->data[0]='\0';
 	s->dim=size;
 	s->len=0;
+	str_clear_status( s );
 }
 
 str *
@@ -449,8 +450,8 @@ str_indxcat( str *s, char *p, unsigned long start, unsigned long stop )
  *     finalstep = set to non-zero to position return value past the
  *                 terminating character
  */
-char *
-str_cpytodelim( str *s, char *p, const char *delim, unsigned char finalstep )
+const char *
+str_cpytodelim( str *s, const char *p, const char *delim, unsigned char finalstep )
 {
 	assert( s );
 
@@ -463,8 +464,8 @@ str_cpytodelim( str *s, char *p, const char *delim, unsigned char finalstep )
  *     finalstep = set to non-zero to position return value past the
  *                 terminating character
  */
-char *
-str_cattodelim( str *s, char *p, const char *delim, unsigned char finalstep )
+const char *
+str_cattodelim( str *s, const char *p, const char *delim, unsigned char finalstep )
 {
 	assert( s );
 

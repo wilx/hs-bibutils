@@ -1,7 +1,7 @@
 /*
  * isiin.c
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "is_ws.h"
 #include "str.h"
 #include "str_conv.h"
@@ -22,41 +23,46 @@ extern variants isi_all[];
 extern int isi_nall;
 
 static int isiin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int isiin_typef( fields *isiin, char *filename, int nref, param *p );
+static int isiin_typef( fields *isiin, const char *filename, int nref, param *p );
 static int isiin_convertf( fields *isiin, fields *info, int reftype, param *p );
-static int isiin_processf( fields *isiin, char *p, char *filename, long nref, param *pm );
+static int isiin_processf( fields *isiin, const char *p, const char *filename, long nref, param *pm );
 
 
 /*****************************************************
  PUBLIC: void isiin_initparams()
 *****************************************************/
-void
-isiin_initparams( param *p, const char *progname )
+int
+isiin_initparams( param *pm, const char *progname )
 {
-	p->readformat       = BIBL_ISIIN;
-	p->charsetin        = BIBL_CHARSET_DEFAULT;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->xmlin            = 0;
-	p->utf8in           = 0;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->output_raw       = 0;
+	pm->readformat       = BIBL_ISIIN;
+	pm->charsetin        = BIBL_CHARSET_DEFAULT;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->xmlin            = 0;
+	pm->utf8in           = 0;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->output_raw       = 0;
 
-	p->readf    = isiin_readf;
-	p->processf = isiin_processf;
-	p->cleanf   = NULL;
-	p->typef    = isiin_typef;
-	p->convertf = isiin_convertf;
-	p->all      = isi_all;
-	p->nall     = isi_nall;
+	pm->readf    = isiin_readf;
+	pm->processf = isiin_processf;
+	pm->cleanf   = NULL;
+	pm->typef    = isiin_typef;
+	pm->convertf = isiin_convertf;
+	pm->all      = isi_all;
+	pm->nall     = isi_nall;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -67,12 +73,12 @@ isiin_initparams( param *p, const char *progname )
  *   char 1 = uppercase alphabetic character
  *   char 2 = uppercase alphabetic character or digit
  */
+
 static int
-is_isi_tag( char *buf )
+is_isi_tag( const char *buf )
 {
-	if ( ! (buf[0]>='A' && buf[0]<='Z') ) return 0;
-	if ( ! (((buf[1]>='A' && buf[1]<='Z'))||(buf[1]>='0'&&buf[1]<='9')))
-		return 0;
+	if ( !isupper( (unsigned char )buf[0] ) ) return 0;
+	if ( !( isupper( (unsigned char )buf[1] ) || isdigit( (unsigned char )buf[1] ) ) ) return 0;
 	return 1;
 }
 
@@ -135,8 +141,8 @@ isiin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refe
  PUBLIC: int isiin_processf()
 *****************************************************/
 
-static char *
-process_tagged_line( str *tag, str *data, char *p )
+static const char *
+process_tagged_line( str *tag, str *data, const char *p )
 {
 	int i;
 
@@ -154,8 +160,8 @@ process_tagged_line( str *tag, str *data, char *p )
 	return p;
 }
 
-static char *
-process_untagged_line( str *data, char *p )
+static const char *
+process_untagged_line( str *data, const char *p )
 {
 	while ( *p==' ' || *p=='\t' ) p++;
 	while ( *p && *p!='\r' && *p!='\n' )
@@ -222,7 +228,7 @@ merge_tag_value( fields *isiin, str *tag, str *value, int *tag_added )
 }
 
 static int
-isiin_processf( fields *isiin, char *p, char *filename, long nref, param *pm )
+isiin_processf( fields *isiin, const char *p, const char *filename, long nref, param *pm )
 {
 	int status, tag_added = 0, ret = 1;
 	str tag, value;
@@ -264,7 +270,7 @@ out:
  PUBLIC: int isiin_typef()
 *****************************************************/
 static int
-isiin_typef( fields *isiin, char *filename, int nref, param *p )
+isiin_typef( fields *isiin, const char *filename, int nref, param *p )
 {
 	int ntypename, nrefname, is_default;
 	char *refname = "", *typename="";
@@ -317,7 +323,7 @@ static int
 isiin_keyword( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout )
 {
 	int fstatus, status = BIBL_OK;
-	char *p = invalue->data;
+	const char *p = invalue->data;
 	str keyword;
 
 	str_init( &keyword );

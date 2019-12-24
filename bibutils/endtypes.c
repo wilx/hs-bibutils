@@ -1,7 +1,7 @@
 /*
  * endtypes.c
  *
- * Copyright (c) Chris Putnam 2003-2018
+ * Copyright (c) Chris Putnam 2003-2019
  *
  * Program and source code released under the GPL version 2
  *
@@ -58,7 +58,7 @@ static lookups generic[] = {
 	{ "%Z", "NOTES",           SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%^", "CAPTION",         SIMPLE,   LEVEL_MAIN },
 	{ "%[", "ACCESSDATE",      SIMPLE,   LEVEL_MAIN },
 	{ "%=", "LASTMODDATE",     SIMPLE,   LEVEL_MAIN },
@@ -100,7 +100,7 @@ static lookups journalarticle[] = {
 	{ "%4", "CUSTOM4",      NOTES,    LEVEL_MAIN },
 	{ "%#", "CUSTOM5",      NOTES,    LEVEL_MAIN },
 	{ "%$", "CUSTOM6",      NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",      SIMPLE,   LEVEL_MAIN },
 	{ "%G", "LANGUAGE",     SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",  SIMPLE,   LEVEL_MAIN },  /* physical location */
@@ -149,7 +149,7 @@ static lookups magazinearticle[] = {
 	{ "%4", "CUSTOM4",      NOTES,    LEVEL_MAIN },
 	{ "%#", "CUSTOM5",      NOTES,    LEVEL_MAIN },
 	{ "%$", "CUSTOM6",      NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",SIMPLE,LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",SIMPLE,LEVEL_MAIN },
 	{ "%>", "PDFLINK",      SIMPLE, LEVEL_MAIN },
 	{ "%G", "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",  SIMPLE, LEVEL_MAIN },  /* physical location */
@@ -199,7 +199,7 @@ static lookups newspaperarticle[] = {
 	{ "%$", "CUSTOM6",      NOTES,    LEVEL_MAIN },
 	{ "%G", "LANGUAGE",     SIMPLE, LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",  SIMPLE, LEVEL_MAIN },  /* physical location */
-	{ "%+", "AUTHORADDRESS",SIMPLE,LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",SIMPLE,LEVEL_MAIN },
 	{ "%>", "PDFLINK",      SIMPLE, LEVEL_MAIN },
 	{ "%^", "CAPTION",      SIMPLE, LEVEL_MAIN },
 	{ "%[", "ACCESSDATE",   SIMPLE, LEVEL_MAIN },
@@ -246,7 +246,7 @@ static lookups book[] = {
 	{ "%O", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%U", "URL",             URL,      LEVEL_MAIN },
 	{ "%Z", "NOTES",           SIMPLE,   LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
@@ -296,7 +296,7 @@ static lookups booksection[] = {
 	{ "%O", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%U", "URL",             URL,      LEVEL_MAIN },
 	{ "%Z", "NOTES",           SIMPLE,   LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
@@ -345,7 +345,7 @@ static lookups editedbook[] = {
 	{ "%O", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%U", "URL",             URL,      LEVEL_MAIN },
 	{ "%Z", "NOTES",           NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -386,7 +386,7 @@ static lookups manuscript[] = {
 	{ "%4", "CUSTOM4",         NOTES,  LEVEL_MAIN },
 	{ "%#", "CUSTOM5",         NOTES,  LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         NOTES,  LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE, LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE, LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE, LEVEL_MAIN },
 	{ "%G", "LANGUAGE",        SIMPLE, LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE, LEVEL_MAIN },  /* physical location */
@@ -427,7 +427,7 @@ static lookups communication[] = {
 	{ "%#", "CUSTOM5",         NOTES,  LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         NOTES,  LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE, LEVEL_MAIN },  /* physical location */
-	{ "%+", "AUTHORADDRESS",   SIMPLE, LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE, LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE, LEVEL_MAIN },
 	{ "%G", "LANGUAGE",        SIMPLE, LEVEL_MAIN },
 	{ "%^", "CAPTION",         SIMPLE, LEVEL_MAIN },
@@ -471,7 +471,7 @@ static lookups proceedings[] = {
 	{ "%O", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%U", "URL",             URL,      LEVEL_MAIN },
 	{ "%Z", "NOTES",           NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -518,7 +518,7 @@ static lookups conferencepaper[] = {
 	{ "%4", "CUSTOM4",         NOTES,    LEVEL_MAIN },
 	{ "%#", "CUSTOM5",         NOTES,    LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
@@ -559,7 +559,7 @@ static lookups thesis[] = {
 	{ "%O", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%U", "URL",             URL,      LEVEL_MAIN },
 	{ "%Z", "NOTES",           NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -597,7 +597,7 @@ static lookups program[] = {
 	{ "%#", "CUSTOM5",         SIMPLE,   LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         SIMPLE,   LEVEL_MAIN },
 	{ "%!", "SHORTTITLE",      TITLE,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -638,7 +638,7 @@ static lookups audiovisual[] = {
 	{ "%4", "CUSTOM4",         NOTES,    LEVEL_MAIN },
 	{ "%#", "CUSTOM5",         NOTES,    LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -680,7 +680,7 @@ static lookups broadcast[] = {
 	{ "%4", "CUSTOM4",         NOTES,    LEVEL_MAIN },
 	{ "%#", "CUSTOM5",         NOTES,    LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -723,7 +723,7 @@ static lookups electronic[] = {
 	{ "%V", "VOLUME",          SIMPLE,   LEVEL_MAIN },
 	{ "%Z", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
 	{ "%^", "CAPTION",         SIMPLE,   LEVEL_MAIN },
@@ -764,7 +764,7 @@ static lookups webpage[] = {
 	{ "%V", "VOLUME",          SIMPLE,   LEVEL_MAIN },
 	{ "%Z", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
 	{ "%^", "CAPTION",         SIMPLE,   LEVEL_MAIN },
@@ -801,7 +801,7 @@ static lookups artwork[] = {
 	{ "%4", "CUSTOM4",         NOTES,    LEVEL_MAIN },
 	{ "%#", "CUSTOM5",         NOTES,    LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -841,7 +841,7 @@ static lookups report[] = {
 	{ "%4", "CUSTOM4",         NOTES,    LEVEL_MAIN },
 	{ "%#", "CUSTOM5",         NOTES,    LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         NOTES,    LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -879,7 +879,7 @@ static lookups map[] = {
 	{ "%4", "CUSTOM4",         SIMPLE,   LEVEL_MAIN },
 	{ "%#", "CUSTOM5",         SIMPLE,   LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         SIMPLE,   LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -919,7 +919,7 @@ static lookups patent[] = {
 	{ "%4", "CUSTOM4",         SIMPLE,   LEVEL_MAIN },
 	{ "%#", "CUSTOM5",         SIMPLE,   LEVEL_MAIN },
 	{ "%$", "CUSTOM6",         SIMPLE,   LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
@@ -1139,7 +1139,7 @@ static lookups chart[] = {
 	{ "%U", "URL",             URL,      LEVEL_MAIN },
 	{ "%Z", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%>", "PDFLINK",         SIMPLE,   LEVEL_MAIN },
 	{ "%^", "CAPTION",         SIMPLE,   LEVEL_MAIN },
 	{ "%[", "ACCESSDATE",      SIMPLE,   LEVEL_MAIN },
@@ -1194,7 +1194,7 @@ static lookups unpublished[] = {
 	{ "%Z", "NOTES",           NOTES,    LEVEL_MAIN },
 	{ "%W", "PHYSICALLOC",     SIMPLE,   LEVEL_MAIN },  /* physical location */
 	{ "%G", "LANGUAGE",        SIMPLE,   LEVEL_MAIN },
-	{ "%+", "AUTHORADDRESS",   SIMPLE,   LEVEL_MAIN },
+	{ "%+", "ADDRESS:AUTHOR",   SIMPLE,   LEVEL_MAIN },
 	{ "%^", "CAPTION",         SIMPLE,   LEVEL_MAIN },
 	{ "%[", "ACCESSDATE",      SIMPLE,   LEVEL_MAIN },
 	{ "%=", "LASTMODDATE",     SIMPLE,   LEVEL_MAIN },

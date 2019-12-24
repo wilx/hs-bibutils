@@ -1,7 +1,7 @@
 /*
  * bibcore.c
  *
- * Copyright (c) Chris Putnam 2005-2018
+ * Copyright (c) Chris Putnam 2005-2019
  *
  * Source code released under the GPL version 2
  *
@@ -102,7 +102,7 @@ bibl_duplicateparams( param *np, param *op )
 	if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
 	status = slist_copy( &(np->corps), &(op->corps ) );
 	if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
-	
+
 	if ( !op->progname ) np->progname = NULL;
 	else {
 		np->progname = strdup( op->progname );
@@ -139,6 +139,7 @@ bibl_duplicateparams( param *np, param *op )
 	np->convertf = op->convertf;
 	np->headerf = op->headerf;
 	np->footerf = op->footerf;
+	np->assemblef = op->assemblef;
 	np->writef = op->writef;
 	np->all = op->all;
 	np->nall = op->nall;
@@ -233,14 +234,14 @@ bibl_readcorps( param *p, char *f )
 int
 bibl_addtoasis( param *p, char *d )
 {
-	str *s;
+	int status;
 
 	if ( !p ) return BIBL_ERR_BADINPUT;
 	if ( !d ) return BIBL_ERR_BADINPUT;
 
-	s = slist_addc( &(p->asis), d );
+	status = slist_addc( &(p->asis), d );
 
-	return ( s==NULL )? BIBL_ERR_MEMERR : BIBL_OK;
+	return ( status==SLIST_OK )? BIBL_OK : BIBL_ERR_MEMERR;
 }
 
 /* bibl_addtocorps()
@@ -250,14 +251,14 @@ bibl_addtoasis( param *p, char *d )
 int
 bibl_addtocorps( param *p, char *d )
 {
-	str *s;
+	int status;
 
 	if ( !p ) return BIBL_ERR_BADINPUT;
 	if ( !d ) return BIBL_ERR_BADINPUT;
 
-	s = slist_addc( &(p->corps), d );
+	status = slist_addc( &(p->corps), d );
 
-	return ( s==NULL )? BIBL_ERR_MEMERR : BIBL_OK;
+	return ( status==SLIST_OK )? BIBL_OK : BIBL_ERR_MEMERR;
 }
 
 void
@@ -725,21 +726,22 @@ out:
 static int
 get_citekeys( bibl *b, slist *citekeys )
 {
+	int i, n, status;
 	fields *f;
-	int i, n;
-	str *s;
+
 	for ( i=0; i<b->nrefs; ++i ) {
 		f = b->ref[i];
 		n = fields_find( f, "REFNUM", LEVEL_ANY );
 		if ( n==FIELDS_NOTFOUND ) n = generate_citekey( f, i );
 		if ( n!=FIELDS_NOTFOUND && f->data[n].data ) {
-			s = slist_add( citekeys, &(f->data[n]) );
-			if ( !s ) return BIBL_ERR_MEMERR;
+			status = slist_add( citekeys, &(f->data[n]) );
+			if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
 		} else {
-			s = slist_addc( citekeys, "" );
-			if ( !s ) return BIBL_ERR_MEMERR;
+			status = slist_addc( citekeys, "" );
+			if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
 		}
 	}
+
 	return BIBL_OK;
 }
 
@@ -961,17 +963,35 @@ singlerefname( fields *reffields, long nref, int mode )
 static int
 bibl_writeeachfp( FILE *fp, bibl *b, param *p )
 {
+	fields out, *use = &out;
 	int status;
 	long i;
+
+	fields_init( &out );
+
 	for ( i=0; i<b->nrefs; ++i ) {
+
 		fp = singlerefname( b->ref[i], i, p->writeformat );
 		if ( !fp ) return BIBL_ERR_CANTOPEN;
+
 		if ( p->headerf ) p->headerf( fp, p );
-		status = p->writef( b->ref[i], fp, p, i );
+
+		if ( p->assemblef ) {
+			fields_free( &out );
+			status = p->assemblef( b->ref[i], &out, p, i );
+			if ( status!=BIBL_OK ) break;
+		} else {
+			use = b->ref[i];
+		}
+
+		status = p->writef( use, fp, p, i );
+
 		if ( p->footerf ) p->footerf( fp );
 		fclose( fp );
+
 		if ( status!=BIBL_OK ) return status;
 	}
+
 	return BIBL_OK;
 }
 
@@ -979,12 +999,36 @@ static int
 bibl_writefp( FILE *fp, bibl *b, param *p )
 {
 	int status = BIBL_OK;
+	fields out, *use = &out;
 	long i;
+
+	fields_init( &out );
+
+	if ( debug_set( p ) && p->assemblef ) {
+		fprintf( stderr, "-------------------assemblef start for bibl_write\n");
+	}
+
 	if ( p->headerf ) p->headerf( fp, p );
 	for ( i=0; i<b->nrefs; ++i ) {
-		status = p->writef( b->ref[i], fp, p, i );
+
+		if ( p->assemblef ) {
+			fields_free( &out );
+			status = p->assemblef( b->ref[i], &out, p, i );
+			if ( status!=BIBL_OK ) break;
+			if ( debug_set( p ) ) bibl_verbose2( &out, "", i+1 );
+		} else {
+			use = b->ref[i];
+		}
+
+		status = p->writef( use, fp, p, i );
 		if ( status!=BIBL_OK ) break;
+
 	}
+
+	if ( debug_set( p ) && p->assemblef ) {
+		fprintf( stderr, "-------------------assemblef end for bibl_write\n");
+	}
+
 	if ( p->footerf ) p->footerf( fp );
 	return status;
 }
@@ -1003,23 +1047,32 @@ bibl_write( bibl *b, FILE *fp, param *p )
 	status = bibl_setwriteparams( &lp, p );
 	if ( status!=BIBL_OK ) return status;
 
-	status = bibl_fixcharsets( b, &lp );
-	if ( status!=BIBL_OK ) return status;
-
 	if ( debug_set( p ) ) {
 		report_params( stderr, "bibl_write", &lp );
 		fflush( stdout );
-		fprintf( stderr, "-------------------start for bibl_write\n");
+	}
+
+	if ( debug_set( p ) ) {
+		fprintf( stderr, "-------------------raw input start for bibl_write\n");
 		bibl_verbose0( b );
-		fprintf( stderr, "-------------------end for bibl_write\n" );
+		fprintf( stderr, "-------------------raw input end for bibl_write\n" );
+		fflush( stderr );
+	}
+
+	status = bibl_fixcharsets( b, &lp );
+	if ( status!=BIBL_OK ) goto out;
+
+	if ( debug_set( p ) ) {
+		fprintf( stderr, "-------------------post-fixcharsets start for bibl_write\n");
+		bibl_verbose0( b );
+		fprintf( stderr, "-------------------post-fixcharsets end for bibl_write\n" );
 		fflush( stderr );
 	}
 
 	if ( p->singlerefperfile ) status = bibl_writeeachfp( fp, b, &lp );
 	else status = bibl_writefp( fp, b, &lp );
 
+out:
 	bibl_freeparams( &lp );
-
 	return status;
 }
-

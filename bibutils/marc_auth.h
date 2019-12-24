@@ -3,7 +3,7 @@
  *
  * Recognize the MARC authority vocabulary for genre and resource.
  *
- * Copyright (c) Chris Putnam 2008-2018
+ * Copyright (c) Chris Putnam 2008-2019
  *
  * Source code released under the GPL version 2
  *

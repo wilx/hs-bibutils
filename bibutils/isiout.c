@@ -1,7 +1,7 @@
 /*
  * isiout.c
  *
- * Copyright (c) Chris Putnam 2008-2018
+ * Copyright (c) Chris Putnam 2008-2019
  *
  * Source code released under the GPL version 2
  *
@@ -9,42 +9,61 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
-#include "utf8.h"
-#include "str.h"
-#include "strsearch.h"
-#include "fields.h"
-#include "title.h"
-#include "bibutils.h"
 #include "bibformats.h"
+#include "bibutils.h"
+#include "fields.h"
+#include "generic.h"
+#include "str.h"
+#include "title.h"
+#include "type.h"
+#include "utf8.h"
+
+/*****************************************************
+ PUBLIC: int isiout_initparams()
+*****************************************************/
 
 static int  isiout_write( fields *info, FILE *fp, param *p, unsigned long refnum );
-static void isiout_writeheader( FILE *outptr, param *p );
+static int  isiout_assemble( fields *in, fields *out, param *pm, unsigned long refnum );
 
-void
-isiout_initparams( param *p, const char *progname )
+int
+isiout_initparams( param *pm, const char *progname )
 {
-	p->writeformat      = BIBL_ISIOUT;
-	p->format_opts      = 0;
-	p->charsetout       = BIBL_CHARSET_DEFAULT;
-	p->charsetout_src   = BIBL_SRC_DEFAULT;
-	p->latexout         = 0;
-	p->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
-	p->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
-	p->xmlout           = BIBL_XMLOUT_FALSE;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->singlerefperfile = 0;
+	pm->writeformat      = BIBL_ISIOUT;
+	pm->format_opts      = 0;
+	pm->charsetout       = BIBL_CHARSET_DEFAULT;
+	pm->charsetout_src   = BIBL_SRC_DEFAULT;
+	pm->latexout         = 0;
+	pm->utf8out          = BIBL_CHARSET_UTF8_DEFAULT;
+	pm->utf8bom          = BIBL_CHARSET_BOM_DEFAULT;
+	pm->xmlout           = BIBL_XMLOUT_FALSE;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->singlerefperfile = 0;
 
-	if ( p->charsetout == BIBL_CHARSET_UNICODE ) {
-		p->utf8out = p->utf8bom = 1;
+	if ( pm->charsetout == BIBL_CHARSET_UNICODE ) {
+		pm->utf8out = pm->utf8bom = 1;
 	}
 
-	p->headerf = isiout_writeheader;
-	p->footerf = NULL;
-	p->writef  = isiout_write;
+	pm->headerf   = generic_writeheader;
+	pm->footerf   = NULL;
+	pm->assemblef = isiout_assemble;
+	pm->writef    = isiout_write;
+
+	if ( !pm->progname ) {
+		if ( !progname ) pm->progname = NULL;
+		else {
+			pm->progname = strdup( progname );
+			if ( !pm->progname ) return BIBL_ERR_MEMERR;
+		}
+	}
+
+	return BIBL_OK;
 }
+
+/*****************************************************
+ PUBLIC: int isiout_assemble()
+*****************************************************/
 
 enum {
         TYPE_UNKNOWN = 0,
@@ -56,28 +75,31 @@ enum {
 static int 
 get_type( fields *in )
 {
-        int type = TYPE_UNKNOWN, i, n, level;
-	char *tag, *value;
-	n = fields_num( in );
-        for ( i=0; i<n; ++i ) {
-		tag = fields_tag( in, i, FIELDS_CHRP );
-                if ( strcasecmp( tag, "GENRE:MARC" ) &&
-		     strcasecmp( tag, "GENRE:BIBUTILS" ) &&
-		     strcasecmp( tag, "GENRE:UNKNOWN" ) ) continue;
-		value = fields_value( in, i, FIELDS_CHRP );
-		level = fields_level( in, i );
-                if ( !strcasecmp( value, "periodical" ) ||
-                     !strcasecmp( value, "academic journal" ) ||
-		     !strcasecmp( value, "journal article" ) ) {
-                        type = TYPE_ARTICLE;
-                } else if ( !strcasecmp( value, "book" ) ) {
-                        if ( level==0 ) type=TYPE_BOOK;
-                        else type=TYPE_INBOOK;
-		} else if ( !strcasecmp( value, "book chapter" ) ) {
-			type = TYPE_INBOOK;
-                }
-        }
-        return type;
+	match_type genre_matches[] = {
+		{ "periodical",         TYPE_ARTICLE,        LEVEL_ANY  },
+		{ "academic journal",   TYPE_ARTICLE,        LEVEL_ANY  },
+		{ "journal article",    TYPE_ARTICLE,        LEVEL_ANY  },
+		{ "book",               TYPE_BOOK,           LEVEL_MAIN },
+		{ "book",               TYPE_INBOOK,         LEVEL_ANY  },
+		{ "book chapter",       TYPE_INBOOK,         LEVEL_ANY  },
+		{ "collection",         TYPE_BOOK,           LEVEL_MAIN },
+		{ "collection",         TYPE_INBOOK,         LEVEL_ANY  },
+	};
+
+	int ngenre_matches = sizeof( genre_matches ) / sizeof( genre_matches[0] );
+
+	match_type issuance_matches[] = {
+		{ "monographic",        TYPE_BOOK,           LEVEL_MAIN },
+		{ "monographic",        TYPE_INBOOK,         LEVEL_ANY  },
+	};
+	int nissuance_matches = sizeof( issuance_matches ) / sizeof( issuance_matches[0] );
+
+	int type;
+
+	type = type_from_mods_hints( in, TYPE_FROM_GENRE, genre_matches, ngenre_matches, TYPE_UNKNOWN );
+	if ( type!=TYPE_UNKNOWN ) return type;
+
+	return type_from_mods_hints( in, TYPE_FROM_ISSUANCE, issuance_matches, nissuance_matches, TYPE_UNKNOWN );
 }
 
 static void
@@ -86,10 +108,12 @@ append_type( int type, fields *out, int *status )
 	int fstatus;
 	char *s;
 
-	if ( type==TYPE_ARTICLE ) s = "Journal";
-	else if ( type==TYPE_INBOOK ) s = "Chapter";
-	else if ( type==TYPE_BOOK ) s = "Book";
-	else s = "Unknown";
+	switch( type ) {
+		case TYPE_ARTICLE: s = "Journal"; break;
+		case TYPE_INBOOK:  s = "Chapter"; break;
+		case TYPE_BOOK:    s = "Book";    break;
+		default:           s = "Unknown"; break;
+	}
 
 	fstatus = fields_add( out, "PT", s, LEVEL_MAIN );
 	if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
@@ -267,7 +291,7 @@ append_date( fields *in, fields *out, int *status )
 }
 
 static int
-append_data( fields *in, fields *out )
+isiout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 {
 	int type, status = BIBL_OK;
 
@@ -300,11 +324,15 @@ append_data( fields *in, fields *out )
 	append_easy( in, "VOLUME",         "VL", LEVEL_ANY, out, &status );
 	append_easy( in, "ISSUE",          "IS", LEVEL_ANY, out, &status );
 	append_easy( in, "NUMBER",         "IS", LEVEL_ANY, out, &status );
+	append_easy( in, "PUBLISHER",      "PU", LEVEL_ANY, out, &status );
 	append_easy( in, "DOI",            "DI", LEVEL_ANY, out, &status );
+	append_easy( in, "URL",            "WP", LEVEL_ANY, out, &status );
 	append_easy( in, "ISIREFNUM",      "UT", LEVEL_ANY, out, &status );
 	append_easy( in, "LANGUAGE",       "LA", LEVEL_ANY, out, &status );
 	append_easy( in, "ISIDELIVERNUM",  "GA", LEVEL_ANY, out, &status );
 	append_keywords( in, out, &status );
+	append_easy( in, "ISBN",           "SN", LEVEL_ANY, out, &status );
+	append_easy( in, "ISSN",           "SN", LEVEL_ANY, out, &status );
 	append_easy( in, "ABSTRACT",       "AB", LEVEL_ANY, out, &status );
 	append_easy( in, "TIMESCITED",     "TC", LEVEL_ANY, out, &status );
 	append_easy( in, "NUMBERREFS",     "NR", LEVEL_ANY, out, &status );
@@ -314,27 +342,12 @@ append_data( fields *in, fields *out )
 	return status;
 }
 
-static void
-output_verbose( fields *f, const char *type, unsigned long refnum )
-{
-	char *tag, *value;
-	int i, n, level;
+/*****************************************************
+ PUBLIC: int isiout_write()
+*****************************************************/
 
-	fprintf( stderr, "REF #%lu %s---\n", refnum+1, type );
-
-	n = fields_num( f );
-	for ( i=0; i<n; ++i ) {
-		tag   = fields_tag( f, i, FIELDS_CHRP_NOUSE );
-		value = fields_value( f, i, FIELDS_CHRP_NOUSE );
-		level = fields_level( f, i );
-		fprintf( stderr, "\t'%s'\t'%s'\t%d\n", tag, value, level );
-	}
-
-	fflush( stderr );
-}
-
-static void
-output( FILE *fp, fields *out )
+static int
+isiout_write( fields *out, FILE *fp, param *p, unsigned long refnum )
 {
 	int i;
 
@@ -346,33 +359,5 @@ output( FILE *fp, fields *out )
 	}
         fprintf( fp, "ER\n\n" );
         fflush( fp );
-}
-
-static int
-isiout_write( fields *in, FILE *fp, param *p, unsigned long refnum )
-{
-	int status;
-	fields out;
-
-	fields_init( &out );
-
-	if ( p->format_opts & BIBL_FORMAT_VERBOSE )
-		output_verbose( in, "IN", refnum );
-
-	status = append_data( in, &out );
-
-	if ( status==BIBL_OK ) output( fp, &out );
-
-	if ( p->format_opts & BIBL_FORMAT_VERBOSE )
-		output_verbose( &out, "OUT", refnum );
-
-	fields_free( &out );
-
-	return status;
-}
-
-static void
-isiout_writeheader( FILE *outptr, param *p )
-{
-	if ( p->utf8bom ) utf8_writebom( outptr );
+	return BIBL_OK;
 }

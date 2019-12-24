@@ -1,7 +1,7 @@
 /*
  * notes.h
  *
- * Copyright (c) Chris Putnam 2016-2018
+ * Copyright (c) Chris Putnam 2016-2019
  *
  * Source code released under the GPL version 2
  *

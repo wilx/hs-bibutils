@@ -1,7 +1,7 @@
 /*
  * reftypes.c
  *
- * Copyright (c) Chris Putnam 2003-2018
+ * Copyright (c) Chris Putnam 2003-2019
  *
  * Source code released under the GPL version 2
  *
@@ -13,7 +13,7 @@
 #include "reftypes.h"
 
 int
-get_reftype( char *p, long refnum, char *progname, variants *all, int nall, char *tag, int *is_default, int chattiness )
+get_reftype( const char *p, long refnum, char *progname, variants *all, int nall, char *tag, int *is_default, int chattiness )
 {
 	int i;
 
@@ -38,26 +38,27 @@ get_reftype( char *p, long refnum, char *progname, variants *all, int nall, char
 }
 
 int
-process_findoldtag( char *oldtag, int reftype, variants all[], int nall )
+process_findoldtag( const char *oldtag, int reftype, variants all[], int nall )
 {
         variants *v;
         int i;
+
         v = &(all[reftype]);
-/*      for ( i=0; i<(all[reftype]).ntags; ++i )*/
-        for ( i=0; i<v->ntags; ++i )
-/*              if ( !strcasecmp( ((all[reftype]).tags[i]).oldstr, oldtag ) )*/
+        for ( i=0; i<v->ntags; ++i ) {
                 if ( !strcasecmp( (v->tags[i]).oldstr, oldtag ) )
                         return i;
+	}
         return -1;
 }
 
 /* translate_oldtag()
  */
 int
-translate_oldtag( char *oldtag, int reftype, variants all[], int nall,
+translate_oldtag( const char *oldtag, int reftype, variants all[], int nall,
 		int *processingtype, int *level, char **newtag )
 {
 	int n;
+
 	n = process_findoldtag( oldtag, reftype, all, nall );
 	if ( n!=-1 ) {
 		*processingtype = ((all[reftype]).tags[n]).processingtype;
@@ -65,5 +66,6 @@ translate_oldtag( char *oldtag, int reftype, variants all[], int nall,
 		*newtag         = ((all[reftype]).tags[n]).newstr;
 		return 1;
 	}
+
 	return 0;
 }

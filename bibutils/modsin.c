@@ -1,7 +1,7 @@
 /*
  * modsin.c
  *
- * Copyright (c) Chris Putnam 2004-2018
+ * Copyright (c) Chris Putnam 2004-2019
  *
  * Source code released under the GPL version 2
  *
@@ -29,42 +29,47 @@
 #include "bibformats.h"
 
 static int modsin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *reference, int *fcharset );
-static int modsin_processf( fields *medin, char *data, char *filename, long nref, param *p );
+static int modsin_processf( fields *medin, const char *data, const char *filename, long nref, param *p );
 
 /*****************************************************
  PUBLIC: void modsin_initparams()
 *****************************************************/
-void
-modsin_initparams( param *p, const char *progname )
+int
+modsin_initparams( param *pm, const char *progname )
 {
 
-	p->readformat       = BIBL_MODSIN;
-	p->format_opts      = 0;
-	p->charsetin        = BIBL_CHARSET_UNICODE;
-	p->charsetin_src    = BIBL_SRC_DEFAULT;
-	p->latexin          = 0;
-	p->utf8in           = 1;
-	p->xmlin            = 1;
-	p->nosplittitle     = 0;
-	p->verbose          = 0;
-	p->addcount         = 0;
-	p->singlerefperfile = 0;
-	p->output_raw       = BIBL_RAW_WITHMAKEREFID |
+	pm->readformat       = BIBL_MODSIN;
+	pm->format_opts      = 0;
+	pm->charsetin        = BIBL_CHARSET_UNICODE;
+	pm->charsetin_src    = BIBL_SRC_DEFAULT;
+	pm->latexin          = 0;
+	pm->utf8in           = 1;
+	pm->xmlin            = 1;
+	pm->nosplittitle     = 0;
+	pm->verbose          = 0;
+	pm->addcount         = 0;
+	pm->singlerefperfile = 0;
+	pm->output_raw       = BIBL_RAW_WITHMAKEREFID |
 	                      BIBL_RAW_WITHCHARCONVERT;
 
-	p->readf    = modsin_readf;
-	p->processf = modsin_processf;
-	p->cleanf   = NULL;
-	p->typef    = NULL;
-	p->convertf = NULL;
-	p->all      = NULL;
-	p->nall     = 0;
+	pm->readf    = modsin_readf;
+	pm->processf = modsin_processf;
+	pm->cleanf   = NULL;
+	pm->typef    = NULL;
+	pm->convertf = NULL;
+	pm->all      = NULL;
+	pm->nall     = 0;
 
-	slist_init( &(p->asis) );
-	slist_init( &(p->corps) );
+	slist_init( &(pm->asis) );
+	slist_init( &(pm->corps) );
 
-	if ( !progname ) p->progname = NULL;
-	else p->progname = strdup( progname );
+	if ( !progname ) pm->progname = NULL;
+	else {
+		pm->progname = strdup( progname );
+		if ( !pm->progname ) return BIBL_ERR_MEMERR;
+	}
+
+	return BIBL_OK;
 }
 
 /*****************************************************
@@ -122,7 +127,7 @@ static int
 modsin_date( xml *node, fields *info, int level, int part )
 {
 	int fstatus, status = BIBL_OK;
-	char *tag, *p;
+	const char *tag, *p;
 	str s;
 
 	str_init( &s );
@@ -1063,7 +1068,7 @@ modsin_assembleref( xml *node, fields *info )
 }
 
 static int
-modsin_processf( fields *modsin, char *data, char *filename, long nref, param *p )
+modsin_processf( fields *modsin, const char *data, const char *filename, long nref, param *p )
 {
 	int status;
 	xml top;
