@@ -3,7 +3,7 @@
  * 
  * (Word 2007 format)
  *
- * Copyright (c) Chris Putnam 2007-2019
+ * Copyright (c) Chris Putnam 2007-2020
  *
  * Source code released under the GPL version 2
  *
@@ -122,39 +122,47 @@ enum {
 	TYPE_PHDTHESIS,
 };
 
-/*
- * fixed output
- */
 static void
-output_fixed( FILE *outptr, char *tag, char *value, int level )
+output_level( FILE *outptr, int level )
 {
 	int i;
-	for ( i=0; i<level; ++i ) fprintf( outptr, " " );
+	for ( i=0; i<level; ++i )
+		fprintf( outptr, " " );
+}
+
+/* fixed output
+ *
+ * <TAG>value</TAG>
+ */
+static void
+output_fixed( FILE *outptr, const char *tag, const char *value, int level )
+{
+	output_level( outptr, level );
 	fprintf( outptr, "<%s>%s</%s>\n", tag, value, tag );
 }
 
 /* detail output
  *
+ * <TAG>value</TAG>
  */
 static void
-output_item( fields *info, FILE *outptr, char *tag, char *prefix, int item, int level )
+output_item( fields *info, FILE *outptr, const char *tag, const char *prefix, int item, int level )
 {
-	int i;
-	if ( item==-1 ) return;
-	for ( i=0; i<level; ++i ) fprintf( outptr, " " );
-	fprintf( outptr, "<%s>%s%s</%s>\n",
-		tag,
-		prefix,
-		(char*) fields_value( info, item, FIELDS_CHRP ),
-		tag
-	);
+	if ( item!=-1 ) {
+		output_level( outptr, level );
+		fprintf( outptr, "<%s>%s%s</%s>\n",
+			tag,
+			prefix,
+			(char*) fields_value( info, item, FIELDS_CHRP ),
+			tag
+		);
+	}
 }
 
 static void
-output_itemv( FILE *outptr, char *tag, char *item, int level )
+output_itemv( FILE *outptr, const char *tag, const char *item, int level )
 {
-	int i;
-	for ( i=0; i<level; ++i ) fprintf( outptr, " " );
+	output_level( outptr, level );
 	fprintf( outptr, "<%s>%s</%s>\n", tag, item, tag );
 }
 
@@ -164,19 +172,14 @@ output_itemv( FILE *outptr, char *tag, char *item, int level )
  *
  */
 static void
-output_range( FILE *outptr, char *tag, char *start, char *end, int level )
+output_range( FILE *outptr, const char *tag, const char *start, const char *end, int level )
 {
-	int i;
-	if ( start==NULL && end==NULL ) return;
-	if ( start==NULL )
-		output_itemv( outptr, tag, end, 0 );
-	else if ( end==NULL )
-		output_itemv( outptr, tag, start, 0 );
-	else {
-		for ( i=0; i<level; ++i )
-			fprintf( outptr, " " );
+	if ( start && end ) {
+		output_level( outptr, level );
 		fprintf( outptr, "<%s>%s-%s</%s>\n", tag, start, end, tag );
 	}
+	else if ( start ) output_itemv( outptr, tag, start, level );
+	else if ( end )   output_itemv( outptr, tag, end,   level );
 }
 
 static void
@@ -192,7 +195,7 @@ output_list( fields *info, FILE *outptr, convert *c, int nc )
 
 typedef struct outtype {
 	int value;
-	char *out;
+	const char *out;
 } outtype;
 
 static
@@ -224,11 +227,11 @@ static int
 get_type_from_genre( fields *info )
 {
 	int type = TYPE_UNKNOWN, i, j, level;
-	char *genre, *tag;
+	const char *genre, *tag;
 	for ( i=0; i<info->n; ++i ) {
-		tag = (char *) fields_tag( info, i, FIELDS_CHRP );
+		tag = (const char *) fields_tag( info, i, FIELDS_CHRP );
 		if ( strcasecmp( tag, "GENRE:MARC" ) && strcasecmp( tag, "GENRE:BIBUTILS" ) && strcasecmp( tag, "GENRE:UNKNOWN" ) ) continue;
-		genre = (char *) fields_value( info, i, FIELDS_CHRP );
+		genre = (const char *) fields_value( info, i, FIELDS_CHRP );
 		for ( j=0; j<ngenres; ++j ) {
 			if ( !strcasecmp( genres[j].out, genre ) )
 				type = genres[j].value;
@@ -291,7 +294,7 @@ get_type( fields *info )
 }
 
 static void
-output_titlebits( char *mainttl, char *subttl, FILE *outptr )
+output_titlebits( const char *mainttl, const char *subttl, FILE *outptr )
 {
 	if ( mainttl ) fprintf( outptr, "%s", mainttl );
 	if ( subttl ) {
@@ -305,7 +308,7 @@ output_titlebits( char *mainttl, char *subttl, FILE *outptr )
 }
 
 static void
-output_titleinfo( char *mainttl, char *subttl, FILE *outptr, char *tag, int level )
+output_titleinfo( const char *mainttl, const char *subttl, FILE *outptr, const char *tag, int level )
 {
 	if ( mainttl || subttl ) {
 		fprintf( outptr, "<%s>", tag );
@@ -315,12 +318,12 @@ output_titleinfo( char *mainttl, char *subttl, FILE *outptr, char *tag, int leve
 }
 
 static void
-output_generaltitle( fields *info, FILE *outptr, char *tag, int level )
+output_generaltitle( fields *info, FILE *outptr, const char *tag, int level )
 {
-	char *ttl       = fields_findv( info, level, FIELDS_CHRP, "TITLE" );
-	char *subttl    = fields_findv( info, level, FIELDS_CHRP, "SUBTITLE" );
-	char *shrttl    = fields_findv( info, level, FIELDS_CHRP, "SHORTTITLE" );
-	char *shrsubttl = fields_findv( info, level, FIELDS_CHRP, "SHORTSUBTITLE" );
+	const char *ttl       = fields_findv( info, level, FIELDS_CHRP, "TITLE" );
+	const char *subttl    = fields_findv( info, level, FIELDS_CHRP, "SUBTITLE" );
+	const char *shrttl    = fields_findv( info, level, FIELDS_CHRP, "SHORTTITLE" );
+	const char *shrsubttl = fields_findv( info, level, FIELDS_CHRP, "SHORTSUBTITLE" );
 
 	if ( ttl ) {
 		output_titleinfo( ttl, subttl, outptr, tag, level );
@@ -333,10 +336,10 @@ output_generaltitle( fields *info, FILE *outptr, char *tag, int level )
 static void
 output_maintitle( fields *info, FILE *outptr, int level )
 {
-	char *ttl       = fields_findv( info, level, FIELDS_CHRP, "TITLE" );
-	char *subttl    = fields_findv( info, level, FIELDS_CHRP, "SUBTITLE" );
-	char *shrttl    = fields_findv( info, level, FIELDS_CHRP, "SHORTTITLE" );
-	char *shrsubttl = fields_findv( info, level, FIELDS_CHRP, "SHORTSUBTITLE" );
+	const char *ttl       = fields_findv( info, level, FIELDS_CHRP, "TITLE" );
+	const char *subttl    = fields_findv( info, level, FIELDS_CHRP, "SUBTITLE" );
+	const char *shrttl    = fields_findv( info, level, FIELDS_CHRP, "SHORTTITLE" );
+	const char *shrsubttl = fields_findv( info, level, FIELDS_CHRP, "SHORTSUBTITLE" );
 
 	if ( ttl ) {
 		output_titleinfo( ttl, subttl, outptr, "b:Title", level );
@@ -356,7 +359,7 @@ output_maintitle( fields *info, FILE *outptr, int level )
 }
 
 static void
-output_name_nomangle( FILE *outptr, char *p )
+output_name_nomangle( FILE *outptr, const char *p )
 {
 	fprintf( outptr, "<b:Person>" );
 	fprintf( outptr, "<b:Last>%s</b:Last>", p );
@@ -364,7 +367,7 @@ output_name_nomangle( FILE *outptr, char *p )
 }
 
 static void
-output_name( FILE *outptr, char *p )
+output_name( FILE *outptr, const char *p )
 {
 	str family, part;
 	int n=0, npart=0;
@@ -417,8 +420,7 @@ extract_name_and_info( str *outtag, str *intag )
 }
 
 static void
-output_name_type( fields *info, FILE *outptr, int level, 
-			char *map[], int nmap, char *tag )
+output_name_type( fields *info, FILE *outptr, int level, char *map[], int nmap, const char *tag )
 {
 	str ntag;
 	int i, j, n=0, code, nfields;
@@ -469,11 +471,11 @@ output_names( fields *info, FILE *outptr, int level, int type )
 static void
 output_date( fields *info, FILE *outptr, int level )
 {
-	char *year  = fields_findv_firstof( info, level, FIELDS_CHRP,
+	const char *year  = fields_findv_firstof( info, level, FIELDS_CHRP,
 			"PARTDATE:YEAR", "DATE:YEAR", NULL );
-	char *month = fields_findv_firstof( info, level, FIELDS_CHRP,
+	const char *month = fields_findv_firstof( info, level, FIELDS_CHRP,
 			"PARTDATE:MONTH", "DATE:MONTH", NULL );
-	char *day   = fields_findv_firstof( info, level, FIELDS_CHRP,
+	const char *day   = fields_findv_firstof( info, level, FIELDS_CHRP,
 			"PARTDATE:DAY", "DATE:DAY", NULL );
 	if ( year )  output_itemv( outptr, "b:Year", year, 0 );
 	if ( month ) output_itemv( outptr, "b:Month", month, 0 );
@@ -483,9 +485,9 @@ output_date( fields *info, FILE *outptr, int level )
 static void
 output_pages( fields *info, FILE *outptr, int level )
 {
-	char *sn = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGES:START" );
-	char *en = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGES:STOP" );
-	char *ar = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "ARTICLENUMBER" );
+	const char *sn = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGES:START" );
+	const char *en = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "PAGES:STOP" );
+	const char *ar = fields_findv( info, LEVEL_ANY, FIELDS_CHRP, "ARTICLENUMBER" );
 	if ( sn || en )
 		output_range( outptr, "b:Pages", sn, en, level );
 	else if ( ar )
@@ -586,9 +588,9 @@ output_type( fields *info, FILE *outptr, int type )
 static void
 output_comments( fields *info, FILE *outptr, int level )
 {
+	const char *abs;
 	vplist_index i;
 	vplist notes;
-	char *abs;
 
 	vplist_init( &notes );
 
@@ -607,7 +609,7 @@ output_comments( fields *info, FILE *outptr, int level )
 static void
 output_bibkey( fields *info, FILE *outptr )
 {
-	char *bibkey = fields_findv_firstof( info, LEVEL_ANY, FIELDS_CHRP,
+	const char *bibkey = fields_findv_firstof( info, LEVEL_ANY, FIELDS_CHRP,
 			"REFNUM", "BIBKEY", NULL );
 	if ( bibkey ) output_itemv( outptr, "b:Tag", bibkey, 0 );
 }

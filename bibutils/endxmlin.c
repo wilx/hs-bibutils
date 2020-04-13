@@ -1,7 +1,7 @@
 /*
  * endxmlin.c
  *
- * Copyright (c) Chris Putnam 2006-2019
+ * Copyright (c) Chris Putnam 2006-2020
  *
  * Program and source code released under the GPL version 2
  *
@@ -91,16 +91,18 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *r
 
 	while ( !haveref && !done ) {
 
-		if ( !line->data ) {
+		if ( str_is_empty( line ) ) {
 			done = xml_readmore( fp, buf, bufsize, bufpos );
 			str_strcatc( line, buf );
 		}
 
 		if ( !inref ) {
-			startptr = xml_find_start( line->data, "RECORD" );
+			startptr = xml_find_start( str_cstr( line ), "RECORD" );
 			if ( startptr ) inref = 1;
 		}
-		else    endptr = xml_find_end( line->data, "RECORD" );
+		else {
+			endptr = xml_find_end( str_cstr( line ), "RECORD" );
+		}
 
 		/* If no <record> tag, we can trim up to last 8 bytes */
 		/* Emptying string can lose fragments of <record> tag */
@@ -120,8 +122,8 @@ endxmlin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *r
 		}
 		/* ...we can reallocate in str_strcat; must re-find the tags */
 		else {
-			startptr = xml_find_start( line->data, "RECORD" );
-			endptr = xml_find_end( line->data, "RECORD" );
+			startptr = xml_find_start( str_cstr( line ), "RECORD" );
+			endptr   = xml_find_end  ( str_cstr( line ), "RECORD" );
 			str_segcpy( reference, startptr, endptr );
 			/* clear out information in line */
 			str_strcpyc( &tmp, endptr );
@@ -194,7 +196,7 @@ endxmlin_data( xml *node, char *inttag, fields *info, int level )
 	if ( status!=BIBL_OK ) return status;
 
 	if ( str_has_value( &s ) ) {
-		status = fields_add( info, inttag, s.data, level );
+		status = fields_add( info, inttag, str_cstr( &s ), level );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 
@@ -212,32 +214,41 @@ static int
 endxmlin_titles( xml *node, fields *info )
 {
 	attribs a[] = {
-		{ "title", "%T" },
-		{ "secondary-title", "%B" },
-		{ "tertiary-title", "%S" },
-		{ "alt-title", "%!" },
-		{ "short-title", "SHORTTITLE" },
+		{ "title",           "%T"         },
+		{ "secondary-title", "%B"         },
+		{ "tertiary-title",  "%S"         },
+		{ "alt-title",       "%!"         },
+		{ "short-title",     "SHORTTITLE" },
 	};
-	int i, status, n = sizeof( a ) / sizeof ( a[0] );
+	int n = sizeof( a ) / sizeof ( a[0] );
+	int i, fstatus, status = BIBL_OK;
 	str title;
+
 	str_init( &title );
+
 	for ( i=0; i<n; ++i ) {
 		if ( xml_tag_matches( node, a[i].attrib ) && node->down ) {
 			str_empty( &title );
-			status = endxmlin_datar( node, &title );
-			if ( status!=BIBL_OK ) return BIBL_ERR_MEMERR;
+			fstatus = endxmlin_datar( node, &title );
+			if ( fstatus!=BIBL_OK ) {
+				status = BIBL_ERR_MEMERR;
+				goto out;
+			}
 			str_trimstartingws( &title );
 			str_trimendingws( &title );
-			status = fields_add( info, a[i].internal, title.data, 0);
-			if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+			fstatus = fields_add( info, a[i].internal, str_cstr( &title ), LEVEL_MAIN );
+			if ( fstatus!=FIELDS_OK ) {
+				status = BIBL_ERR_MEMERR;
+				goto out;
+			}
 		}
 	}
-	if ( node->next ) {
-		status = endxmlin_titles( node->next, info );
-		if ( status!=BIBL_OK ) return status;
-	}
+
+	if ( node->next ) status = endxmlin_titles( node->next, info );
+
+out:
 	str_free( &title );
-	return BIBL_OK;
+	return status;
 }
 
 /* <contributors>
@@ -278,9 +289,9 @@ static int
 endxmlin_contributors( xml *node, fields *info )
 {
 	attribs a[] = {
-		{ "authors", "%A" },
-		{ "secondary-authors", "%E" },
-		{ "tertiary-authors", "%Y" },
+		{ "authors",            "%A" },
+		{ "secondary-authors",  "%E" },
+		{ "tertiary-authors",   "%Y" },
 		{ "subsidiary-authors", "%?" },
 		{ "translated-authors", "%?" },
 	};
@@ -303,7 +314,7 @@ endxmlin_keyword( xml *node, fields *info )
 {
 	int status;
 	if ( xml_tag_matches( node, "keyword" ) ) {
-		status = endxmlin_data( node, "%K", info, 0 );
+		status = endxmlin_data( node, "%K", info, LEVEL_MAIN );
 		if ( status!=BIBL_OK ) return status;
 	}
 	if ( node->next ) {
@@ -329,7 +340,7 @@ static int
 endxmlin_ern( xml *node, fields *info )
 {
 	if ( xml_tag_matches( node, "electronic-resource-num" ) )
-		return endxmlin_data( node, "DOI", info, 0 );
+		return endxmlin_data( node, "DOI", info, LEVEL_MAIN );
 	return BIBL_OK;
 }
 
@@ -337,7 +348,7 @@ static int
 endxmlin_language( xml *node, fields *info )
 {
 	if ( xml_tag_matches( node, "language" ) )
-		return endxmlin_data( node, "%G", info, 0 );
+		return endxmlin_data( node, "%G", info, LEVEL_MAIN );
 	return BIBL_OK;
 }
 
@@ -353,7 +364,7 @@ endxmlin_fileattach( xml *node, fields *info )
 {
 	int status;
 	if ( xml_tag_matches( node, "url" ) ) {
-		status = endxmlin_data( node, "FILEATTACH", info, 0 );
+		status = endxmlin_data( node, "FILEATTACH", info, LEVEL_MAIN );
 		if ( status!=BIBL_OK ) return status;
 	}
 	if ( node->down ) {
@@ -375,7 +386,7 @@ endxmlin_urls( xml *node, fields *info )
 		status = endxmlin_fileattach( node->down, info );
 		if ( status!=BIBL_OK ) return status;
 	} else if ( xml_tag_matches( node, "url" ) ) {
-		status = endxmlin_data( node, "%U", info, 0 );
+		status = endxmlin_data( node, "%U", info, LEVEL_MAIN );
 		if ( status!=BIBL_OK ) return status;
 	} else {
 		if ( node->down ) {
@@ -398,7 +409,7 @@ static int
 endxmlin_pubdates( xml *node, fields *info )
 {
 	if ( xml_tag_matches( node, "date" ) )
-		return endxmlin_data( node, "%8", info, 0 );
+		return endxmlin_data( node, "%8", info, LEVEL_MAIN );
 	else {
 		if ( node->down && xml_tag_matches( node->down, "date" ) )
 			return endxmlin_pubdates( node->down, info );
@@ -411,7 +422,7 @@ endxmlin_dates( xml *node, fields *info )
 {
 	int status;
 	if ( xml_tag_matches( node, "year" ) ) {
-		status = endxmlin_data( node, "%D", info, 0 );
+		status = endxmlin_data( node, "%D", info, LEVEL_MAIN );
 		if ( status!=BIBL_OK ) return status;
 	} else {
 		if ( node->down ) {
@@ -443,7 +454,7 @@ endxmlin_reftype( xml *node, fields *info )
 
 	s = xml_attribute( node, "name" );
 	if ( str_has_value( s ) ) {
-		status = fields_add( info, "%0", str_cstr( s ), 0 );
+		status = fields_add( info, "%0", str_cstr( s ), LEVEL_MAIN );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 
@@ -454,32 +465,33 @@ static int
 endxmlin_record( xml *node, fields *info )
 {
 	attribs a[] = {
-		{ "volume", "%V" },
-		{ "num-vol", "%6" },
-		{ "pages",  "%P" },
-		{ "number", "%N" },
-		{ "issue",  "%N" },
-		{ "label",  "%F" },
-		{ "auth-address", "%C" },
+		{ "volume",           "%V" },
+		{ "num-vol",          "%6" },
+		{ "pages",            "%P" },
+		{ "number",           "%N" },
+		{ "issue",            "%N" },
+		{ "label",            "%F" },
+		{ "auth-address",     "%C" },
 		{ "auth-affiliation", "%C" },
-		{ "pub-location", "%C" },
-		{ "publisher", "%I" },
-		{ "abstract", "%X" },
-		{ "edition", "%7" },
-		{ "reprint-edition", "%)" },
-		{ "section", "%&" },
-		{ "accession-num", "%M" },
-		{ "call-num", "%L" },
-		{ "isbn", "%@" },
-		{ "notes", "%O" },
-		{ "custom1", "%1" },
-		{ "custom2", "%2" },
-		{ "custom3", "%3" },
-		{ "custom4", "%4" },
-		{ "custom5", "%#" },
-		{ "custom6", "%$" },
+		{ "pub-location",     "%C" },
+		{ "publisher",        "%I" },
+		{ "abstract",         "%X" },
+		{ "edition",          "%7" },
+		{ "reprint-edition",  "%)" },
+		{ "section",          "%&" },
+		{ "accession-num",    "%M" },
+		{ "call-num",         "%L" },
+		{ "isbn",             "%@" },
+		{ "notes",            "%O" },
+		{ "custom1",          "%1" },
+		{ "custom2",          "%2" },
+		{ "custom3",          "%3" },
+		{ "custom4",          "%4" },
+		{ "custom5",          "%#" },
+		{ "custom6",          "%$" },
 	};
 	int i, status, n = sizeof ( a ) / sizeof( a[0] );
+
 	if ( xml_tag_matches( node, "DATABASE" ) ) {
 	} else if ( xml_tag_matches( node, "SOURCE-APP" ) ) {
 	} else if ( xml_tag_matches( node, "REC-NUMBER" ) ) {

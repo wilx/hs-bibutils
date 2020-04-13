@@ -1,8 +1,8 @@
 /*
  * adsout.c
  *
- * Copyright (c) Richard Mathar 2007-2019
- * Copyright (c) Chris Putnam 2007-2019
+ * Copyright (c) Richard Mathar 2007-2020
+ * Copyright (c) Chris Putnam 2007-2020
  *
  * Program and source code released under the GPL version 2
  *
@@ -174,8 +174,7 @@ append_title( fields *in, char *ttl, char *sub, char *adstag, int level, fields 
 			str_strcat( &fulltitle, vol );
 		}
 
-		iss = fields_findv_firstof( in, LEVEL_ANY, FIELDS_STRP, "ISSUE",
-			"NUMBER", NULL );
+		iss = fields_findv_firstof( in, LEVEL_ANY, FIELDS_STRP, "ISSUE", "NUMBER", NULL );
 		if ( str_has_value( iss ) ) {
 			str_strcatc( &fulltitle, ", no. " );
 			str_strcat( &fulltitle, iss );
@@ -632,7 +631,7 @@ adsout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 {
 	int type, status = BIBL_OK;
 
-	fields_clearused( in );
+	fields_clear_used( in );
 	type = get_type( in );
 
 	append_Rtag   ( in, "%R", type, out, &status );

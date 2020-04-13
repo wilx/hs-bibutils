@@ -1,3 +1,8 @@
+# 6.10.0.0
+
+  - Import Bibutils 6.10
+
+
 # 6.8.0.0
 
   - Import Bibutils 6.8

@@ -1,7 +1,7 @@
 /*
  * fields.c
  *
- * Copyright (c) Chris Putnam 2003-2019
+ * Copyright (c) Chris Putnam 2003-2020
  *
  * Source code released under the GPL version 2
  *
@@ -11,6 +11,22 @@
 #include <stdint.h>
 #include <string.h>
 #include "fields.h"
+
+#define FIELDS_MIN_ALLOC (20)
+
+/* private helper macros to access fields
+ *
+ * These skip all of the error checking and used flag manipulation
+ * of the fields functions, so they are faster. However, they should
+ * only be used in internal code that knows that the index is valid.
+ */
+#define _fields_tag(f,i)            &((f)->tag[(i)])
+#define _fields_tag_char(f,i)       str_cstr( &((f)->tag[(i)]) )
+#define _fields_tag_notempty(f,i)   str_has_value( &((f)->tag[(i)]) )
+#define _fields_value(f,i)          &((f)->value[(i)])
+#define _fields_value_char(f,i)     str_cstr( &((f)->value[(i)]) )
+#define _fields_value_notempty(f,i) str_has_value( &((f)->value[(i)]) )
+#define _fields_level(f,i)          (f)->level[(i)]
 
 fields*
 fields_new( void )
@@ -23,11 +39,9 @@ fields_new( void )
 void
 fields_init( fields *f )
 {
-	f->used  = NULL;
-	f->level = NULL;
-	f->tag   = NULL;
-	f->data  = NULL;
-	f->max   = f->n = 0;
+	f->used  = f->level = NULL;
+	f->tag   = f->value = NULL;
+	f->max   = f->n     = 0;
 }
 
 void
@@ -36,11 +50,11 @@ fields_free( fields *f )
 	int i;
 
 	for ( i=0; i<f->max; ++i ) {
-		str_free( &(f->tag[i]) );
-		str_free( &(f->data[i]) );
+		str_free( _fields_tag( f, i ) );
+		str_free( _fields_value( f, i ) );
 	}
 	if ( f->tag )   free( f->tag );
-	if ( f->data )  free( f->data );
+	if ( f->value ) free( f->value );
 	if ( f->used )  free( f->used );
 	if ( f->level ) free( f->level );
 
@@ -54,99 +68,136 @@ fields_delete( fields *f )
 	free( f );
 }
 
-static int
-fields_alloc( fields *f )
+int
+fields_remove( fields *f, int n )
 {
-	int i, alloc = 20;
+	int i;
+	if ( n<0 || n>= f->n ) return FIELDS_ERR_MEMERR;
+	for ( i=n+1; i<f->n; ++i ) {
+		str_strcpy( _fields_tag  ( f, i-1 ), _fields_tag  ( f, i ) );
+		str_strcpy( _fields_value( f, i-1 ), _fields_value( f, i ) );
+		f->used[i-1]  = f->used[i];
+		f->level[i-1] = f->level[i];
+	}
+	f->n -= 1;
+	return FIELDS_OK;
+}
 
+static void
+initialize_new_tag_data_pairs( fields *f, int start, int end )
+{
+	int i;
+	for ( i=start; i<end; ++i ) {
+		str_init( _fields_tag( f, i ) );
+		str_init( _fields_value( f, i ) );
+	}
+}
+
+static int
+fields_alloc( fields *f, int alloc )
+{
 	f->tag   = (str *) malloc( sizeof(str) * alloc );
-	f->data  = (str *) malloc( sizeof(str) * alloc );
-	f->used  = (int *)    calloc( alloc, sizeof(int) );
-	f->level = (int *)    calloc( alloc, sizeof(int) );
-	if ( !f->tag || !f->data || !f->used || !f->level ){
+	f->value = (str *) malloc( sizeof(str) * alloc );
+	f->used  = (int *) calloc( alloc, sizeof(int) );
+	f->level = (int *) calloc( alloc, sizeof(int) );
+	if ( !f->tag || !f->value || !f->used || !f->level ){
 		if ( f->tag )   free( f->tag );
-		if ( f->data )  free( f->data );
+		if ( f->value ) free( f->value );
 		if ( f->used )  free( f->used );
 		if ( f->level ) free( f->level );
 		fields_init( f );
-		return FIELDS_ERR;
+		return FIELDS_ERR_MEMERR;
 	}
 
+	initialize_new_tag_data_pairs( f, 0, alloc );
+
 	f->max = alloc;
-	f->n = 0;
-	for ( i=0; i<alloc; ++i ) {
-		str_init( &(f->tag[i]) );
-		str_init( &(f->data[i]) );
-	}
+	f->n   = 0;
+
 	return FIELDS_OK;
 }
 
 static int
 fields_realloc( fields *f )
 {
-	str *newtags, *newdata;
 	int *newused, *newlevel;
-	int i, alloc = f->max * 2;
+	str *newtags, *newvalue;
+	int alloc;
 
-	newtags = (str*) realloc( f->tag, sizeof(str) * alloc );
-	newdata = (str*) realloc( f->data, sizeof(str) * alloc );
-	newused = (int*) realloc( f->used, sizeof(int) * alloc );
-	newlevel= (int*) realloc( f->level, sizeof(int) * alloc );
+	alloc = f->max * 2;
+	if ( alloc < f->max ) return FIELDS_ERR_MEMERR; /* integer overflow */
 
+	newtags  = (str*) realloc( f->tag,   sizeof(str) * alloc );
+	newvalue = (str*) realloc( f->value, sizeof(str) * alloc );
+	newused  = (int*) realloc( f->used,  sizeof(int) * alloc );
+	newlevel = (int*) realloc( f->level, sizeof(int) * alloc );
+
+	/*
+	 * ensure struct fields is consistent by reassigning pointers for any successful
+	 * reallocation prior to failing on memory error
+	 */
 	if ( newtags )  f->tag   = newtags;
-	if ( newdata )  f->data  = newdata;
+	if ( newvalue ) f->value = newvalue;
 	if ( newused )  f->used  = newused;
 	if ( newlevel ) f->level = newlevel;
-	
-	if ( !newtags || !newdata || !newused || !newlevel )
-		return FIELDS_ERR;
+
+	if ( !newtags || !newvalue || !newused || !newlevel )
+		return FIELDS_ERR_MEMERR;
+
+	initialize_new_tag_data_pairs( f, f->n, alloc );
 
 	f->max = alloc;
-
-	for ( i=f->n; i<alloc; ++i ) {
-		str_init( &(f->tag[i]) );
-		str_init( &(f->data[i]) );
-	}
 
 	return FIELDS_OK;
 }
 
-int
-_fields_add( fields *f, const char *tag, const char *data, int level, int mode )
+static int
+ensure_space( fields *f )
 {
-	int i, n, status;
-	str *t, *d;
+	int status = FIELDS_OK;
+	if ( f->max==0 )         status = fields_alloc( f, FIELDS_MIN_ALLOC );
+	else if ( f->n==f->max ) status = fields_realloc( f );
+	return status;
+}
 
-	if ( !tag || !data ) return FIELDS_OK;
+static int
+is_duplicate_entry( fields *f, const char *tag, const char *value, int level )
+{
+	int i;
 
-	if ( f->max==0 ) {
-		status = fields_alloc( f );
-		if ( status!=FIELDS_OK ) return status;
-	} else if ( f->n >= f->max ) {
-		status = fields_realloc( f );
-		if ( status!=FIELDS_OK ) return status;
+	for ( i=0; i<f->n; i++ ) {
+		if ( _fields_level( f, i ) != level ) continue;
+		if ( strcasecmp( _fields_tag_char( f, i ),   tag   ) ) continue;
+		if ( strcasecmp( _fields_value_char( f, i ), value ) ) continue;
+		return 1;
 	}
 
-	/* Don't duplicate identical entries if FIELDS_NO_DUPS */
-	if ( mode == FIELDS_NO_DUPS ) {
-		for ( i=0; i<f->n; i++ ) {
-			t = &(f->tag[i]);
-			d = &(f->data[i]);
-			if ( f->level[i]==level &&
-			     !strcasecmp( str_cstr( t ), tag ) &&
-			     !strcasecmp( str_cstr( d ), data ) )
-				return FIELDS_OK;
-		}
-	}
+	return 0;
+}
+
+int
+_fields_add( fields *f, const char *tag, const char *value, int level, int mode )
+{
+	int n, status;
+
+	/* Don't add incomplete entry */
+	if ( !tag || !value ) return FIELDS_OK;
+
+	/* Don't add duplicate entry if FIELDS_NO_DUPS */
+	if ( mode == FIELDS_NO_DUPS && is_duplicate_entry( f, tag, value, level ) )
+		return FIELDS_OK;
+
+	status = ensure_space( f );
+	if ( status!=FIELDS_OK ) return status;
 
 	n = f->n;
 	f->used[ n ]  = 0;
 	f->level[ n ] = level;
-	str_strcpyc( &(f->tag[n]), tag );
-	str_strcpyc( &(f->data[n]), data );
+	str_strcpyc( _fields_tag( f, n ),   tag   );
+	str_strcpyc( _fields_value( f, n ), value );
 
-	if ( str_memerr( &(f->tag[n]) ) || str_memerr( &(f->data[n] ) ) )
-		return FIELDS_ERR;
+	if ( str_memerr( &(f->tag[n]) ) || str_memerr( &(f->value[n] ) ) )
+		return FIELDS_ERR_MEMERR;
 
 	f->n++;
 
@@ -154,19 +205,66 @@ _fields_add( fields *f, const char *tag, const char *data, int level, int mode )
 }
 
 int
-_fields_add_tagsuffix( fields *f, const char *tag, const char *suffix,
-		const char *data, int level, int mode )
+_fields_add_suffix( fields *f, const char *tag, const char *suffix, const char *value, int level, int mode )
 {
 	str newtag;
 	int ret;
 
 	str_init( &newtag );
+
 	str_mergestrs( &newtag, tag, suffix, NULL );
-	if ( str_memerr( &newtag ) ) ret = FIELDS_ERR;
-	else ret = _fields_add( f, newtag.data, data, level, mode );
+	if ( str_memerr( &newtag ) )
+		ret = FIELDS_ERR_MEMERR;
+	else
+		ret = _fields_add( f, str_cstr( &newtag ), value, level, mode );
+
 	str_free( &newtag );
 
 	return ret;
+}
+
+static fields*
+fields_new_size( int alloc )
+{
+	int status;
+	fields *f;
+
+	f = ( fields * ) malloc( sizeof( fields ) );
+	if ( f ) {
+		fields_init( f );
+		status = fields_alloc( f, alloc );
+		if ( status!=FIELDS_OK ) {
+			fields_delete( f );
+			return NULL;
+		}
+	}
+	return f;
+}
+
+fields *
+fields_dupl( fields *in )
+{
+	int i, level, status;
+	char *tag, *value;
+	fields *out;
+
+	out = fields_new_size( in->n );
+	if ( !out ) return NULL;
+
+	for ( i=0; i<in->n; ++i ) {
+		tag   = _fields_tag_char( in, i );
+		value = _fields_value_char( in, i );
+		level = _fields_level( in, i );
+		if ( tag && value ) {
+			status = fields_add_can_dup( out, tag, value, level );
+			if ( status!=FIELDS_OK ) {
+				fields_delete( out );
+				return NULL;
+			}
+		}
+	}
+
+	return out;
 }
 
 /* fields_match_level()
@@ -189,31 +287,31 @@ fields_match_level( fields *f, int n, int level )
  *
  */
 int
-fields_match_tag( fields *info, int n, const char *tag )
+fields_match_tag( fields *f, int n, const char *tag )
 {
-	if ( !strcmp( fields_tag( info, n, FIELDS_CHRP ), tag ) ) return 1;
+	if ( !strcmp( _fields_tag_char( f, n ), tag ) ) return 1;
 	return 0;
 }
 
 int
-fields_match_casetag( fields *info, int n, const char *tag )
+fields_match_casetag( fields *f, int n, const char *tag )
 {
-	if ( !strcasecmp( fields_tag( info, n, FIELDS_CHRP ), tag ) ) return 1;
+	if ( !strcasecmp( _fields_tag_char( f, n ), tag ) ) return 1;
 	return 0;
 }
 
 int
-fields_match_tag_level( fields *info, int n, const char *tag, int level )
+fields_match_tag_level( fields *f, int n, const char *tag, int level )
 {
-	if ( !fields_match_level( info, n, level ) ) return 0;
-	return fields_match_tag( info, n, tag );
+	if ( !fields_match_level( f, n, level ) ) return 0;
+	return fields_match_tag( f, n, tag );
 }
 
 int
-fields_match_casetag_level( fields *info, int n, const char *tag, int level )
+fields_match_casetag_level( fields *f, int n, const char *tag, int level )
 {
-	if ( !fields_match_level( info, n, level ) ) return 0;
-	return fields_match_casetag( info, n, tag );
+	if ( !fields_match_level( f, n, level ) ) return 0;
+	return fields_match_casetag( f, n, tag );
 }
 
 /* fields_find()
@@ -229,7 +327,7 @@ fields_find( fields *f, const char *tag, int level )
 	for ( i=0; i<f->n; ++i ) {
 		if ( !fields_match_casetag_level( f, i, tag, level ) )
 			continue;
-		if ( f->data[i].len ) return i;
+		if ( str_has_value( _fields_value( f, i ) ) ) return i;
 		else {
 			/* if there is no data for the tag, don't "find" it */
 			/* and set "used" so noise is suppressed */
@@ -246,10 +344,10 @@ fields_maxlevel( fields *f )
 	int i, max = 0;
 
 	if ( f->n ) {
-		max = f->level[0];
+		max = _fields_level( f, 0 );
 		for ( i=1; i<f->n; ++i ) {
-			if ( f->level[i] > max )
-				max = f->level[i];
+			if ( _fields_level( f, i ) > max )
+				max = _fields_level( f, i );
 		}
 	}
 
@@ -257,7 +355,7 @@ fields_maxlevel( fields *f )
 }
 
 void
-fields_clearused( fields *f )
+fields_clear_used( fields *f )
 {
 	int i;
 
@@ -266,7 +364,7 @@ fields_clearused( fields *f )
 }
 
 void
-fields_setused( fields *f, int n )
+fields_set_used( fields *f, int n )
 {
 	if ( n >= 0 && n < f->n )
 		f->used[n] = 1;
@@ -274,16 +372,20 @@ fields_setused( fields *f, int n )
 
 /* fields_replace_or_add()
  *
- * return FIELDS_OK on success, FIELDS_ERR on memory error
+ * return FIELDS_OK on success, else FIELDS_ERR_MEMERR
  */
 int
-fields_replace_or_add( fields *f, const char *tag, const char *data, int level )
+fields_replace_or_add( fields *f, const char *tag, const char *value, int level )
 {
-	int n = fields_find( f, tag, level );
-	if ( n==FIELDS_NOTFOUND ) return fields_add( f, tag, data, level );
+	int n;
+
+	n = fields_find( f, tag, level );
+	if ( n==FIELDS_NOTFOUND ) {
+		return fields_add( f, tag, value, level );
+	}
 	else {
-		str_strcpyc( &(f->data[n]), data );
-		if ( str_memerr( &(f->data[n]) ) ) return FIELDS_ERR;
+		str_strcpyc( _fields_value( f, n ), value );
+		if ( str_memerr( _fields_value( f, n ) ) ) return FIELDS_ERR_MEMERR;
 		return FIELDS_OK;
 	}
 }
@@ -298,25 +400,28 @@ fields_used( fields *f, int n )
 }
 
 int
-fields_notag( fields *f, int n )
+fields_no_tag( fields *f, int n )
 {
-	str *t;
 	if ( n >= 0 && n < f->n ) {
-		t = &( f->tag[n] );
-		if ( t->len > 0 ) return 0;
+		if ( _fields_tag_notempty( f, n ) ) return 0;
 	}
 	return 1;
 }
 
 int
-fields_nodata( fields *f, int n )
+fields_no_value( fields *f, int n )
 {
-	str *d;
 	if ( n >= 0 && n < f->n ) {
-		d = &( f->data[n] );
-		if ( d->len > 0 ) return 0;
+		if ( _fields_value_notempty( f, n ) ) return 0;
 	}
 	return 1;
+}
+
+int
+fields_has_value( fields *f, int n )
+{
+	if ( n >= 0 && n < f->n ) return _fields_value_notempty( f, n );
+	return 0;
 }
 
 int
@@ -346,16 +451,18 @@ fields_value( fields *f, int n, int mode )
 	if ( n<0 || n>= f->n ) return NULL;
 
 	if ( mode & FIELDS_SETUSE_FLAG )
-		fields_setused( f, n );
+		fields_set_used( f, n );
 
-	if ( mode & FIELDS_STRP_FLAG )
-		return &(f->data[n]);
+	if ( mode & FIELDS_STRP_FLAG ) {
+		return ( void * ) _fields_value( f, n );
+	}
 	else if ( mode & FIELDS_POSP_FLAG ) {
-		retn = n;
-		return ( void * ) retn; /* Rather pointless */
-	} else {
-		if ( f->data[n].len )
-			return f->data[n].data;
+		retn = n;               /* avoid compiler warning */
+		return ( void * ) retn; /* Rather pointless -- the user provided "n" */
+	}
+	else {
+		if ( str_has_value( _fields_value( f, n ) ) )
+			return _fields_value_char( f, n );
 		else
 			return fields_null_value;
 	}
@@ -368,14 +475,16 @@ fields_tag( fields *f, int n, int mode )
 
 	if ( n<0 || n>= f->n ) return NULL;
 
-	if ( mode & FIELDS_STRP_FLAG )
-		return &(f->tag[n]);
+	if ( mode & FIELDS_STRP_FLAG ) {
+		return ( void * ) _fields_tag( f, n );
+	}
 	else if ( mode & FIELDS_POSP_FLAG ) {
-		retn = n;
-		return ( void * ) retn; /* Rather pointless */
-	} else {
-		if ( f->tag[n].len )
-			return f->tag[n].data;
+		retn = n;               /* avoid compiler warning */
+		return ( void * ) retn; /* Rather pointless -- the user provided "n" */
+	}
+	else {
+		if ( str_has_value( _fields_tag( f, n ) ) )
+			return _fields_tag_char( f, n );
 		else
 			return fields_null_value;
 	}
@@ -385,22 +494,23 @@ int
 fields_level( fields *f, int n )
 {
 	if ( n<0 || n>= f->n ) return 0;
-	return f->level[n];
+	return _fields_level( f, n );
 }
 
 void *
 fields_findv( fields *f, int level, int mode, const char *tag )
 {
 	int i, found = FIELDS_NOTFOUND;
-	intptr_t retn;
 
-	for ( i=0; i<f->n && found==FIELDS_NOTFOUND; ++i ) {
+	for ( i=0; i<f->n; ++i ) {
 
 		if ( !fields_match_level( f, i, level ) ) continue;
 		if ( !fields_match_casetag( f, i, tag ) ) continue;
 
-		if ( f->data[i].len!=0 ) found = i;
-		else {
+		if ( _fields_value_notempty( f, i ) ) {
+			found = i;
+			break;
+		} else {
 			if ( mode & FIELDS_NOLENOK_FLAG ) {
 				return (void *) fields_null_value;
 			} else if ( mode & FIELDS_SETUSE_FLAG ) {
@@ -410,17 +520,7 @@ fields_findv( fields *f, int level, int mode, const char *tag )
 	}
 
 	if ( found==FIELDS_NOTFOUND ) return NULL;
-
-	if ( mode & FIELDS_SETUSE_FLAG )
-		fields_setused( f, found );
-
-	if ( mode & FIELDS_STRP_FLAG )
-		return (void *) &(f->data[found]);
-	else if ( mode & FIELDS_POSP_FLAG ) {
-		retn = found;
-		return (void *) retn;
-	} else
-		return (void *) f->data[found].data;
+	else return fields_value( f, found, mode );
 }
 
 void *
@@ -448,23 +548,13 @@ fields_findv_each_add( fields *f, int mode, int n, vplist *a )
 	int status;
 	void *v;
 
-	if ( n<0 || n>= f->n ) return FIELDS_OK;
-
-	if ( mode & FIELDS_SETUSE_FLAG )
-		fields_setused( f, n );
-
-	if ( mode & FIELDS_STRP_FLAG ) {
-		v = ( void * ) &( f->data[n] );
-	} else if ( mode & FIELDS_POSP_FLAG ) {
-		v = ( void * )( (long long) n );
-	} else {
-		v = ( void * ) str_cstr( &( f->data[n] ) );
-	}
+	v = fields_value( f, n, mode );
+	if ( !v ) return FIELDS_OK;
 
 	status = vplist_add( a, v );
 
 	if ( status==VPLIST_OK ) return FIELDS_OK;
-	else return FIELDS_ERR;
+	else return FIELDS_ERR_MEMERR;
 }
 
 int
@@ -477,7 +567,7 @@ fields_findv_each( fields *f, int level, int mode, vplist *a, const char *tag )
 		if ( !fields_match_level( f, i, level ) ) continue;
 		if ( !fields_match_casetag( f, i, tag ) ) continue;
 
-		if ( f->data[i].len!=0 ) {
+		if ( _fields_value_notempty( f, i ) ) {
 			status = fields_findv_each_add( f, mode, i, a );
 			if ( status!=FIELDS_OK ) return status;
 		} else {
@@ -502,7 +592,7 @@ fields_build_tags( va_list argp, vplist *tags )
 
 	while ( ( tag = ( char * ) va_arg( argp, char * ) ) ) {
 		status = vplist_add( tags, tag );
-		if ( status!=VPLIST_OK ) return FIELDS_ERR;
+		if ( status!=VPLIST_OK ) return FIELDS_ERR_MEMERR;
 	}
 
 	return FIELDS_OK;
@@ -540,7 +630,7 @@ fields_findv_eachof( fields *f, int level, int mode, vplist *a, ... )
 		if ( !fields_match_level( f, i, level ) ) continue;
 		if ( !fields_match_casetags( f, i, &tags ) ) continue;
 
-		if ( f->data[i].len!=0 || ( mode & FIELDS_NOLENOK_FLAG ) ) {
+		if ( _fields_value_notempty( f, i ) || ( mode & FIELDS_NOLENOK_FLAG ) ) {
 			status = fields_findv_each_add( f, mode, i, a );
 			if ( status!=FIELDS_OK ) goto out;
 		} else {
@@ -563,10 +653,9 @@ fields_report( fields *f, FILE *fp )
 	for ( i=0; i<n; ++i ) {
 		fprintf( stderr, "%d\tlevel = %d\t'%s' = '%s'\n",
 			i+1,
-			fields_level( f, i ),
-			(char*)fields_tag( f, i, FIELDS_CHRP_NOUSE ),
-			(char*)fields_value( f, i, FIELDS_CHRP_NOUSE )
+			_fields_level( f, i ),
+			_fields_tag_char( f, i ),
+			_fields_value_char( f, i )
 		);
 	}
 }
-

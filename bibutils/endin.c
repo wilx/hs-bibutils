@@ -1,7 +1,7 @@
 /*
  * endin.c
  *
- * Copyright (c) Chris Putnam 2003-2019
+ * Copyright (c) Chris Putnam 2003-2020
  *
  * Program and source code released under the GPL version 2
  *
@@ -173,32 +173,53 @@ process_endline2( str *tag, str *data, const char *p )
 static int
 endin_processf( fields *endin, const char *p, const char *filename, long nref, param *pm )
 {
-	str tag, data;
+	str tag, value, *oldvalue;
 	int status, n;
-	strs_init( &tag, &data, NULL );
+	char *oldtag;
+
+	strs_init( &tag, &value, NULL );
+
 	while ( *p ) {
-		strs_empty( &tag, &data, NULL );
+
+		strs_empty( &tag, &value, NULL );
+
 		if ( endin_istag( p ) ) {
-			p = process_endline( &tag, &data, p );
-			if ( str_is_empty( &data ) ) continue;
-			status = fields_add( endin, str_cstr( &tag ), str_cstr( &data ), 0 );
+
+			p = process_endline( &tag, &value, p );
+			if ( str_is_empty( &value ) ) continue;
+
+			status = fields_add( endin, str_cstr( &tag ), str_cstr( &value ), LEVEL_MAIN );
 			if ( status!=FIELDS_OK ) return 0;
-		} else {
-			p = process_endline2( &tag, &data, p );
-			/* endnote puts %K only on 1st line of keywords */
+
+		}
+
+		/* endnote puts %K only on 1st line of keywords */
+		else {
+
+			p = process_endline2( &tag, &value, p );
+			if ( str_is_empty( &value ) ) continue;
+
 			n = fields_num( endin );
-			if ( n>0 && str_has_value( &data ) ) {
-			if ( !strncmp( endin->tag[n-1].data, "%K", 2 ) ) {
-				status = fields_add( endin, "%K", str_cstr( &data ), 0 );
+			if ( n==0 ) continue; /* no previous line to append to */
+
+			oldtag = fields_tag( endin, n-1, FIELDS_CHRP_NOUSE );
+
+			/* last line was a keyword, so this is a new keyword */
+			if ( !strncmp( oldtag, "%K", 2 ) ) {
+				status = fields_add( endin, "%K", str_cstr( &value ), LEVEL_MAIN );
 				if ( status!=FIELDS_OK ) return 0;
-			} else {
-				str_addchar( &(endin->data[n-1]), ' ' );
-				str_strcat( &(endin->data[n-1]), &data );
 			}
+
+			/* last line wasn't a keyword, so this line should just be appended */
+			else {
+				oldvalue = fields_value( endin, n-1, FIELDS_STRP_NOUSE );
+				str_addchar( oldvalue, ' ' );
+				str_strcat( oldvalue, &value );
+				if ( str_memerr( oldvalue ) ) return 0;
 			}
 		}
 	}
-	strs_free( &tag, &data, NULL );
+	strs_free( &tag, &value, NULL );
 	return 1;
 }
 
@@ -353,9 +374,12 @@ endin_cleanref( fields *endin )
 int
 endin_cleanf( bibl *bin, param *p )
 {
+	int status;
         long i;
-        for ( i=0; i<bin->nrefs; ++i )
-                endin_cleanref( bin->ref[i] );
+        for ( i=0; i<bin->n; ++i ) {
+                status = endin_cleanref( bin->ref[i] );
+		if ( status!=BIBL_OK ) return status;
+	}
 	return BIBL_OK;
 }
 
@@ -558,8 +582,8 @@ endin_convertf( fields *bibin, fields *bibout, int reftype, param *p )
 	for ( i=0; i<nfields; ++i ) {
 
 		/* Ensure we have data */
-		if ( fields_nodata( bibin, i ) ) {
-			fields_setused( bibin, i );
+		if ( fields_no_value( bibin, i ) ) {
+			fields_set_used( bibin, i );
 			continue;
 		}
 
@@ -582,7 +606,7 @@ endin_convertf( fields *bibin, fields *bibout, int reftype, param *p )
 			continue;
 		}
 
-		fields_setused( bibin, i );
+		fields_set_used( bibin, i );
 
 		status = convertfns[ process ]( bibin, i, intag, invalue, level, p, outtag, bibout );
 		if ( status!=BIBL_OK ) return status;

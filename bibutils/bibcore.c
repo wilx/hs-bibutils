@@ -1,7 +1,7 @@
 /*
  * bibcore.c
  *
- * Copyright (c) Chris Putnam 2005-2019
+ * Copyright (c) Chris Putnam 2005-2020
  *
  * Source code released under the GPL version 2
  *
@@ -20,12 +20,14 @@
 #define BIBL_INTERNALIN   (BIBL_LASTIN+1)
 #define BIBL_INTERNALOUT  (BIBL_LASTOUT+1)
 
-#define debug_set( p ) ( p->verbose > 1 )
-#define verbose_set( p ) ( p->verbose )
+#define debug_set( p ) ( (p)->verbose > 1 )
+#define verbose_set( p ) ( (p)->verbose )
 
 static void
 report_params( FILE *fp, const char *f, param *p )
 {
+	fflush( NULL );
+
 	fprintf( fp, "-------------------params start for %s\n", f );
 	fprintf( fp, "\tprogname='%s'\n\n", p->progname );
 
@@ -96,10 +98,12 @@ static int
 bibl_duplicateparams( param *np, param *op )
 {
 	int status;
+
 	slist_init( &(np->asis) );
-	slist_init( &(np->corps) );
 	status = slist_copy( &(np->asis), &(op->asis ) );
 	if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
+
+	slist_init( &(np->corps) );
 	status = slist_copy( &(np->corps), &(op->corps ) );
 	if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
 
@@ -109,40 +113,40 @@ bibl_duplicateparams( param *np, param *op )
 		if ( !np->progname ) return BIBL_ERR_MEMERR;
 	}
 
-	np->readformat = op->readformat;
-	np->writeformat = op->writeformat;
-
-	np->charsetin = op->charsetin;
+	np->readformat    = op->readformat;
+	np->charsetin     = op->charsetin;
 	np->charsetin_src = op->charsetin_src;
-	np->utf8in = op->utf8in;
-	np->latexin = op->latexin;
-	np->xmlin = op->xmlin;
+	np->utf8in        = op->utf8in;
+	np->latexin       = op->latexin;
+	np->xmlin         = op->xmlin;
 
-	np->charsetout = op->charsetout;
+	np->writeformat    = op->writeformat;
+	np->charsetout     = op->charsetout;
 	np->charsetout_src = op->charsetout_src;
-	np->utf8out = op->utf8out;
-	np->utf8bom = op->utf8bom;
-	np->latexout = op->latexout;
-	np->xmlout = op->xmlout;
-	np->nosplittitle = op->nosplittitle;
+	np->utf8out        = op->utf8out;
+	np->utf8bom        = op->utf8bom;
+	np->latexout       = op->latexout;
+	np->xmlout         = op->xmlout;
+	np->nosplittitle   = op->nosplittitle;
 
-	np->verbose = op->verbose;
-	np->format_opts = op->format_opts;
-	np->addcount = op->addcount;
-	np->output_raw = op->output_raw;
+	np->verbose          = op->verbose;
+	np->format_opts      = op->format_opts;
+	np->addcount         = op->addcount;
+	np->output_raw       = op->output_raw;
 	np->singlerefperfile = op->singlerefperfile;
 
-	np->readf = op->readf;
-	np->processf = op->processf;
-	np->cleanf = op->cleanf;
-	np->typef = op->typef;
-	np->convertf = op->convertf;
-	np->headerf = op->headerf;
-	np->footerf = op->footerf;
+	np->readf     = op->readf;
+	np->processf  = op->processf;
+	np->cleanf    = op->cleanf;
+	np->typef     = op->typef;
+	np->convertf  = op->convertf;
+	np->headerf   = op->headerf;
+	np->footerf   = op->footerf;
 	np->assemblef = op->assemblef;
-	np->writef = op->writef;
-	np->all = op->all;
-	np->nall = op->nall;
+	np->writef    = op->writef;
+
+	np->all       = op->all;
+	np->nall      = op->nall;
 
 	return BIBL_OK;
 }
@@ -295,11 +299,11 @@ bibl_illegaloutmode( int mode )
 }
 
 static void
-bibl_verbose2( fields *f, char *filename, long nrefs )
+bibl_verbose_reference( fields *f, char *filename, long refnum )
 {
 	int i, n;
 	n = fields_num( f );
-	fprintf( stderr, "======== %s %ld : converted\n", filename, nrefs );
+	fprintf( stderr, "======== %s %ld : converted\n", filename, refnum );
 	for ( i=0; i<n; ++i ) {
 		fprintf( stderr, "'%s'='%s' level=%d\n",
 			(char*) fields_tag( f, i, FIELDS_CHRP_NOUSE ),
@@ -307,33 +311,20 @@ bibl_verbose2( fields *f, char *filename, long nrefs )
 			fields_level( f, i ) );
 	}
 	fprintf( stderr, "\n" );
+}
+
+static void
+bibl_verbose( bibl *bin, const char *msg1, const char *msg2 )
+{
+	long i;
+	fflush( stdout );
+	fprintf( stderr, "-------------------%s begin %s\n", msg1, msg2);
+	for ( i=0; i<bin->n; ++i )
+		bibl_verbose_reference( bin->ref[i], "", i+1 );
+	fprintf( stderr, "-------------------%s end %s\n", msg1, msg2);
 	fflush( stderr );
 }
 
-#if 0
-static void
-bibl_verbose1( fields *f, fields *orig, char *filename, long nrefs )
-{
-	int i, n;
-	n = fields_num( orig );
-	fprintf( stderr, "======== %s %ld : processed\n", filename, nrefs );
-	for ( i=0; i<n; ++i ) {
-		fprintf( stderr, "'%s'='%s' level=%d\n",
-			(char*) fields_tag( orig, i, FIELDS_CHRP_NOUSE ),
-			(char*) fields_value( orig, i, FIELDS_CHRP_NOUSE ),
-			fields_level( orig, i ) );
-	}
-	if ( f ) bibl_verbose2( f, filename, nrefs );
-}
-#endif
-
-static void
-bibl_verbose0( bibl *bin )
-{
-	int i;
-	for ( i=0; i<bin->nrefs; ++i )
-		bibl_verbose2( bin->ref[i], "", i+1 );
-}
 
 /* extract_tag_value
  *
@@ -453,12 +444,13 @@ out:
 }
 
 static int
-read_ref( FILE *fp, bibl *bin, char *filename, param *p )
+read_refs( FILE *fp, bibl *bin, char *filename, param *p )
 {
-	int nrefs = 0, bufpos = 0, ok, ret=BIBL_OK, fcharset;/* = CHARSET_UNKNOWN;*/
+	int refnum = 0, bufpos = 0, ret=BIBL_OK, fcharset;/* = CHARSET_UNKNOWN;*/
 	str reference, line;
 	char buf[256]="";
 	fields *ref;
+
 	str_init( &reference );
 	str_init( &line );
 	while ( p->readf( fp, buf, sizeof(buf), &bufpos, &line, &reference, &fcharset ) ) {
@@ -469,14 +461,14 @@ read_ref( FILE *fp, bibl *bin, char *filename, param *p )
 			bibl_free( bin );
 			goto out;
 		}
-		if ( p->processf( ref, reference.data, filename, nrefs+1, p )){
-			ok = bibl_addref( bin, ref );
-			if ( !ok ) {
-				ret = BIBL_ERR_MEMERR;
+		if ( p->processf( ref, reference.data, filename, refnum+1, p )){
+			ret = bibl_addref( bin, ref );
+			if ( ret!=BIBL_OK ) {
 				bibl_free( bin );
 				fields_delete( ref );
 				goto out;
 			}
+			refnum += 1;
 		} else {
 			fields_delete( ref );
 		}
@@ -502,7 +494,7 @@ out:
 static int
 bibl_notexify( char *tag )
 {
-	char *protected[] = { "DOI", "URL", "REFNUM", "FILEATTACH" };
+	char *protected[] = { "DOI", "URL", "REFNUM", "FILEATTACH", "FILE" };
 	int i, nprotected = sizeof( protected ) / sizeof( protected[0] );
 	for ( i=0; i<nprotected; ++i )
 		if ( !strcasecmp( tag, protected[i] ) ) return 1;
@@ -551,88 +543,45 @@ bibl_fixcharsetdata( fields *ref, param *p )
 static int
 bibl_fixcharsets( bibl *b, param *p )
 {
-	int status = BIBL_OK;
+	int status;
 	long i;
-	for ( i=0; i<b->nrefs && status==BIBL_OK; ++i )
+
+	for ( i=0; i<b->n; ++i ) {
 		status = bibl_fixcharsetdata( b->ref[i], p );
-	return status;
-}
-
-static int
-build_refnum( fields *f, long nrefs, int *n )
-{
-	char *year, *author, *p, num[512];
-	int status, ret = BIBL_OK;
-	str refnum;
-
-	*n = -1;
-
-	str_init( &refnum );
-
-	year = fields_findv( f, LEVEL_MAIN, FIELDS_CHRP_NOUSE, "DATE:YEAR" );
-	if ( !year )
-		year = fields_findv_firstof( f, LEVEL_ANY, FIELDS_CHRP_NOUSE,
-			"DATE:YEAR", "PARTDATE:YEAR", NULL );
-
-	author = fields_findv( f, LEVEL_MAIN, FIELDS_CHRP_NOUSE, "AUTHOR" );
-	if ( !author )
-		author = fields_findv_firstof( f, LEVEL_ANY, FIELDS_CHRP_NOUSE,
-			"AUTHOR", "AUTHOR:CORP", "AUTHOR:ASIS", NULL );
-
-	if ( year && author ) {
-		p = author;
-		while ( *p && *p!='|' )
-			str_addchar( &refnum, *p++ );
-		p = year;
-		while ( *p && *p!=' ' && *p!='\t' )
-			str_addchar( &refnum, *p++ );
-	} else {
-		sprintf( num, "%ld", nrefs );
-		str_mergestrs( &refnum, "ref", num, NULL );
-	}
-	if ( str_memerr( &refnum ) ) {
-		ret = BIBL_ERR_MEMERR;
-		goto out;
-	}
-
-	status = fields_add( f, "REFNUM", refnum.data, LEVEL_MAIN );
-	if ( status!=FIELDS_OK ) ret = BIBL_ERR_MEMERR;
-	else *n = fields_find( f, "REFNUM", LEVEL_MAIN );
-
-out:
-	str_free( &refnum );
-
-	return ret;
-}
-
-static int
-bibl_checkrefid( bibl *b, param *p )
-{
-	char buf[512];
-	int n, status;
-	fields *ref;
-	long i;
-
-	for ( i=0; i<b->nrefs; ++i ) {
-		ref = b->ref[i];
-		n = fields_find( ref, "REFNUM", LEVEL_MAIN );
-		if ( n==FIELDS_NOTFOUND ) {
-			status = build_refnum( ref, i+1, &n );
-			if ( status!=BIBL_OK ) return status;
-		}
-		if ( p->addcount ) {
-			sprintf( buf, "_%ld", i+1 );
-			str_strcatc( &(ref->data[n]), buf );
-			if ( str_memerr( &(ref->data[n]) ) )
-				return BIBL_ERR_MEMERR;
-		}
+		if ( status!=BIBL_OK ) return status;
 	}
 
 	return BIBL_OK;
 }
 
 static int
-generate_citekey( fields *f, int nref )
+bibl_addcount( bibl *b )
+{
+	char buf[512];
+	fields *ref;
+	long i;
+	int n;
+
+	for ( i=0; i<b->n; ++i ) {
+
+		ref = b->ref[i];
+
+		n = fields_find( ref, "REFNUM", LEVEL_MAIN );
+		if ( n==FIELDS_NOTFOUND ) continue;
+
+		sprintf( buf, "_%ld", i+1 );
+		str_strcatc( fields_value( ref, n, FIELDS_STRP_NOUSE ), buf );
+		if ( str_memerr( fields_value( ref, n, FIELDS_STRP_NOUSE ) ) ) {
+			return BIBL_ERR_MEMERR;
+		}
+
+	}
+
+	return BIBL_OK;
+}
+
+static int
+generate_citekey( fields *f, long nref )
 {
 	int n1, n2, status, ret;
 	char *p, buf[100];
@@ -641,100 +590,68 @@ generate_citekey( fields *f, int nref )
 	str_init( &citekey );
 
 	n1 = fields_find( f, "AUTHOR", LEVEL_MAIN );
+	if ( n1==FIELDS_NOTFOUND ) n1 = fields_find( f, "AUTHOR:ASIS", LEVEL_MAIN );
+	if ( n1==FIELDS_NOTFOUND ) n1 = fields_find( f, "AUTHOR:CORP", LEVEL_MAIN );
 	if ( n1==FIELDS_NOTFOUND ) n1 = fields_find( f, "AUTHOR", LEVEL_ANY );
+	if ( n1==FIELDS_NOTFOUND ) n1 = fields_find( f, "AUTHOR:ASIS", LEVEL_ANY );
+	if ( n1==FIELDS_NOTFOUND ) n1 = fields_find( f, "AUTHOR:CORP", LEVEL_ANY );
+
 	n2 = fields_find( f, "DATE:YEAR", LEVEL_MAIN );
 	if ( n2==FIELDS_NOTFOUND ) n2 = fields_find( f, "DATE:YEAR", LEVEL_ANY );
 	if ( n2==FIELDS_NOTFOUND ) n2 = fields_find( f, "PARTDATE:YEAR", LEVEL_MAIN );
 	if ( n2==FIELDS_NOTFOUND ) n2 = fields_find( f, "PARTDATE:YEAR", LEVEL_ANY );
+
 	if ( n1!=FIELDS_NOTFOUND && n2!=FIELDS_NOTFOUND ) {
-		p = f->data[n1].data;
+
+		p = fields_value( f, n1, FIELDS_CHRP_NOUSE );
 		while ( p && *p && *p!='|' ) {
 			if ( !is_ws( *p ) ) str_addchar( &citekey, *p ); 
 			p++;
 		}
-		p = f->data[n2].data;
+
+		p = fields_value( f, n2, FIELDS_CHRP_NOUSE );
 		while ( p && *p ) {
 			if ( !is_ws( *p ) ) str_addchar( &citekey, *p );
 			p++;
 		}
-		if ( str_memerr( &citekey ) ) {
-			ret = -1;
-			goto out;
-		}
-		status = fields_add( f, "REFNUM", citekey.data, 0 );
-		if ( status!=FIELDS_OK ) {
-			ret = -1;
-			goto out;
-		}
-	} else {
-		sprintf( buf, "ref%d\n", nref );
+
+	}
+
+	else {
+		sprintf( buf, "ref%ld", nref );
 		str_strcpyc( &citekey, buf );
 	}
-	ret = fields_find( f, "REFNUM", LEVEL_ANY );
+
+	if ( str_memerr( &citekey ) ) {
+		ret = -1;
+		goto out;
+	}
+
+	status = fields_add( f, "REFNUM", str_cstr( &citekey ), LEVEL_MAIN );
+	if ( status!=FIELDS_OK ) {
+		ret = -1;
+		goto out;
+	}
+
+	ret = fields_find( f, "REFNUM", LEVEL_MAIN );
 out:
 	str_free( &citekey );
 	return ret;
 }
 
 static int
-resolve_citekeys( bibl *b, slist *citekeys, int *dup )
+get_citekeys( bibl *bin, slist *citekeys )
 {
-	const char abc[]="abcdefghijklmnopqrstuvwxyz";
-	int nsame, ntmp, n, i, j, status = BIBL_OK;
-	str tmp;
-
-	str_init( &tmp );
-
-	for ( i=0; i<citekeys->n; ++i ) {
-		if ( dup[i]==-1 ) continue;
-		nsame = 0;
-		for ( j=i; j<citekeys->n; ++j ) {
-			if ( dup[j]!=i ) continue;
-			str_strcpy( &tmp, slist_str( citekeys, j ) );
-			if ( str_memerr( &tmp ) ) {
-				status = BIBL_ERR_MEMERR;
-				goto out;
-			}
-			ntmp = nsame;
-			while ( ntmp >= 26 ) {
-				str_addchar( &tmp, 'a' );
-					ntmp -= 26;
-			}
-			if ( ntmp<26 && ntmp>=0 )
-			str_addchar( &tmp, abc[ntmp] );
-			if ( str_memerr( &tmp ) ) {
-				status = BIBL_ERR_MEMERR;
-				goto out;
-			}
-			nsame++;
-			dup[j] = -1;
-			n = fields_find( b->ref[j], "REFNUM", LEVEL_ANY );
-			if ( n!=FIELDS_NOTFOUND ) {
-				str_strcpy(&((b->ref[j])->data[n]),&tmp);
-				if ( str_memerr( &((b->ref[j])->data[n]) ) ) {
-					status = BIBL_ERR_MEMERR;
-					goto out;
-				}
-			}
-		}
-	}
-out:
-	str_free( &tmp );
-	return status;
-}
-
-static int
-get_citekeys( bibl *b, slist *citekeys )
-{
-	int i, n, status;
+	int n, status;
 	fields *f;
+	long i;
 
-	for ( i=0; i<b->nrefs; ++i ) {
-		f = b->ref[i];
+	for ( i=0; i<bin->n; ++i ) {
+		f = bin->ref[i];
 		n = fields_find( f, "REFNUM", LEVEL_ANY );
-		if ( n==FIELDS_NOTFOUND ) n = generate_citekey( f, i );
-		if ( n!=FIELDS_NOTFOUND && f->data[n].data ) {
-			status = slist_add( citekeys, &(f->data[n]) );
+		if ( n==FIELDS_NOTFOUND ) n = generate_citekey( f, i+1 );
+		if ( n!=FIELDS_NOTFOUND && fields_has_value( f, n ) ) {
+			status = slist_add( citekeys, fields_value( f, n, FIELDS_STRP_NOUSE ) );
 			if ( status!=SLIST_OK ) return BIBL_ERR_MEMERR;
 		} else {
 			status = slist_addc( citekeys, "" );
@@ -745,15 +662,11 @@ get_citekeys( bibl *b, slist *citekeys )
 	return BIBL_OK;
 }
 
-static int 
-dup_citekeys( bibl *b, slist *citekeys )
+static int
+identify_duplicates( bibl *b, slist *citekeys, int *dup )
 {
-	int i, j, status = BIBL_OK, *dup, ndup=0;
+	int i, j, ndup = 0;
 
-	dup = ( int * ) malloc( sizeof( int ) * citekeys->n );
-	if ( !dup ) return BIBL_ERR_MEMERR;
-
-	for ( i=0; i<citekeys->n; ++i ) dup[i] = -1;
 	for ( i=0; i<citekeys->n-1; ++i ) {
 		if ( dup[i]!=-1 ) continue;
 		for ( j=i+1; j<citekeys->n; ++j ) {
@@ -765,72 +678,145 @@ dup_citekeys( bibl *b, slist *citekeys )
 			}
 		}
 	}
-	if ( ndup ) status = resolve_citekeys( b, citekeys, dup );
+
+	return ndup;
+}
+
+static int
+build_new_citekey( int nsame, str *old_citekey, str *new_citekey )
+{
+	const char abc[]="abcdefghijklmnopqrstuvwxyz";
+
+	str_strcpy( new_citekey, old_citekey );
+
+	while ( nsame >= 26 ) {
+		str_addchar( new_citekey, 'a' );
+		nsame -= 26;
+	}
+
+	if ( nsame>=0 ) str_addchar( new_citekey, abc[nsame] );
+
+	return ( str_memerr( new_citekey ) ) ? BIBL_ERR_MEMERR : BIBL_OK;
+}
+
+static int
+resolve_duplicates( bibl *b, slist *citekeys, int *dup )
+{
+	int nsame, n, i, j, status = BIBL_OK;
+	str new_citekey, *ref_citekey;
+
+	str_init( &new_citekey );
+
+	for ( i=0; i<citekeys->n; ++i ) {
+
+		if ( dup[i]==-1 ) continue;
+
+		nsame = 0;
+
+		for ( j=i; j<citekeys->n; ++j ) {
+
+			if ( dup[j]!=i ) continue;
+
+			dup[j] = -1;
+
+			status = build_new_citekey( nsame, slist_str( citekeys, j ), &new_citekey );
+			if ( status!=BIBL_OK ) goto out;
+
+			n = fields_find( b->ref[j], "REFNUM", LEVEL_ANY );
+			if ( n==FIELDS_NOTFOUND ) continue;
+
+			ref_citekey = fields_value( b->ref[j], n, FIELDS_STRP_NOUSE );
+
+			str_strcpy( ref_citekey, &new_citekey );
+			if ( str_memerr( ref_citekey ) ) { status = BIBL_ERR_MEMERR; goto out; }
+
+			nsame++;
+		}
+	}
+out:
+	str_free( &new_citekey );
+	return status;
+}
+
+static int
+identify_and_resolve_duplicate_citekeys( bibl *b, slist *citekeys )
+{
+	int i, *dup, ndup, status=BIBL_OK;
+
+	dup = ( int * ) malloc( sizeof( int ) * citekeys->n );
+	if ( !dup ) return BIBL_ERR_MEMERR;
+	for ( i=0; i<citekeys->n; ++i ) dup[i] = -1;
+
+	ndup = identify_duplicates( b, citekeys, dup );
+
+	if ( ndup ) status = resolve_duplicates( b, citekeys, dup );
+
 	free( dup );
 	return status;
 }
 
 static int
-uniqueify_citekeys( bibl *b )
+uniqueify_citekeys( bibl *bin )
 {
 	slist citekeys;
 	int status;
+
 	slist_init( &citekeys );
-	status = get_citekeys( b, &citekeys );
+
+	status = get_citekeys( bin, &citekeys );
 	if ( status!=BIBL_OK ) goto out;
-	status = dup_citekeys( b, &citekeys );
+
+	status = identify_and_resolve_duplicate_citekeys( bin, &citekeys );
 out:
 	slist_free( &citekeys );
 	return status;
 }
 
 static int
-clean_ref( bibl *bin, param *p )
+clean_refs( bibl *bin, param *p )
 {
 	if ( p->cleanf ) return p->cleanf( bin, p );
 	else return BIBL_OK;
 }
 
 static int 
-convert_ref( bibl *bin, char *fname, bibl *bout, param *p )
+convert_refs( bibl *bin, char *fname, bibl *bout, param *p )
 {
+	int reftype = 0, status;
 	fields *rin, *rout;
-	int reftype = 0, ok, status;
 	long i;
 
-	for ( i=0; i<bin->nrefs; ++i ) {
+	for ( i=0; i<bin->n; ++i ) {
+
 		rin = bin->ref[i];
+
 		rout = fields_new();
 		if ( !rout ) return BIBL_ERR_MEMERR;
-		if ( p->typef ) 
-			reftype = p->typef( rin, fname, i+1, p );
+
+		if ( p->typef ) reftype = p->typef( rin, fname, i+1, p );
+
 		status = p->convertf( rin, rout, reftype, p );
 		if ( status!=BIBL_OK ) return status;
+
 		if ( p->all ) {
 			status = process_alwaysadd( rout, reftype, p );
 			if ( status!=BIBL_OK ) return status;
 			status = process_defaultadd( rout, reftype, p );
 			if ( status!=BIBL_OK ) return status;
 		}
-		ok = bibl_addref( bout, rout );
-		if ( !ok ) return BIBL_ERR_MEMERR;
+
+		status = bibl_addref( bout, rout );
+		if ( status!=BIBL_OK ) return status;
 	}
-	if ( debug_set( p ) ) {
-		fflush( stdout );
-		fprintf( stderr, "-------------------start for convert_ref\n");
-		bibl_verbose0( bout );
-		fprintf( stderr, "-------------------end for convert_ref\n" );
-		fflush( stderr );
-	}
-	status = uniqueify_citekeys( bout );
-	return status;
+
+	return BIBL_OK;
 }
 
 int
 bibl_read( bibl *b, FILE *fp, char *filename, param *p )
 {
-	int ok, status;
-	param lp;
+	int status = BIBL_OK;
+	param read_params;
 	bibl bin;
 
 	if ( !b )  return BIBL_ERR_BADINPUT;
@@ -838,91 +824,72 @@ bibl_read( bibl *b, FILE *fp, char *filename, param *p )
 	if ( !p )  return BIBL_ERR_BADINPUT;
 
 	if ( bibl_illegalinmode( p->readformat ) ) {
-		if ( debug_set( p ) ) {
-			fflush( stdout );
-			report_params( stderr, "bibl_read", p );
-		}
+		if ( debug_set( p ) ) report_params( stderr, "bibl_read", p );
 		return BIBL_ERR_BADINPUT;
 	}
 
-	status = bibl_setreadparams( &lp, p );
+	status = bibl_setreadparams( &read_params, p );
 	if ( status!=BIBL_OK ) {
-		if ( debug_set( p ) ) {
-			fflush( stdout );
-			report_params( stderr, "bibl_read", p );
-		}
+		if ( debug_set( p ) ) report_params( stderr, "bibl_read", p );
 		return status;
+	}
+
+	if ( debug_set( &read_params ) ) {
+		report_params( stderr, "bibl_read", &read_params );
 	}
 
 	bibl_init( &bin );
 
-	status = read_ref( fp, &bin, filename, &lp );
+	status = read_refs( fp, &bin, filename, &read_params );
 	if ( status!=BIBL_OK ) {
-		if ( debug_set( p ) ) {
-			fflush( stdout );
-			report_params( stderr, "bibl_read", &lp );
-		}
-		bibl_freeparams( &lp );
+		if ( debug_set( &read_params ) ) report_params( stderr, "bibl_read", &read_params );
+		bibl_freeparams( &read_params );
 		return status;
 	}
 
-	if ( debug_set( p ) ) {
-		fflush( stdout );
-		report_params( stderr, "bibl_read", &lp );
-		fprintf( stderr, "-------------------raw_input start for bibl_read\n");
-		bibl_verbose0( &bin );
-		fprintf( stderr, "-------------------raw_input end for bibl_read\n" );
-		fflush( stderr );
+	if ( debug_set( &read_params ) ) {
+		bibl_verbose( &bin, "raw_input", "for bibl_read" );
 	}
 
-	if ( !lp.output_raw || ( lp.output_raw & BIBL_RAW_WITHCHARCONVERT ) ) {
-		status = bibl_fixcharsets( &bin, &lp );
-		if ( status!=BIBL_OK ) return status;
-		if ( debug_set( p ) ) {
-			fprintf( stderr, "-------------------post_fixcharsets start for bibl_read\n");
-			bibl_verbose0( &bin );
-			fprintf( stderr, "-------------------post_fixcharsets end for bibl_read\n" );
-			fflush( stderr );
-		}
+	if ( !read_params.output_raw ) {
+		status = clean_refs( &bin, &read_params );
+		if ( status!=BIBL_OK ) goto out;
+		if ( debug_set( &read_params ) ) bibl_verbose( &bin, "post_clean_refs", "for bibl_read" );
 	}
-	if ( !lp.output_raw ) {
-		status = clean_ref( &bin, &lp );
-		if ( status!=BIBL_OK ) return status;
-		if ( debug_set( p ) ) {
-			fprintf( stderr, "-------------------post_clean_ref start for bibl_read\n");
-			bibl_verbose0( &bin );
-			fprintf( stderr, "-------------------post_clean_ref end for bibl_read\n" );
-			fflush( stderr );
-		}
-		ok = convert_ref( &bin, filename, b, &lp );
-		if ( ok!=BIBL_OK ) return ok;
-		if ( debug_set( p ) ) {
-			fprintf( stderr, "-------------------post_convert_ref start for bibl_read\n");
-			bibl_verbose0( &bin );
-			fprintf( stderr, "-------------------post_convert_ref end for bibl_read\n" );
-			fflush( stderr );
-		}
-	} else {
-		if ( debug_set( p ) ) {
-			fprintf( stderr, "-------------------here1 start for bibl_read\n");
-			bibl_verbose0( &bin );
-			fprintf( stderr, "-------------------here1 end for bibl_read\n" );
-			fflush( stderr );
-		}
-		ok = bibl_copy( b, &bin );
-		if ( !ok ) {
-			bibl_freeparams( &lp );
-			return BIBL_ERR_MEMERR;
-		}
-	}
-	if ( !lp.output_raw || ( lp.output_raw & BIBL_RAW_WITHMAKEREFID ) )
-		bibl_checkrefid( b, &lp );
 
+	if ( ( !read_params.output_raw ) || ( read_params.output_raw & BIBL_RAW_WITHCHARCONVERT ) ) {
+		status = bibl_fixcharsets( &bin, &read_params );
+		if ( status!=BIBL_OK ) goto out;
+		if ( debug_set( &read_params ) ) bibl_verbose( &bin, "post_fixcharsets", "for bibl_read" );
+	}
+
+	if ( !read_params.output_raw ) {
+		status = convert_refs( &bin, filename, b, &read_params );
+		if ( status!=BIBL_OK ) goto out;
+		if ( debug_set( &read_params ) ) bibl_verbose( b, "post_convert_refs", "for bibl_read" );
+	}
+
+	else {
+		status = bibl_copy( b, &bin );
+		if ( status!=BIBL_OK ) goto out;
+		if ( debug_set( &read_params ) ) bibl_verbose( b, "post_bibl_copy", "for bibl_read" );
+	}
+
+	if ( ( !read_params.output_raw ) || ( read_params.output_raw & BIBL_RAW_WITHMAKEREFID ) ) {
+		status = uniqueify_citekeys( b );
+		if ( status!=BIBL_OK ) goto out;
+		if ( read_params.addcount ) {
+			status = bibl_addcount( b );
+			if ( status!=BIBL_OK ) goto out;
+		}
+		if ( debug_set( &read_params ) ) bibl_verbose( &bin, "post_uniqueify_citekeys", "for bibl_read" );
+	}
+
+out:
 	bibl_free( &bin );
+	bibl_freeparams( &read_params );
 
-	bibl_freeparams( &lp );
-
-	return BIBL_OK;
+	return status;
 }
 
 static FILE *
@@ -943,7 +910,7 @@ singlerefname( fields *reffields, long nref, int mode )
 	found = fields_find( reffields, "REFNUM", LEVEL_MAIN );
 	/* find new filename based on reference */
 	if ( found!=-1 ) {
-		sprintf( outfile,"%s.%s",reffields->data[found].data, suffix );
+		sprintf( outfile,"%s.%s",(char*)fields_value(reffields,found,FIELDS_CHRP_NOUSE), suffix );
 	} else  sprintf( outfile,"%ld.%s",nref, suffix );
 	count = 0;
 	fp = fopen( outfile, "r" );
@@ -952,9 +919,8 @@ singlerefname( fields *reffields, long nref, int mode )
 		count++;
 		if ( count==60000 ) return NULL;
 		if ( found!=-1 )
-			sprintf( outfile, "%s_%ld.%s", 
-				reffields->data[found].data, count, suffix  );
-		else sprintf( outfile,"%ld_%ld.%s",nref, count, suffix );
+			sprintf( outfile, "%s_%ld.%s", (char*)fields_value( reffields, found, FIELDS_CHRP_NOUSE ), count, suffix );
+		else sprintf( outfile,"%ld_%ld.%s", nref, count, suffix );
 		fp = fopen( outfile, "r" );
 	}
 	return fopen( outfile, "w" );
@@ -969,7 +935,7 @@ bibl_writeeachfp( FILE *fp, bibl *b, param *p )
 
 	fields_init( &out );
 
-	for ( i=0; i<b->nrefs; ++i ) {
+	for ( i=0; i<b->n; ++i ) {
 
 		fp = singlerefname( b->ref[i], i, p->writeformat );
 		if ( !fp ) return BIBL_ERR_CANTOPEN;
@@ -1009,13 +975,13 @@ bibl_writefp( FILE *fp, bibl *b, param *p )
 	}
 
 	if ( p->headerf ) p->headerf( fp, p );
-	for ( i=0; i<b->nrefs; ++i ) {
+	for ( i=0; i<b->n; ++i ) {
 
 		if ( p->assemblef ) {
 			fields_free( &out );
 			status = p->assemblef( b->ref[i], &out, p, i );
 			if ( status!=BIBL_OK ) break;
-			if ( debug_set( p ) ) bibl_verbose2( &out, "", i+1 );
+			if ( debug_set( p ) ) bibl_verbose_reference( &out, "", i+1 );
 		} else {
 			use = b->ref[i];
 		}
@@ -1052,22 +1018,12 @@ bibl_write( bibl *b, FILE *fp, param *p )
 		fflush( stdout );
 	}
 
-	if ( debug_set( p ) ) {
-		fprintf( stderr, "-------------------raw input start for bibl_write\n");
-		bibl_verbose0( b );
-		fprintf( stderr, "-------------------raw input end for bibl_write\n" );
-		fflush( stderr );
-	}
+	if ( debug_set( p ) ) bibl_verbose( b, "raw_input", "for bibl_write" );
 
 	status = bibl_fixcharsets( b, &lp );
 	if ( status!=BIBL_OK ) goto out;
 
-	if ( debug_set( p ) ) {
-		fprintf( stderr, "-------------------post-fixcharsets start for bibl_write\n");
-		bibl_verbose0( b );
-		fprintf( stderr, "-------------------post-fixcharsets end for bibl_write\n" );
-		fflush( stderr );
-	}
+	if ( debug_set( p ) ) bibl_verbose( b, "post-fixcharsets", "for bibl_write" );
 
 	if ( p->singlerefperfile ) status = bibl_writeeachfp( fp, b, &lp );
 	else status = bibl_writefp( fp, b, &lp );

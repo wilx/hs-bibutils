@@ -1,7 +1,7 @@
 /*
  * isiin.c
  *
- * Copyright (c) Chris Putnam 2004-2019
+ * Copyright (c) Chris Putnam 2004-2020
  *
  * Program and source code released under the GPL version 2
  *
@@ -94,10 +94,15 @@ isiin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refe
 {
 	int haveref = 0, inref = 0;
 	char *p;
+
 	*fcharset = CHARSET_UNKNOWN;
+
 	while ( !haveref && readmore( fp, buf, bufsize, bufpos, line ) ) {
-		if ( !line->data ) continue;
-		p = &(line->data[0]);
+
+		if ( str_is_empty( line ) ) continue;
+
+		p = str_cstr( line );
+
 		/* Recognize UTF8 BOM */
 		if ( line->len > 2 &&
 				(unsigned char)(p[0])==0xEF &&
@@ -106,6 +111,7 @@ isiin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refe
 			*fcharset = CHARSET_UNICODE;
 			p += 3;
 		}
+
 		/* Each reference ends with 'ER ' */
 		if ( is_isi_tag( p ) ) {
 			if ( !strncmp( p, "FN ", 3 ) ) {
@@ -142,32 +148,45 @@ isiin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *refe
 *****************************************************/
 
 static const char *
-process_tagged_line( str *tag, str *data, const char *p )
+process_tagged_line( str *tag, str *value, const char *p )
 {
-	int i;
+	int i = 0;
 
 	/* collect tag and skip past it */
-	i = 0;
 	while ( i<2 && *p && *p!='\r' && *p!='\n') {
-		str_addchar( tag, *p++ );
+		str_addchar( tag, *p );
+		p++;
 		i++;
 	}
+
 	while ( *p==' ' || *p=='\t' ) p++;
-	while ( *p && *p!='\r' && *p!='\n' )
-		str_addchar( data, *p++ );
-	str_trimendingws( data );
+
+	while ( *p && *p!='\r' && *p!='\n' ) {
+		str_addchar( value, *p );
+		p++;
+	}
+
+	str_trimendingws( value );
+
 	while ( *p=='\r' || *p=='\n' ) p++;
+
 	return p;
 }
 
 static const char *
-process_untagged_line( str *data, const char *p )
+process_untagged_line( str *value, const char *p )
 {
 	while ( *p==' ' || *p=='\t' ) p++;
-	while ( *p && *p!='\r' && *p!='\n' )
-		str_addchar( data, *p++ );
-	str_trimendingws( data );
+
+	while ( *p && *p!='\r' && *p!='\n' ) {
+		str_addchar( value, *p );
+		p++;
+	}
+
+	str_trimendingws( value );
+
 	while ( *p=='\r' || *p=='\n' ) p++;
+
 	return p;
 }
 
@@ -177,7 +196,7 @@ add_tag_value( fields *isiin, str *tag, str *value, int *tag_added )
 	int status;
 
 	if ( str_has_value( tag ) && str_has_value( value ) ) {
-		status = fields_add( isiin, str_cstr( tag ), str_cstr( value ), 0 );
+		status = fields_add( isiin, str_cstr( tag ), str_cstr( value ), LEVEL_MAIN );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		*tag_added = 1;
 	}
@@ -193,6 +212,7 @@ static int
 merge_tag_value( fields *isiin, str *tag, str *value, int *tag_added )
 {
 	int n, status;
+	str *oldvalue;
 
 	if ( str_has_value( value ) ) {
 
@@ -203,22 +223,23 @@ merge_tag_value( fields *isiin, str *tag, str *value, int *tag_added )
 
 			/* only one AU or AF for list of authors */
 			if ( !strcmp( str_cstr( tag ), "AU" ) ) {
-				status = fields_add( isiin, "AU", str_cstr( value ), 0 );
+				status = fields_add( isiin, "AU", str_cstr( value ), LEVEL_MAIN );
 				if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 			} else if ( !strcmp( str_cstr( tag ), "AF" ) ) {
-				status = fields_add( isiin, "AF", str_cstr( value ), 0 );
+				status = fields_add( isiin, "AF", str_cstr( value ), LEVEL_MAIN );
 				if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 			}
 			/* otherwise append multiline data */
 			else {
-				str_addchar( &(isiin->data[n-1]),' ');
-				str_strcat( &(isiin->data[n-1]), value );
-				if ( str_memerr( &(isiin->data[n-1]) ) ) return BIBL_ERR_MEMERR;
+				oldvalue = fields_value( isiin, n-1, FIELDS_STRP_NOUSE );
+				str_addchar( oldvalue, ' ' );
+				str_strcat( oldvalue, value );
+				if ( str_memerr( oldvalue ) ) return BIBL_ERR_MEMERR;
 			}
 		}
 
 		else {
-                        status = fields_add( isiin, str_cstr( tag ), str_cstr( value ), 0 );
+                        status = fields_add( isiin, str_cstr( tag ), str_cstr( value ), LEVEL_MAIN );
                         if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
                         *tag_added = 1;
 		}
@@ -322,8 +343,8 @@ isiin_addauthors( fields *isiin, fields *info, int reftype, variants *all, int n
 static int
 isiin_keyword( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout )
 {
+	const char *p = str_cstr( invalue );
 	int fstatus, status = BIBL_OK;
-	const char *p = invalue->data;
 	str keyword;
 
 	str_init( &keyword );

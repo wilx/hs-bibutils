@@ -3,7 +3,7 @@
  *
  * mangle names w/ and w/o commas
  *
- * Copyright (c) Chris Putnam 2004-2019
+ * Copyright (c) Chris Putnam 2004-2020
  *
  * Source code released under the GPL version 2
  *
@@ -312,6 +312,7 @@ name_mutlielement_build( str *name, intlist *given, intlist *family, slist *toke
 			str_strcat( name, s );
 		} else add_given_split( name, s );
 	}
+
 	return 1;
 }
 
@@ -332,7 +333,7 @@ name_construct_multi( str *outname, slist *tokens, int begin, int end )
 	for ( i=begin; i<end && comma==-1; i++ ) {
 		if ( i==suffixpos ) continue;
 		s = slist_str( tokens, i );
-		if ( s->data[ s->len -1 ] == ',' ) {
+		if ( s->data[ s->len - 1 ] == ',' ) {
 			if ( suffix && i==suffixpos-1 && !(suffix&WITHCOMMA) )
 				str_trimend( s, 1 );
 			else
@@ -369,7 +370,8 @@ name_addmultielement( fields *info, const char *tag, slist *tokens, int begin, i
 	str_init( &name );
 
 	name_construct_multi( &name, tokens, begin, end );
-	status = fields_add_can_dup( info, tag, name.data, level );
+
+	status = fields_add_can_dup( info, tag, str_cstr( &name ), level );
 	if ( status!=FIELDS_OK ) ok = 0;
 
 	str_free( &name );
@@ -385,7 +387,7 @@ name_addmultielement( fields *info, const char *tag, slist *tokens, int begin, i
  * is set).
  */
 int
-name_addsingleelement( fields *info, const char *tag, const char *name, int level, int corp )
+name_addsingleelement( fields *info, const char *tag, const char *name, int level, int asiscorp )
 {
 	int status, ok = 1;
 	str outtag;
@@ -393,8 +395,8 @@ name_addsingleelement( fields *info, const char *tag, const char *name, int leve
 	str_init( &outtag );
 
 	str_strcpyc( &outtag, tag );
-	if ( !corp ) str_strcatc( &outtag, ":ASIS" );
-	else str_strcatc( &outtag, ":CORP" );
+	if ( asiscorp == NAME_ASIS ) str_strcatc( &outtag, ":ASIS" );
+	else if ( asiscorp == NAME_CORP ) str_strcatc( &outtag, ":CORP" );
 
 	status = fields_add_can_dup( info, outtag.data, name, level );
 	if ( status!=FIELDS_OK ) ok = 0;
@@ -518,9 +520,9 @@ name_add( fields *info, const char *tag, const char *q, int level, slist *asis, 
 			ok = ( status==FIELDS_OK ) ? 1 : 0;
 		}
 		else if ( nametype==2 )
-			ok = name_addsingleelement( info, tag, outname.data, level, 0 );
+			ok = name_addsingleelement( info, tag, outname.data, level, NAME_ASIS );
 		else
-			ok = name_addsingleelement( info, tag, outname.data, level, 1 );
+			ok = name_addsingleelement( info, tag, outname.data, level, NAME_CORP );
 
 		if ( !ok ) { ret = 0; goto out; }
 

@@ -1,7 +1,7 @@
 /*
  * modsout.c
  *
- * Copyright (c) Chris Putnam 2003-2019
+ * Copyright (c) Chris Putnam 2003-2020
  *
  * Source code released under the GPL version 2
  *
@@ -218,7 +218,7 @@ output_title( fields *f, FILE *outptr, int level )
 	/* output shorttitle if it's different from normal title */
 	if ( shrttl!=FIELDS_NOTFOUND ) {
 		val = (char *) fields_value( f, shrttl, FIELDS_CHRP );
-		if ( ttl==FIELDS_NOTFOUND || subttl!=FIELDS_NOTFOUND || strcmp(f->data[ttl].data,val) ) {
+		if ( ttl==FIELDS_NOTFOUND || subttl!=FIELDS_NOTFOUND || strcmp(fields_value(f,ttl,FIELDS_CHRP),val) ) {
 			output_tag( outptr, lvl2indent(level),               "titleInfo", NULL, TAG_OPEN,      TAG_NEWLINE, "type", "abbreviated", NULL );
 			output_tag( outptr, lvl2indent(incr_level(level,1)), "title",     val,  TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 			output_tag( outptr, lvl2indent(level),               "titleInfo", NULL, TAG_CLOSE,     TAG_NEWLINE, NULL );
@@ -337,7 +337,7 @@ output_names( fields *f, FILE *outptr, int level )
 	for ( n=0; n<ntypes; ++n ) {
 		for ( i=0; i<nfields; ++i ) {
 			if ( fields_level( f, i )!=level ) continue;
-			if ( f->data[i].len==0 ) continue;
+			if ( fields_no_value( f, i ) ) continue;
 			f_asis = f_corp = f_conf = 0;
 			str_strcpyc( &role, f->tag[i].data );
 			if ( str_findreplace( &role, ":ASIS", "" )) f_asis=1;
@@ -355,7 +355,7 @@ output_names( fields *f, FILE *outptr, int level )
 				output_tag( outptr, lvl2indent(level),               "name",     NULL, TAG_OPEN,      TAG_NEWLINE, "type", "conference", NULL );
 				output_fil( outptr, lvl2indent(incr_level(level,1)), "namePart", f, i, TAG_OPENCLOSE, TAG_NEWLINE, NULL );
 			} else {
-				output_name(outptr, f->data[i].data, level);
+				output_name(outptr, fields_value( f, i, FIELDS_CHRP ), level);
 			}
 			output_tag( outptr, lvl2indent(incr_level(level,1)), "role", NULL, TAG_OPEN, TAG_NEWLINE, NULL );
 			if ( names[n].code & MARC_AUTHORITY )
@@ -364,7 +364,7 @@ output_names( fields *f, FILE *outptr, int level )
 				output_tag( outptr, lvl2indent(incr_level(level,2)), "roleTerm", names[n].mods, TAG_OPENCLOSE, TAG_NEWLINE, "type", "text", NULL );
 			output_tag( outptr, lvl2indent(incr_level(level,1)), "role", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
 			output_tag( outptr, lvl2indent(level),               "name", NULL, TAG_CLOSE, TAG_NEWLINE, NULL );
-			fields_setused( f, i );
+			fields_set_used( f, i );
 		}
 	}
 	str_free( &role );
@@ -826,7 +826,7 @@ output_type( fields *f, FILE *outptr, int level )
 
 	/* silence warnings about INTERNAL_TYPE being unused */
 	n = fields_find( f, "INTERNAL_TYPE", LEVEL_MAIN );
-	if ( n!=FIELDS_NOTFOUND ) fields_setused( f, n );
+	if ( n!=FIELDS_NOTFOUND ) fields_set_used( f, n );
 
 	output_resource( f, outptr, level );
 	output_genre( f, outptr, level );

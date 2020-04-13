@@ -1,7 +1,7 @@
 /*
  * risin.c
  *
- * Copyright (c) Chris Putnam 2003-2019
+ * Copyright (c) Chris Putnam 2003-2020
  *
  * Source code released under the GPL version 2
  *
@@ -349,7 +349,7 @@ risin_linkedfile( fields *bibin, int n, str *intag, str *invalue, int level, par
 	m = is_uri_file_scheme( str_cstr( invalue ) );
 	if ( m ) {
 		/* skip past "file:" and store only actual path */
-		p = invalue->data + m;
+		p = str_cstr( invalue ) + m;
 		fstatus = fields_add( bibout, outtag, p, level );
 		if ( fstatus==FIELDS_OK ) return BIBL_OK;
 		else return BIBL_ERR_MEMERR;
@@ -376,7 +376,7 @@ risin_doi( fields *bibin, int n, str *intag, str *invalue, int level, param *pm,
 	int fstatus, doi;
 	doi = is_doi( str_cstr( invalue ) );
 	if ( doi!=-1 ) {
-		fstatus = fields_add( bibout, "DOI", &(invalue->data[doi]), level );
+		fstatus = fields_add( bibout, "DOI", str_cstr( invalue ) + doi, level );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 	return BIBL_OK;

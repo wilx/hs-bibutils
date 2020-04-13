@@ -1,7 +1,7 @@
 /*
  * endout.c
  *
- * Copyright (c) Chris Putnam 2004-2019
+ * Copyright (c) Chris Putnam 2004-2020
  *
  * Program and source code released under the GPL version 2
  *
@@ -652,7 +652,7 @@ endout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 {
 	int added, type, status = BIBL_OK;
 
-	fields_clearused( in );
+	fields_clear_used( in );
 
 	type = get_type( in, pm, refnum );
 

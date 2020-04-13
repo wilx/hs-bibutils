@@ -1,7 +1,7 @@
 /*
  * modsin.c
  *
- * Copyright (c) Chris Putnam 2004-2019
+ * Copyright (c) Chris Putnam 2004-2020
  *
  * Source code released under the GPL version 2
  *
@@ -83,7 +83,7 @@ modsin_detailr( xml *node, str *value )
 {
 	int status = BIBL_OK;
 	if ( xml_has_value( node ) ) {
-		if ( value->len ) str_addchar( value, ' ' );
+		if ( str_has_value( value ) ) str_addchar( value, ' ' );
 		str_strcat( value, xml_value( node ) );
 		if ( str_memerr( value ) ) return BIBL_ERR_MEMERR;
 	}
@@ -99,27 +99,32 @@ modsin_detailr( xml *node, str *value )
 static int
 modsin_detail( xml *node, fields *info, int level )
 {
-	str type, value, *tp;
 	int fstatus, status = BIBL_OK;
-	if ( node->down ) {
-		strs_init( &type, &value, NULL );
-		tp = xml_attribute( node, "type" );
-		if ( tp ) {
-			str_strcpy( &type, tp );
-			str_toupper( &type );
-			if ( str_memerr( &type ) ) goto out;
-		}
-		status = modsin_detailr( node->down, &value );
-		if ( status!=BIBL_OK ) goto out;
-		if ( type.data && !strcasecmp( type.data, "PAGE" ) ) {
-			fstatus = fields_add( info, "PAGES:START", value.data, level );
-		} else {
-			fstatus = fields_add( info, type.data, value.data, level );
-		}
-		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
-out:
-		strs_free( &type, &value, NULL );
+	str type, value, *tp;
+
+	if ( !node->down ) return BIBL_OK;
+
+	strs_init( &type, &value, NULL );
+
+	tp = xml_attribute( node, "type" );
+	if ( tp ) {
+		str_strcpy( &type, tp );
+		str_toupper( &type );
+		if ( str_memerr( &type ) ) goto out;
 	}
+
+	status = modsin_detailr( node->down, &value );
+	if ( status!=BIBL_OK ) goto out;
+
+	if ( str_has_value( &type ) && !strcasecmp( str_cstr( &type ), "PAGE" ) ) {
+		fstatus = fields_add( info, "PAGES:START", str_cstr( &value ), level );
+	} else {
+		fstatus = fields_add( info, str_cstr( &type ), str_cstr( &value ), level );
+	}
+	if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
+
+out:
+	strs_free( &type, &value, NULL );
 	return status;
 }
 
@@ -316,7 +321,7 @@ modsin_marcrole_convert( str *s, char *suffix, str *out )
 		}
 		/* ...take first match */
 		for ( i=0; i<tokens.n; ++i ) {
-			p = marc_convertrole( slist_cstr( &tokens, i ) );
+			p = marc_convert_role( slist_cstr( &tokens, i ) );
 			if ( p ) {
 				str_strcpyc( out, p );
 				goto done;
@@ -931,8 +936,8 @@ modsin_classification( xml *node, fields *info, int level )
 static int
 modsin_recordinfo( xml *node, fields *info, int level )
 {
+	xml *curr, *down;
 	int fstatus;
-	xml *curr;
 
 	/* extract recordIdentifier */
 	curr = node;
@@ -940,6 +945,12 @@ modsin_recordinfo( xml *node, fields *info, int level )
 		if ( xml_tag_matches_has_value( curr, "recordIdentifier" ) ) {
 			fstatus = fields_add( info, "REFNUM", xml_value_cstr( curr ), level );
 			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+		}
+		else if ( xml_tag_matches( curr, "languageOfCataloging" ) ) {
+			if ( curr->down ) {
+				down = curr->down;
+				fstatus = fields_add( info, "LANGCATALOG", xml_value_cstr( down ), level );
+			}
 		}
 		curr = curr->next;
 	}
@@ -968,6 +979,7 @@ modsin_identifier( xml *node, fields *info, int level )
 		{ "serial number", "SERIALNUMBER",0, 0 },
 		{ "accessnum",     "ACCESSNUM",   0, 0 },
 		{ "jstor",         "JSTOR",       0, 0 },
+		{ "eid",           "EID",         0, 0 },
 	};
 	int i, fstatus, n = sizeof( ids ) / sizeof( ids[0] );
 	if ( node->value.len==0 ) return BIBL_OK;
@@ -992,6 +1004,12 @@ modsin_mods( xml *node, fields *info, int level )
 	};
 	int nsimple = sizeof( simple ) / sizeof( simple[0] );
 	int i, found = 0, status = BIBL_OK;
+
+	if ( xml_tag_has_attribute( node, "note", "type", "annotation" ) ) {
+		status = modsin_simple( node, info, "ANNOTATION", level );
+		if ( status!=BIBL_OK ) return status;
+		found = 1;
+	}
 
 	for ( i=0; i<nsimple && found==0; i++ ) {
 		if ( xml_tag_matches( node, simple[i].mods ) ) {
@@ -1087,16 +1105,21 @@ modsin_processf( fields *modsin, const char *data, const char *filename, long nr
 *****************************************************/
 
 static char *
-modsin_startptr( char *p )
+modsin_startptr( char *p, char **next )
 {
 	char *startptr;
+	*next = NULL;
 	startptr = xml_find_start( p, "mods:mods" );
 	if ( startptr ) {
 		/* set namespace if found */
 		xml_pns = modsns;
+		*next = startptr + 9;
 	} else {
 		startptr = xml_find_start( p, "mods" );
-		if ( startptr ) xml_pns = NULL;
+		if ( startptr ) {
+			xml_pns = NULL;
+			*next = startptr + 5;
+		}
 	}
 	return startptr;
 }
@@ -1112,7 +1135,7 @@ modsin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *ref
 {
 	str tmp;
 	int m, file_charset = CHARSET_UNKNOWN;
-	char *startptr = NULL, *endptr = NULL;
+	char *startptr = NULL, *nextptr, *endptr = NULL;
 
 	str_init( &tmp );
 
@@ -1121,8 +1144,8 @@ modsin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *ref
 		if ( str_has_value( &tmp ) ) {
 			m = xml_getencoding( &tmp );
 			if ( m!=CHARSET_UNKNOWN ) file_charset = m;
-			startptr = modsin_startptr( tmp.data );
-			endptr = modsin_endptr( tmp.data );
+			startptr = modsin_startptr( tmp.data, &nextptr );
+			if ( nextptr ) endptr = modsin_endptr( nextptr );
 		} else startptr = endptr = NULL;
 		str_empty( line );
 		if ( startptr && endptr ) {

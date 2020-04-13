@@ -1,7 +1,7 @@
 /*
  * medin.c
  *
- * Copyright (c) Chris Putnam 2004-2019
+ * Copyright (c) Chris Putnam 2004-2020
  *
  * Source code released under the GPL version 2
  *
@@ -169,7 +169,7 @@ medin_articletitle( xml *node, fields *info )
 {
 	int fstatus, status = BIBL_OK;
 	if ( xml_has_value( node ) ) {
-		fstatus = fields_add( info, "TITLE", xml_value_cstr( node ), 0 );
+		fstatus = fields_add( info, "TITLE", xml_value_cstr( node ), LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
 	}
 	return status;
@@ -283,7 +283,7 @@ medin_journal1( xml *node, fields *info )
 				if ( status!=BIBL_OK ) return status;
 			}
 			if ( xml_tag_matches( node, "Language" ) ) {
-				status = medin_language( node, info, 1 );
+				status = medin_language( node, info, LEVEL_HOST );
 				if ( status!=BIBL_OK ) return status;
 			}
 		}
@@ -314,7 +314,7 @@ medin_pagination( xml *node, fields *info )
 		p = str_cpytodelim( &sp, xml_value_cstr( node ), "-", 1 );
 		if ( str_memerr( &sp ) ) return BIBL_ERR_MEMERR;
 		if ( str_has_value( &sp ) ) {
-			fstatus = fields_add( info, "PAGES:START", str_cstr( &sp ), 1 );
+			fstatus = fields_add( info, "PAGES:START", str_cstr( &sp ), LEVEL_HOST );
 			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
 		(void) str_cpytodelim( &ep, p, "", 0 );
@@ -325,7 +325,7 @@ medin_pagination( xml *node, fields *info )
 					sp.data[i] = ep.data[i-sp.len+ep.len];
 				pp = sp.data;
 			} else  pp = ep.data;
-			fstatus = fields_add( info, "PAGES:STOP", pp, 1 );
+			fstatus = fields_add( info, "PAGES:STOP", pp, LEVEL_HOST );
 			if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		}
 		strs_free( &sp, &ep, NULL );
@@ -350,7 +350,7 @@ medin_abstract( xml *node, fields *info )
 {
 	int fstatus;
 	if ( xml_tag_matches_has_value( node, "AbstractText" ) ) {
-		fstatus = fields_add( info, "ABSTRACT", xml_value_cstr( node ), 0 );
+		fstatus = fields_add( info, "ABSTRACT", xml_value_cstr( node ), LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	} else if ( node->next ) return medin_abstract( node->next, info );
 	return BIBL_OK;
@@ -409,28 +409,43 @@ medin_corpauthor( xml *node, str *name )
 static int
 medin_authorlist( xml *node, fields *info )
 {
-	int fstatus, status;
-	str name;
+	int fstatus, status = BIBL_OK;
 	char *tag;
+	str name;
+
 	str_init( &name );
+
 	node = node->down;
 	while ( node ) {
+
 		if ( xml_tag_matches( node, "Author" ) && node->down ) {
+
 			status = medin_author( node->down, &name );
+			if ( status!=BIBL_OK ) goto out;
+
 			tag = "AUTHOR";
 			if ( str_is_empty( &name ) ) {
 				status = medin_corpauthor( node->down, &name );
 				tag = "AUTHOR:CORP";
 			}
-			if ( str_memerr( &name ) || status!=BIBL_OK ) return BIBL_ERR_MEMERR;
+			if ( str_memerr( &name ) || status!=BIBL_OK ) {
+				status = BIBL_ERR_MEMERR;
+				goto out;
+			}
 			if ( str_has_value( &name ) ) {
-				fstatus = fields_add(info,tag,name.data,0);
-				if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
+				fstatus = fields_add( info, tag, str_cstr( &name ), LEVEL_MAIN );
+				if ( fstatus!=FIELDS_OK ) {
+					status = BIBL_ERR_MEMERR;
+					goto out;
+				}
 			}
 			str_empty( &name );
 		}
+
 		node = node->next;
 	}
+
+out:
 	str_free( &name );
 	return BIBL_OK;
 }
@@ -548,9 +563,9 @@ medin_article( xml *node, fields *info )
 	else if ( xml_tag_matches( node, "AuthorList" ) )
 		status = medin_authorlist( node, info );
 	else if ( xml_tag_matches( node, "Language" ) )
-		status = medin_language( node, info, 0 );
+		status = medin_language( node, info, LEVEL_MAIN );
 	else if ( xml_tag_matches( node, "Affiliation" ) ) {
-		fstatus = fields_add( info, "ADDRESS", xml_value_cstr( node ), 0 );
+		fstatus = fields_add( info, "ADDRESS", xml_value_cstr( node ), LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) status = BIBL_ERR_MEMERR;
 	}
 	if ( status!=BIBL_OK ) return status;
@@ -563,7 +578,7 @@ medin_medlinecitation( xml *node, fields *info )
 {
 	int fstatus, status = BIBL_OK;
 	if ( xml_tag_matches_has_value( node, "PMID" ) ) {
-		fstatus = fields_add( info, "PMID", xml_value_cstr( node ), 0 );
+		fstatus = fields_add( info, "PMID", xml_value_cstr( node ), LEVEL_MAIN );
 		if ( fstatus!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 	}
 	if ( node->down ) {
@@ -615,13 +630,13 @@ medin_assembleref( xml *node, fields *info )
 
 	/* assume everything is a journal article */
 	if ( fields_num( info ) ) {
-		status = fields_add( info, "RESOURCE", "text", 0 );
+		status = fields_add( info, "RESOURCE", "text", LEVEL_MAIN );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
-		status = fields_add( info, "ISSUANCE", "continuing", 1 );
+		status = fields_add( info, "ISSUANCE", "continuing", LEVEL_HOST );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
-		status = fields_add( info, "GENRE:MARC", "periodical", 1 );
+		status = fields_add( info, "GENRE:MARC", "periodical", LEVEL_HOST );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
-		status = fields_add( info, "GENRE:BIBUTILS", "academic journal", 1 );
+		status = fields_add( info, "GENRE:BIBUTILS", "academic journal", LEVEL_HOST );
 		if ( status!=FIELDS_OK ) return BIBL_ERR_MEMERR;
 		status = BIBL_OK;
 	}

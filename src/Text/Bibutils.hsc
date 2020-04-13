@@ -137,13 +137,13 @@ import Foreign
 -- | A type for storing the C struct with the bibliography data.
 -- Mostly opaque to the Haskell side. See 'numberOfRefs' to retrieve
 -- the number of references stored in the struct.
-newtype Bibl = Bibl { nrefs :: CLong }
+newtype Bibl = Bibl { n :: CLong }
 
 instance Storable Bibl where
     sizeOf    _     = #{size      bibl}
     alignment _     = #{alignment bibl}
-    peek p          = #{peek      bibl, nrefs } p >>= return . Bibl
-    poke p (Bibl n) = #{poke      bibl, nrefs } p n
+    peek p          = #{peek      bibl, n } p >>= return . Bibl
+    poke p (Bibl x) = #{poke      bibl, n } p x
 
 -- | Initialize the 'Bibl' C struct. Usually the first function being
 -- called.
@@ -160,7 +160,7 @@ bibl_free bibl = withForeignPtr bibl c_bibl_free
 -- | Retrieve the number of references from a 'Bibl' C struct.
 numberOfRefs :: ForeignPtr Bibl -> IO Int
 numberOfRefs b
-    = withForeignPtr b $ \cb -> peek cb >>= return . fromIntegral . nrefs
+    = withForeignPtr b $ \cb -> peek cb >>= return . fromIntegral . n
 
 -- | A type for storing the Param C struct. It should be accessed with
 -- the functions provided, such as 'setCharsetIn', etc.
@@ -395,7 +395,7 @@ bibl_addtocorps param entry
         c_bibl_addtocorps cparam centry
 
 bibl_reporterr :: Status -> IO ()
-bibl_reporterr (Status n) = c_bibl_reporterr n
+bibl_reporterr (Status st) = c_bibl_reporterr st
 
 newtype BiblioIn  = BiblioIn  { unBiblioIn  :: CInt }
     deriving ( Eq )

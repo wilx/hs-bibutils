@@ -3,7 +3,7 @@
  *
  * version: 2019-01-14
  *
- * Copyright (c) Chris Putnam 2004-2019
+ * Copyright (c) Chris Putnam 2004-2020
  *
  * Source code released under the GPL version 2
  *

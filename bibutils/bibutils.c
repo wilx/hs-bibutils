@@ -1,7 +1,7 @@
 /*
  * bibutils.c
  *
- * Copyright (c) Chris Putnam 2005-2019
+ * Copyright (c) Chris Putnam 2005-2020
  *
  * Source code released under the GPL version 2
  *
@@ -34,14 +34,15 @@ bibl_initparams( param *p, int readmode, int writemode, char *progname )
 	if ( status!=BIBL_OK ) return status;
 
 	switch ( writemode ) {
-	case BIBL_ADSABSOUT:   status = adsout_initparams   ( p, progname ); break;
-	case BIBL_BIBTEXOUT:   status = bibtexout_initparams( p, progname ); break;
-	case BIBL_ENDNOTEOUT:  status = endout_initparams   ( p, progname ); break;
-	case BIBL_ISIOUT:      status = isiout_initparams   ( p, progname ); break;
-	case BIBL_MODSOUT:     status = modsout_initparams  ( p, progname ); break;
-	case BIBL_NBIBOUT:     status = nbibout_initparams  ( p, progname ); break;
-	case BIBL_RISOUT:      status = risout_initparams   ( p, progname ); break;
-	case BIBL_WORD2007OUT: status = wordout_initparams  ( p, progname ); break;
+	case BIBL_ADSABSOUT:   status = adsout_initparams     ( p, progname ); break;
+	case BIBL_BIBTEXOUT:   status = bibtexout_initparams  ( p, progname ); break;
+	case BIBL_BIBLATEXOUT: status = biblatexout_initparams( p, progname ); break;
+	case BIBL_ENDNOTEOUT:  status = endout_initparams     ( p, progname ); break;
+	case BIBL_ISIOUT:      status = isiout_initparams     ( p, progname ); break;
+	case BIBL_MODSOUT:     status = modsout_initparams    ( p, progname ); break;
+	case BIBL_NBIBOUT:     status = nbibout_initparams    ( p, progname ); break;
+	case BIBL_RISOUT:      status = risout_initparams     ( p, progname ); break;
+	case BIBL_WORD2007OUT: status = wordout_initparams    ( p, progname ); break;
 	default:               status = BIBL_ERR_BADINPUT;
 	}
 

@@ -1,7 +1,7 @@
 /*
  * nbibout.c
  *
- * Copyright (c) Chris Putnam 2018-2019
+ * Copyright (c) Chris Putnam 2018-2020
  *
  * Source code released under the GPL version 2
  *

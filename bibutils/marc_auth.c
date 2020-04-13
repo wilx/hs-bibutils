@@ -1,7 +1,9 @@
 /*
  * marc_auth.c
  *
- * Copyright (c) Chris Putnam 2004-2019
+ * MARC (MAchine-Readable Cataloging) 21 authority codes/values from the Library of Congress initiative
+ *
+ * Copyright (c) Chris Putnam 2004-2020
  *
  * Source code released under the GPL version 2
  *
@@ -123,293 +125,296 @@ static const int nmarc_resource = sizeof( marc_resource ) / sizeof( const char* 
 /* www.loc.gov/marc/relators/relacode.html */
 
 typedef struct marc_trans {
-	char *abbreviation;
 	char *internal_name;
+	char *abbreviation;
 } marc_trans;
 
 static const marc_trans relators[] = {
-	{ "abr",	"ABRIDGER"                     },	/* Abridger */
-	{ "acp",	"ART_COPYIST"                  },	/* Art copyist */
-	{ "act",	"ACTOR"                        },	/* Actor */
-	{ "adi", 	"ART_DIRECTOR"                 },	/* Art director */
-	{ "adp",	"ADAPTER"                      },	/* Adapter */
-	{ "aft",	"AUTHOR"                       },	/* Author of afterword, colophon, etc. */
-	{ "anl",	"ANALYST"                      }, 	/* Analyst */
-	{ "anm",	"ANIMATOR"                     },	/* Animator */
-	{ "ann",	"ANNOTATOR"                    },	/* Annotator */
-	{ "ant",	"BIBLIOGRAPHIC_ANTECENDENT"    },	/* Bibliographic antecedent */
-	{ "ape",	"APPELLEE"                     },	/* Appellee */
-	{ "apl",	"APPELLANT"                    }, 	/* Appellant */
-	{ "app",	"APPLICANT"                    },	/* Applicant */
-	{ "aqt",	"AUTHOR"                       },	/* Author in quotations or text abstracts */
-	{ "arc",	"ARCHITECT"                    },	/* Architect */
-	{ "ard",	"ARTISTIC_DIRECTOR"            },	/* Artistic director */
-	{ "arr",	"ARRANGER"                     },	/* Arranger */
-	{ "art",	"ARTIST"                       },	/* Artist */
-	{ "asg",	"ASSIGNEE"                     },	/* Assignee */
-	{ "asn",	"ASSOCIATED_NAME"              },	/* Associated name */
-	{ "ato",	"AUTOGRAPHER"                  },	/* Autographer */
-	{ "att",	"ATTRIBUTED_NAME"              },	/* Attributed name */
-	{ "auc",	"AUCTIONEER"                   },	/* Auctioneer */
-	{ "aud",	"AUTHOR"                       },	/* Author of dialog */
-	{ "aui",	"AUTHOR"                       },	/* Author of introduction, etc. */
-	{ "aus",	"AUTHOR"                       },	/* Screenwriter */
-	{ "aut",	"AUTHOR"                       },	/* Author */
-	{ "author",     "AUTHOR"                       },
-	{ "bdd",	"BINDING_DESIGNER"             },	/* Binding designer */
-	{ "bjd",	"BOOKJACKET_DESIGNER"          },	/* Bookjacket designer */
-	{ "bkd",	"BOOK_DESIGNER"                },	/* Book designer */
-	{ "bkp",	"BOOK_PRODUCER"                },	/* Book producer */
-	{ "blw",	"AUTHOR"                       },	/* Blurb writer */
-	{ "bnd",	"BINDER"                       },	/* Binder */
-	{ "bpd",	"BOOKPLATE_DESIGNER"           },	/* Bookplate designer */
-	{ "brd",	"BROADCASTER"                  },	/* Broadcaster */
-	{ "brl",	"BRAILLE_EMBOSSER"             },	/* Braille embosser */
-	{ "bsl",	"BOOKSELLER"                   },	/* Bookseller */
-	{ "cas",	"CASTER"                       },	/* Caster */
-	{ "ccp",	"CONCEPTOR"                    },	/* Conceptor */
-	{ "chr",	"CHOREOGRAPHER"                },	/* Choreographer */
-	{ "clb",	"COLLABORATOR"                 },	/* Collaborator */
-	{ "cli",	"CLIENT"                       },	/* Client */
-	{ "cll",	"CALLIGRAPHER"                 },	/* Calligrapher */
-	{ "clr",	"COLORIST"                     },	/* Colorist */
-	{ "clt",	"COLLOTYPER"                   },	/* Collotyper */
-	{ "cmm",	"COMMENTATOR"                  },	/* Commentator */
-	{ "cmp",	"COMPOSER"                     },	/* Composer */
-	{ "cmt",	"COMPOSITOR"                   },	/* Compositor */
-	{ "cnd",	"CONDUCTOR"                    },	/* Conductor */
-	{ "cng",	"CINEMATOGRAPHER"              },	/* Cinematographer */
-	{ "cns",	"CENSOR"                       },	/* Censor */
-	{ "coe",	"CONTESTANT-APPELLEE"          },	/* Contestant-appellee */
-	{ "col",	"COLLECTOR"                    },	/* Collector */
-	{ "com",	"COMPILER"                     },	/* Compiler */
-	{ "con",	"CONSERVATOR"                  },	/* Conservator */
-	{ "cor",	"COLLECTION_REGISTRAR"         },	/* Collection registrar */
-	{ "cos",	"CONTESTANT"                   },	/* Contestant */
-	{ "cot",	"CONTESTANT-APPELLANT"         },	/* Contestant-appellant */
-	{ "cou",	"COURT_GOVERNED"               },	/* Court governed */
-	{ "cov",	"COVER_DESIGNER"               },	/* Cover designer */
-	{ "cpc",	"COPYRIGHT_CLAIMANT"           },	/* Copyright claimant */
-	{ "cpe",	"COMPLAINANT-APPELLEE"         },	/* Complainant-appellee */
-	{ "cph",	"COPYRIGHT_HOLDER"             },	/* Copyright holder */
-	{ "cpl",	"COMPLAINANT"                  },	/* Complainant */
-	{ "cpt",	"COMPLAINANT-APPELLANT"        },	/* Complainant-appellant */
-	{ "cre",	"AUTHOR"                       },	/* Creator */
-	{ "creator",    "AUTHOR"                       },
-	{ "crp",	"CORRESPONDENT"                },	/* Correspondent */
-	{ "crr",	"CORRECTOR"                    },	/* Corrector */
-	{ "crt",	"COURT_REPORTER"               },	/* Court reporter */
-	{ "csl",	"CONSULTANT"                   },	/* Consultant */
-	{ "csp",	"CONSULTANT_TO_A_PROJECT"      },	/* Consultant to a project */
-	{ "cst",	"COSTUME_DESIGNER"             },	/* Costume designer */
-	{ "ctb",	"CONTRIBUTOR"                  },	/* Contributor */
-	{ "cte",	"CONTESTEE-APPELLEE"           },	/* Contestee-appellee */
-	{ "ctg",	"CARTOGRAPHER"                 },	/* Cartographer */
-	{ "ctr",	"CONTRACTOR"                   },	/* Contractor */
-	{ "cts",	"CONTESTEE"                    },	/* Contestee */
-	{ "ctt",	"CONTESTEE-APPELLANT"          },	/* Contestee-appellant */
-	{ "cur",	"CURATOR"                      },	/* Curator */
-	{ "cwt",	"COMMENTATOR_FOR_WRITTEN_TEXT" },	/* Commentator for written text */
-	{ "dbp",	"DISTRIBUTION_PLACE"           },	/* Distribution place */
-	{ "degree grantor", "DEGREEGRANTOR"            },
-	{ "dfd",	"DEFENDANT"                    },	/* Defendant */
-	{ "dfe",	"DEFENDANT-APPELLEE"           },	/* Defendant-appellee */
-	{ "dft",	"DEFENDANT-APPELLANT"          },	/* Defendant-appellant */
-	{ "dgg",	"DEGREEGRANTOR"                },	/* Degree granting institution */
-	{ "dgs",	"DEGREE_SUPERVISOR"            },	/* Degree supervisor */
-	{ "dis",	"DISSERTANT"                   },	/* Dissertant */
-	{ "dln",	"DELINEATOR"                   },	/* Delineator */
-	{ "dnc",	"DANCER"                       },	/* Dancer */
-	{ "dnr",	"DONOR"                        },	/* Donor */
-	{ "dpc",	"DEPICTED"                     },	/* Depicted */
-	{ "dpt",	"DEPOSITOR"                    },	/* Depositor */
-	{ "drm",	"DRAFTSMAN"                    }, 	/* Draftsman */
-	{ "drt",	"DIRECTOR"                     }, 	/* Director */
-	{ "dsr",	"DESIGNER"                     }, 	/* Designer */
-	{ "dst",	"DISTRIBUTOR"                  }, 	/* Distributor */
-	{ "dtc",	"DATA_CONTRIBUTOR"             }, 	/* Data contributor */
-	{ "dte",	"DEDICATEE"                    }, 	/* Dedicatee */
-	{ "dtm",	"DATA_MANAGER"                 }, 	/* Data manager */
-	{ "dto",	"DEDICATOR"                    }, 	/* Dedicator */
-	{ "dub",	"AUTHOR"                       },	/* Dubious author */
-	{ "edc",	"EDITOR"                       }, 	/* Editor of compilation */
-	{ "edm",	"EDITOR"                       },	/* Editor of moving image work */
-	{ "edt",	"EDITOR"                       },	/* Editor */
-	{ "egr",	"ENGRAVER"                     }, 	/* Engraver */
-	{ "elg",	"ELECTRICIAN" 	               },	/* Electrician */
-	{ "elt",	"ELECTROTYPER"                 },	/* Electrotyper */
-	{ "eng",	"ENGINEER"                     }, 	/* Engineer */
-	{ "enj",	"ENACTING_JURISICTION"         }, 	/* Enacting jurisdiction */
-	{ "etr",	"ETCHER"                       }, 	/* Etcher */
-	{ "evp",	"EVENT_PLACE"                  }, 	/* Event place */
-	{ "exp",	"EXPERT"                       }, 	/* Expert */
-	{ "fac",	"FACSIMILIST"                  }, 	/* Facsimilist */
-	{ "fds",	"FILM_DISTRIBUTOR"             }, 	/* Film distributor */
-	{ "fld",	"FIELD_DIRECTOR"               }, 	/* Field director */
-	{ "flm",	"FILM_EDITOR"                  }, 	/* Film editor */
-	{ "fmd",	"FILM_DIRECTOR"                }, 	/* Film director */
-	{ "fmk",	"FILMMAKER"                    }, 	/* Filmmaker */
-	{ "fmo",	"FORMER_OWNER"                 }, 	/* Former owner */
-	{ "fmp",	"FILM_PRODUCER"                }, 	/* Film producer */
-	{ "fnd",	"FUNDER"                       }, 	/* Funder */
-	{ "fpy",	"FIRST_PARTY"                  }, 	/* First party */
-	{ "frg",	"FORGER"                       }, 	/* Forger */
-	{ "gis",	"GEOGRAPHIC_INFORMATON_SPECIALIST" }, 	/* Geographic information specialist */
-	{ "grt",	"GRAPHIC_TECHNICIAN"           }, 	/* Graphic technician */
-	{ "his",	"HOST_INSTITUTION"             }, 	/* Host institution */
-	{ "hnr",	"HONOREE"                      }, 	/* Honoree */
-	{ "hst",	"HOST"                         }, 	/* Host */
-	{ "ill",	"ILLUSTRATOR"                  }, 	/* Illustrator */
-	{ "ilu",	"ILLUMINATOR"                  }, 	/* Illuminator */
-	{ "ins",	"INSCRIBER"                    }, 	/* Inscriber */
-	{ "inv",	"INVENTOR"                     }, 	/* Inventor */
-	{ "isb",	"ISSUING_BODY"                 }, 	/* Issuing body */
-	{ "itr",	"INSTRUMENTALIST"              }, 	/* Instrumentalist */
-	{ "ive",	"INTERVIEWEE"                  }, 	/* Interviewee */
-	{ "ivr",	"INTERVIEWER"                  }, 	/* Interviewer */
-	{ "jud",	"JUDGE"                        }, 	/* Judge */
-	{ "jug",	"JURISDICTION_GOVERNED"        }, 	/* Jurisdiction governed */
-	{ "lbr",	"LABORATORY"                   }, 	/* Laboratory */
-	{ "lbt",	"LIBRETTIST"                   }, 	/* Librettist */
-	{ "ldr",	"LABORATORY_DIRECTORY"         }, 	/* Laboratory director */
-	{ "led",	"LEAD"                         }, 	/* Lead */
-	{ "lee",	"LIBELEE-APPELLEE"             }, 	/* Libelee-appellee */
-	{ "lel",	"LIBELEE"                      }, 	/* Libelee */
-	{ "len",	"LENDER"                       }, 	/* Lender */
-	{ "let",	"LIBELEE-APPELLANT"            }, 	/* Libelee-appellant */
-	{ "lgd",	"LIGHTING_DESIGNER"            }, 	/* Lighting designer */
-	{ "lie",	"LIBELANT-APPELLEE"            }, 	/* Libelant-appellee */
-	{ "lil",	"LIBELANT"                     }, 	/* Libelant */
-	{ "lit",	"LIBELANT-APPELLANT"           }, 	/* Libelant-appellant */
-	{ "lsa",	"LANDSCAPE_ARCHITECT"          }, 	/* Landscape architect */
-	{ "lse",	"LICENSEE"                     }, 	/* Licensee */
-	{ "lso",	"LICENSOR"                     }, 	/* Licensor */
-	{ "ltg",	"LITHOGRAPHER"                 }, 	/* Lithographer */
-	{ "lyr",	"LYRICIST"                     }, 	/* Lyricist */
-	{ "mcp",	"MUSIC_COPYIST"                }, 	/* Music copyist */
-	{ "mdc",	"METADATA_CONTACT"             }, 	/* Metadata contact */
-	{ "med",	"MEDIUM"                       }, 	/* Medium */
-	{ "mfp",	"MANUFACTURE_PLACE"            }, 	/* Manufacture place */
-	{ "mfr",	"MANUFACTURER"                 }, 	/* Manufacturer */
-	{ "mod",	"MODERATOR"                    }, 	/* Moderator */
-	{ "mon",	"THESIS_EXAMINER"              }, 	/* Monitor */
-	{ "mrb",	"MARBLER"                      }, 	/* Marbler */
-	{ "mrk",	"EDITOR"                       }, 	/* Markup editor */
-	{ "msd",	"MUSICAL_DIRECTOR"             }, 	/* Musical director */
-	{ "mte",	"METAL-ENGRAVER"               }, 	/* Metal-engraver */
-	{ "mtk",	"MINUTE_TAKER"                 },       /* Minute taker */
-	{ "mus",	"MUSICIAN"                     }, 	/* Musician */
-	{ "nrt",	"NARRATOR"                     }, 	/* Narrator */
-	{ "opn",	"THESIS_OPPONENT"              }, 	/* Opponent */
-	{ "org",	"ORIGINATOR"                   }, 	/* Originator */
-	{ "organizer of meeting", "ORGANIZER"          },
-	{ "orm",	"ORGANIZER"                    }, 	/* Organizer */
-	{ "osp",	"ONSCREEN_PRESENTER"           }, 	/* Onscreen presenter */
-	{ "oth",	"THESIS_OTHER"                 }, 	/* Other */
-	{ "own",	"OWNER"                        }, 	/* Owner */
-	{ "pan",	"PANELIST"                     }, 	/* Panelist */
-	{ "pat",	"PATRON"                       }, 	/* Patron */
-	{ "patent holder", "ASSIGNEE"                  },
-	{ "pbd",	"PUBLISHING_DIRECTOR"          }, 	/* Publishing director */
-	{ "pbl",	"PUBLISHER"                    }, 	/* Publisher */
-	{ "pdr",	"PROJECT_DIRECTOR"             },	/* Project director */
-	{ "pfr",	"PROOFREADER"                  }, 	/* Proofreader */
-	{ "pht",	"PHOTOGRAPHER"                 }, 	/* Photographer */
-	{ "plt",	"PLATEMAKER"                   }, 	/* Platemaker */
-	{ "pma",	"PERMITTING_AGENCY"            }, 	/* Permitting agency */
-	{ "pmn",	"PRODUCTION_MANAGER"           }, 	/* Production manager */
-	{ "pop",	"PRINTER_OF_PLATES"            }, 	/* Printer of plates */
-	{ "ppm",	"PAPERMAKER"                   }, 	/* Papermaker */
-	{ "ppt",	"PUPPETEER"                    }, 	/* Puppeteer */
-	{ "pra",	"PRAESES"                      }, 	/* Praeses */
-	{ "prc",	"PROCESS_CONTRACT"             }, 	/* Process contact */
-	{ "prd",	"PRODUCTION_PERSONNEL"         }, 	/* Production personnel */
-	{ "pre",	"PRESENTER"                    },	/* Presenter */
-	{ "prf",	"PERFORMER"                    }, 	/* Performer */
-	{ "prg",	"AUTHOR"                       }, 	/* Programmer */
-	{ "prm",	"PRINTMAKER"                   }, 	/* Printmaker */
-	{ "prn",	"PRODUCTION_COMPANY"           }, 	/* Production company */
-	{ "pro",	"PRODUCER"                     }, 	/* Producer */
-	{ "prp",	"PRODUCTION_PLACE"             }, 	/* Production place */
-	{ "prs",	"PRODUCTION_DESIGNER"          }, 	/* Production designer */
-	{ "prt",	"PRINTER"                      }, 	/* Printer */
-	{ "prv",	"PROVIDER"                     }, 	/* Provider */
-	{ "pta",	"PATENT_APPLICANT"             }, 	/* Patent applicant */
-	{ "pte",	"PLAINTIFF-APPELLEE"           }, 	/* Plaintiff-appellee */
-	{ "ptf",	"PLAINTIFF"                    }, 	/* Plaintiff */
-	{ "pth",	"ASSIGNEE"                     }, 	/* Patent holder */
-	{ "ptt",	"PLAINTIFF-APPELLANT"          }, 	/* Plaintiff-appellant */
-	{ "pup",	"PUBLICATION_PLACE"            }, 	/* Publication place */
-	{ "rbr",	"RUBRICATOR"                   }, 	/* Rubricator */
-	{ "rcd",	"RECORDIST"                    }, 	/* Recordist */
-	{ "rce",	"RECORDING_ENGINEER"           }, 	/* Recording engineer */
-	{ "rcp",	"ADDRESSEE"                    }, 	/* Addressee */
-	{ "rdd",	"RADIO_DIRECTOR"               }, 	/* Radio director */
-	{ "red",	"REDAKTOR"                     }, 	/* Redaktor */
-	{ "ren",	"RENDERER"                     }, 	/* Renderer */
-	{ "res",	"RESEARCHER"                   }, 	/* Researcher */
-	{ "rev",	"REVIEWER"                     }, 	/* Reviewer */
-	{ "rpc",	"RADIO_PRODUCER"               }, 	/* Radio producer */
-	{ "rps",	"REPOSITORY"                   }, 	/* Repository */
-	{ "rpt",	"REPORTER"                     }, 	/* Reporter */
-	{ "rpy",	"RESPONSIBLE_PARTY"            }, 	/* Responsible party */
-	{ "rse",	"RESPONDENT-APPELLEE"          }, 	/* Respondent-appellee */
-	{ "rsg",	"RESTAGER"                     }, 	/* Restager */
-	{ "rsp",	"RESPONDENT"                   }, 	/* Respondent */
-	{ "rsr",	"RESTORATIONIST"               }, 	/* Restorationist */
-	{ "rst",	"RESPONDENT-APPELLANT"         }, 	/* Respondent-appellant */
-	{ "rth",	"RESEARCH_TEAM_HEAD"           }, 	/* Research team head */
-	{ "rtm",	"RESEARCH_TEAM_MEMBER"         }, 	/* Research team member */
-	{ "sad",	"SCIENTIFIC_ADVISOR"           }, 	/* Scientific advisor */
-	{ "sce",	"SCENARIST"                    }, 	/* Scenarist */
-	{ "scl",	"SCULPTOR"                     }, 	/* Sculptor */
-	{ "scr",	"SCRIBE"                       }, 	/* Scribe */
-	{ "sds",	"SOUND_DESIGNER"               }, 	/* Sound designer */
-	{ "sec",	"SECRETARY"                    }, 	/* Secretary */
-	{ "sgd",	"STAGE_DIRECTOR"               }, 	/* Stage director */
-	{ "sgn",	"SIGNER"                       }, 	/* Signer */
-	{ "sht",	"SUPPORTING_HOST"              }, 	/* Supporting host */
-	{ "sll",	"SELLER"                       }, 	/* Seller */
-	{ "sng",	"SINGER"                       }, 	/* Singer */
-	{ "spk",	"SPEAKER"                      }, 	/* Speaker */
-	{ "spn",	"SPONSOR"                      }, 	/* Sponsor */
-	{ "spy",	"SECOND_PARTY"                 }, 	/* Second party */
-	{ "srv",	"SURVEYOR"                     }, 	/* Surveyor */
-	{ "std",	"SET_DESIGNER"                 },	/* Set designer */
-	{ "stg",	"SETTING"                      },	/* Setting */
-	{ "stl",	"STORYTELLER"                  },	/* Storyteller */
-	{ "stm",	"STAGE_MANAGER"                },	/* Stage manager */
-	{ "stn",	"STANDARDS_BODY"               },	/* Standards body */
-	{ "str",	"STEREOTYPER"                  },	/* Stereotyper */
-	{ "tcd",	"TECHNICAL_DIRECTOR"           },	/* Technical director */
-	{ "tch",	"TEACHER"                      },	/* Teacher */
-	{ "ths",	"THESIS_ADVISOR"               },	/* Thesis advisor */
-	{ "tld",	"TELEVISION_DIRECTOR"          },	/* Television director */
-	{ "tlp",	"TELEVISION_PRODUCER"          },	/* Television producer */
-	{ "trc",	"TRANSCRIBER"                  },	/* Transcriber */
-	{ "trl",	"TRANSLATOR"                   },	/* Translator */
-	{ "tyd",	"TYPE_DIRECTOR"                }, 	/* Type designer */
-	{ "tyg",	"TYPOGRAPHER"                  }, 	/* Typographer */
-	{ "uvp",	"UNIVERSITY_PLACE"             }, 	/* University place */
-	{ "vac",	"VOICE_ACTOR"                  }, 	/* Voice actor */
-	{ "vdg",	"VIDEOGRAPHER"                 }, 	/* Videographer */
-	{ "voc",	"VOCALIST"                     }, 	/* Vocalist */
-	{ "wac",	"AUTHOR"                       }, 	/* Writer of added commentary */
-	{ "wal",	"AUTHOR"                       }, 	/* Writer of added lyrics */
-	{ "wam",	"AUTHOR"                       }, 	/* Writer of accompanying material */
-	{ "wat",	"AUTHOR"                       }, 	/* Writer of added text */
-	{ "wdc",	"WOODCUTTER"                   }, 	/* Woodcutter */
-	{ "wde",	"WOOD_ENGRAVER"                }, 	/* Wood engraver */
-	{ "win",	"AUTHOR"                       }, 	/* Writer of introduction */
-	{ "wit",	"WITNESS"                      }, 	/* Witness */
-	{ "wpr",	"AUTHOR"                       }, 	/* Writer of preface */
-	{ "wst",	"AUTHOR"                       }, 	/* Writer of supplementary textual content */
+	{ "ABRIDGER",                          "abr"                                 },
+	{ "ART_COPYIST",                       "acp"                                 },
+	{ "ACTOR",                             "act"                                 },
+	{ "ART_DIRECTOR",                      "adi"                                 },
+	{ "ADAPTER",                           "adp"                                 },
+	{ "AFTERAUTHOR",                       "aft"                                 },
+	{ "ANALYST",                           "anl"                                 },
+	{ "ANIMATOR",                          "anm"                                 },
+	{ "ANNOTATOR",                         "ann"                                 },
+	{ "BIBLIOGRAPHIC_ANTECEDENT",          "ant"                                 },
+	{ "APPELLEE",                          "ape"                                 },
+	{ "APPELLANT",                         "apl"                                 },
+	{ "APPLICANT",                         "app"                                 },
+	{ "AUTHOR",                            "aqt"                                 },/* Author in quotations or text abstracts */
+	{ "ARCHITECT",                         "arc"                                 },
+	{ "ARTISTIC_DIRECTOR",                 "ard"                                 },
+	{ "ARRANGER",                          "arr"                                 },
+	{ "ARTIST",                            "art"                                 },
+	{ "ASSIGNEE",                          "asg"                                 },
+	{ "ASSOCIATED_NAME",                   "asn"                                 },
+	{ "AUTOGRAPHER",                       "ato"                                 },
+	{ "ATTRIBUTED_NAME",                   "att"                                 },
+	{ "AUCTIONEER",                        "auc"                                 },
+	{ "AUTHOR",                            "aud"                                 },/* Author of dialog */
+	{ "INTROAUTHOR",                       "aui"                                 },/* Author of introduction, etc. */
+	{ "AUTHOR",                            "aus"                                 },/* Screenwriter */
+	{ "AUTHOR",                            "aut"                                 },
+	{ "AUTHOR",                            "author"                              },
+	{ "AFTERAUTHOR",                       "author of afterword, colophon, etc." },
+	{ "INTROAUTHOR",                       "author of introduction, etc."        },
+	{ "BINDING_DESIGNER",                  "bdd"                                 },
+	{ "BOOKJACKET_DESIGNER",               "bjd"                                 },
+	{ "BOOK_DESIGNER",                     "bkd"                                 },
+	{ "BOOK_PRODUCER",                     "bkp"                                 },
+	{ "AUTHOR",                            "blw"                                 },/* Blurb writer */
+	{ "BINDER",                            "bnd"                                 },
+	{ "BOOKPLATE_DESIGNER",                "bpd"                                 },
+	{ "BROADCASTER",                       "brd"                                 },
+	{ "BRAILLE_EMBOSSER",                  "brl"                                 },
+	{ "BOOKSELLER",                        "bsl"                                 },
+	{ "CASTER",                            "cas"                                 },
+	{ "CONCEPTOR",                         "ccp"                                 },
+	{ "CHOREOGRAPHER",                     "chr"                                 },
+	{ "COLLABORATOR",                      "clb"                                 },
+	{ "CLIENT",                            "cli"                                 },
+	{ "CALLIGRAPHER",                      "cll"                                 },
+	{ "COLORIST",                          "clr"                                 },
+	{ "COLLOTYPER",                        "clt"                                 },
+	{ "COMMENTATOR",                       "cmm"                                 },
+	{ "COMPOSER",                          "cmp"                                 },
+	{ "COMPOSITOR",                        "cmt"                                 },
+	{ "CONDUCTOR",                         "cnd"                                 },
+	{ "CINEMATOGRAPHER",                   "cng"                                 },
+	{ "CENSOR",                            "cns"                                 },
+	{ "CONTESTANT-APPELLEE",               "coe"                                 },
+	{ "COLLECTOR",                         "col"                                 },
+	{ "COMPILER",                          "com"                                 },
+	{ "CONSERVATOR",                       "con"                                 },
+	{ "COLLECTION_REGISTRAR",              "cor"                                 },
+	{ "CONTESTANT",                        "cos"                                 },
+	{ "CONTESTANT-APPELLANT",              "cot"                                 },
+	{ "COURT_GOVERNED",                    "cou"                                 },
+	{ "COVER_DESIGNER",                    "cov"                                 },
+	{ "COPYRIGHT_CLAIMANT",                "cpc"                                 },
+	{ "COMPLAINANT-APPELLEE",              "cpe"                                 },
+	{ "COPYRIGHT_HOLDER",                  "cph"                                 },
+	{ "COMPLAINANT",                       "cpl"                                 },
+	{ "COMPLAINANT-APPELLANT",             "cpt"                                 },
+	{ "AUTHOR",                            "cre"                                 },/* Creator */
+	{ "AUTHOR",                            "creator"                             },/* Creator */
+	{ "CORRESPONDENT",                     "crp"                                 },
+	{ "CORRECTOR",                         "crr"                                 },
+	{ "COURT_REPORTER",                    "crt"                                 },
+	{ "CONSULTANT",                        "csl"                                 },
+	{ "CONSULTANT",                        "csp"                                 },/* Consultant to a project */
+	{ "COSTUME_DESIGNER",                  "cst"                                 },
+	{ "CONTRIBUTOR",                       "ctb"                                 },
+	{ "CONTESTEE-APPELLEE",                "cte"                                 },
+	{ "CARTOGRAPHER",                      "ctg"                                 },
+	{ "CONTRACTOR",                        "ctr"                                 },
+	{ "CONTESTEE",                         "cts"                                 },
+	{ "CONTESTEE-APPELLANT",               "ctt"                                 },
+	{ "CURATOR",                           "cur"                                 },
+	{ "COMMENTATOR",                       "cwt"                                 },/* Commentator for written text */
+	{ "DISTRIBUTION_PLACE",                "dbp"                                 },
+	{ "DEGREEGRANTOR",                     "degree grantor"                      },/* Degree granting institution */
+	{ "DEFENDANT",                         "dfd"                                 },
+	{ "DEFENDANT-APPELLEE",                "dfe"                                 },
+	{ "DEFENDANT-APPELLANT",               "dft"                                 },
+	{ "DEGREEGRANTOR",                     "dgg"                                 },/* Degree granting institution */
+	{ "DEGREE_SUPERVISOR",                 "dgs"                                 },
+	{ "DISSERTANT",                        "dis"                                 },
+	{ "DELINEATOR",                        "dln"                                 },
+	{ "DANCER",                            "dnc"                                 },
+	{ "DONOR",                             "dnr"                                 },
+	{ "DEPICTED",                          "dpc"                                 },
+	{ "DEPOSITOR",                         "dpt"                                 },
+	{ "DRAFTSMAN",                         "drm"                                 },
+	{ "DIRECTOR",                          "drt"                                 },
+	{ "DESIGNER",                          "dsr"                                 },
+	{ "DISTRIBUTOR",                       "dst"                                 },
+	{ "DATA_CONTRIBUTOR",                  "dtc"                                 },
+	{ "DEDICATEE",                         "dte"                                 },
+	{ "DATA_MANAGER",                      "dtm"                                 },
+	{ "DEDICATOR",                         "dto"                                 },
+	{ "AUTHOR",                            "dub"                                 },/* Dubious author */
+	{ "EDITOR",                            "edc"                                 },/* Editor of compilation */
+	{ "EDITOR",                            "edm"                                 },/* Editor of moving image work */
+	{ "EDITOR",                            "edt"                                 },
+	{ "ENGRAVER",                          "egr"                                 },
+	{ "ELECTRICIAN",                       "elg"                                 },
+	{ "ELECTROTYPER",                      "elt"                                 },
+	{ "ENGINEER",                          "eng"                                 },
+	{ "ENACTING_JURISDICTION",             "enj"                                 },
+	{ "ETCHER",                            "etr"                                 },
+	{ "EVENT_PLACE",                       "evp"                                 },
+	{ "EXPERT",                            "exp"                                 },
+	{ "FACSIMILIST",                       "fac"                                 },
+	{ "FILM_DISTRIBUTOR",                  "fds"                                 },
+	{ "FIELD_DIRECTOR",                    "fld"                                 },
+	{ "EDITOR",                            "flm"                                 },/* Film editor */
+	{ "DIRECTOR",                          "fmd"                                 },/* Film director */
+	{ "FILMMAKER",                         "fmk"                                 },
+	{ "FORMER_OWNER",                      "fmo"                                 },
+	{ "PRODUCER",                          "fmp"                                 },/* Film producer */
+	{ "FUNDER",                            "fnd"                                 },
+	{ "FIRST_PARTY",                       "fpy"                                 },
+	{ "FORGER",                            "frg"                                 },
+	{ "GEOGRAPHIC_INFORMATION_SPECIALIST", "gis"                                 },
+	{ "GRAPHIC_TECHNICIAN",                "grt"                                 },
+	{ "HOST_INSTITUTION",                  "his"                                 },
+	{ "HONOREE",                           "hnr"                                 },
+	{ "HOST",                              "hst"                                 },
+	{ "ILLUSTRATOR",                       "ill"                                 },
+	{ "ILLUMINATOR",                       "ilu"                                 },
+	{ "INSCRIBER",                         "ins"                                 },
+	{ "INVENTOR",                          "inv"                                 },
+	{ "ISSUING_BODY",                      "isb"                                 },
+	{ "MUSICIAN",                          "itr"                                 },/* Instrumentalist */
+	{ "INTERVIEWEE",                       "ive"                                 },
+	{ "INTERVIEWER",                       "ivr"                                 },
+	{ "JUDGE",                             "jud"                                 },
+	{ "JURISDICTION_GOVERNED",             "jug"                                 },
+	{ "LABORATORY",                        "lbr"                                 },
+	{ "AUTHOR",                            "lbt"                                 },/* Librettist */
+	{ "LABORATORY_DIRECTOR",               "ldr"                                 },
+	{ "LEAD",                              "led"                                 },
+	{ "LIBELEE-APPELLEE",                  "lee"                                 },
+	{ "LIBELEE",                           "lel"                                 },
+	{ "LENDER",                            "len"                                 },
+	{ "LIBELEE-APPELLANT",                 "let"                                 },
+	{ "LIGHTING_DESIGNER",                 "lgd"                                 },
+	{ "LIBELANT-APPELLEE",                 "lie"                                 },
+	{ "LIBELANT",                          "lil"                                 },
+	{ "LIBELANT-APPELLANT",                "lit"                                 },
+	{ "LANDSCAPE_ARCHITECT",               "lsa"                                 },
+	{ "LICENSEE",                          "lse"                                 },
+	{ "LICENSOR",                          "lso"                                 },
+	{ "LITHOGRAPHER",                      "ltg"                                 },
+	{ "AUTHOR",                            "lyr"                                 },/* Lyricist */
+	{ "MUSIC_COPYIST",                     "mcp"                                 },
+	{ "METADATA_CONTACT",                  "mdc"                                 },
+	{ "MEDIUM",                            "med"                                 },
+	{ "MANUFACTURE_PLACE",                 "mfp"                                 },
+	{ "MANUFACTURER",                      "mfr"                                 },
+	{ "MODERATOR",                         "mod"                                 },
+	{ "THESIS_EXAMINER",                   "mon"                                 },/* Monitor */
+	{ "MARBLER",                           "mrb"                                 },
+	{ "EDITOR",                            "mrk"                                 },/* Markup editor */
+	{ "MUSICAL_DIRECTOR",                  "msd"                                 },
+	{ "METAL-ENGRAVER",                    "mte"                                 },
+	{ "MINUTE_TAKER",                      "mtk"                                 },
+	{ "MUSICIAN",                          "mus"                                 },
+	{ "NARRATOR",                          "nrt"                                 },
+	{ "THESIS_OPPONENT",                   "opn"                                 },/* Opponent */
+	{ "ORIGINATOR",                        "org"                                 },
+	{ "ORGANIZER",                         "organizer of meeting"                },
+	{ "ORGANIZER",                         "orm" 	                             },
+	{ "ONSCREEN_PRESENTER",                "osp" 	                             },
+	{ "THESIS_OTHER",                      "oth" 	                             },/* Other */
+	{ "OWNER",                             "own" 	                             },
+	{ "PANELIST",                          "pan" 	                             },
+	{ "PATRON",                            "pat" 	                             },
+	{ "ASSIGNEE",                          "patent holder"                       },/* Patent holder */
+	{ "PUBLISHING_DIRECTOR",               "pbd" 	                             },
+	{ "PUBLISHER",                         "pbl"                                 },
+	{ "PROJECT_DIRECTOR",                  "pdr"                                 },
+	{ "PROOFREADER",                       "pfr"                                 },
+	{ "PHOTOGRAPHER",                      "pht"                                 },
+	{ "PLATEMAKER",                        "plt"                                 },
+	{ "PERMITTING_AGENCY",                 "pma"                                 },
+	{ "PRODUCTION_MANAGER",                "pmn"                                 },
+	{ "PRINTER_OF_PLATES",                 "pop"                                 },
+	{ "PAPERMAKER",                        "ppm"                                 },
+	{ "PUPPETEER",                         "ppt"                                 },
+	{ "PRAESES",                           "pra"                                 },
+	{ "PROCESS_CONTRACT",                  "prc"                                 },
+	{ "PRODUCTION_PERSONNEL",              "prd"                                 },
+	{ "PRESENTER",                         "pre"                                 },
+	{ "PERFORMER",                         "prf"                                 },
+	{ "AUTHOR",                            "prg"                                 },/* Programmer */
+	{ "PRINTMAKER",                        "prm"                                 },
+	{ "PRODUCTION_COMPANY",                "prn"                                 },
+	{ "PRODUCER",                          "pro"                                 },
+	{ "PRODUCTION_PLACE",                  "prp"                                 },
+	{ "PRODUCTION_DESIGNER",               "prs"                                 },
+	{ "PRINTER",                           "prt"                                 },
+	{ "PROVIDER",                          "prv"                                 },
+	{ "PATENT_APPLICANT",                  "pta"                                 },
+	{ "PLAINTIFF-APPELLEE",                "pte"                                 },
+	{ "PLAINTIFF",                         "ptf"                                 },
+	{ "ASSIGNEE",                          "pth"                                 },/* Patent holder */
+	{ "PLAINTIFF-APPELLANT",               "ptt"                                 },
+	{ "PUBLICATION_PLACE",                 "pup"                                 },
+	{ "RUBRICATOR",                        "rbr"                                 },
+	{ "RECORDIST",                         "rcd"                                 },
+	{ "RECORDING_ENGINEER",                "rce"                                 },
+	{ "ADDRESSEE",                         "rcp"                                 },/* Recipient */
+	{ "RADIO_DIRECTOR",                    "rdd"                                 },
+	{ "REDAKTOR",                          "red"                                 },
+	{ "RENDERER",                          "ren"                                 },
+	{ "RESEARCHER",                        "res"                                 },
+	{ "REVIEWER",                          "rev"                                 },
+	{ "RADIO_PRODUCER",                    "rpc"                                 },
+	{ "REPOSITORY",                        "rps"                                 },
+	{ "REPORTER",                          "rpt"                                 },
+	{ "RESPONSIBLE_PARTY",                 "rpy"                                 },
+	{ "RESPONDENT-APPELLEE",               "rse"                                 },
+	{ "RESTAGER",                          "rsg"                                 },
+	{ "RESPONDENT",                        "rsp"                                 },
+	{ "RESTORATIONIST",                    "rsr"                                 },
+	{ "RESPONDENT-APPELLANT",              "rst"                                 },
+	{ "RESEARCH_TEAM_HEAD",                "rth"                                 },
+	{ "RESEARCH_TEAM_MEMBER",              "rtm"                                 },
+	{ "SCIENTIFIC_ADVISOR",                "sad"                                 },
+	{ "SCENARIST",                         "sce"                                 },
+	{ "SCULPTOR",                          "scl"                                 },
+	{ "SCRIBE",                            "scr"                                 },
+	{ "SOUND_DESIGNER",                    "sds"                                 },
+	{ "SECRETARY",                         "sec"                                 },
+	{ "STAGE_DIRECTOR",                    "sgd"                                 },
+	{ "SIGNER",                            "sgn"                                 },
+	{ "SUPPORTING_HOST",                   "sht"                                 },
+	{ "SELLER",                            "sll"                                 },
+	{ "SINGER",                            "sng"                                 },
+	{ "SPEAKER",                           "spk"                                 },
+	{ "SPONSOR",                           "spn"                                 },
+	{ "SECOND_PARTY",                      "spy"                                 },
+	{ "SURVEYOR",                          "srv"                                 },
+	{ "SET_DESIGNER",                      "std"                                 },
+	{ "SETTING",                           "stg"                                 },
+	{ "STORYTELLER",                       "stl"                                 },
+	{ "STAGE_MANAGER",                     "stm"                                 },
+	{ "STANDARDS_BODY",                    "stn"                                 },
+	{ "STEREOTYPER",                       "str"                                 },
+	{ "TECHNICAL_DIRECTOR",                "tcd"                                 },
+	{ "TEACHER",                           "tch"                                 },
+	{ "THESIS_ADVISOR",                    "ths"                                 },
+	{ "TELEVISION_DIRECTOR",               "tld"                                 },
+	{ "TELEVISION_PRODUCER",               "tlp"                                 },
+	{ "TRANSCRIBER",                       "trc"                                 },
+	{ "TRANSLATOR",                        "translator"                          },
+	{ "TRANSLATOR",                        "trl"                                 },
+	{ "TYPE_DIRECTOR",                     "tyd"                                 },
+	{ "TYPOGRAPHER",                       "tyg"                                 },
+	{ "UNIVERSITY_PLACE",                  "uvp"                                 },
+	{ "VOICE_ACTOR",                       "vac"                                 },
+	{ "VIDEOGRAPHER",                      "vdg"                                 },
+	{ "VOCALIST",                          "voc"                                 },
+	{ "AUTHOR",                            "wac"                                 },/* Writer of added commentary */
+	{ "AUTHOR",                            "wal"                                 },/* Writer of added lyrics */
+	{ "AUTHOR",                            "wam"                                 },/* Writer of accompanying material */
+	{ "AUTHOR",                            "wat"                                 },/* Writer of added text */
+	{ "WOODCUTTER",                        "wdc"                                 },
+	{ "WOOD_ENGRAVER",                     "wde"                                 },
+	{ "INTROAUTHOR",                       "win"                                 },/* Writer of introduction */
+	{ "WITNESS",                           "wit"                                 },
+	{ "INTROAUTHOR",                       "wpr"                                 },/* Writer of preface */
+	{ "AUTHOR",                            "wst"                                 },/* Writer of supplementary textual content */
 };
 
 static const int nrealtors = sizeof( relators ) / sizeof( relators[0] );
 
 char *
-marc_convertrole( const char *query )
+marc_convert_role( const char *query )
 {
 	int i;
 
@@ -431,27 +436,27 @@ position_in_list( const char *list[], int nlist, const char *query )
 }
 
 int
-marc_findgenre( const char *query )
+marc_find_genre( const char *query )
 {
 	return position_in_list( marc_genre, nmarc_genre, query );
 }
 
 int
-is_marc_genre( const char *query )
-{
-	if ( marc_findgenre( query ) != -1 ) return 1;
-	else return 0;
-}
-
-int
-marc_findresource( const char *query )
+marc_find_resource( const char *query )
 {
 	return position_in_list( marc_resource, nmarc_resource, query );
 }
 
 int
+is_marc_genre( const char *query )
+{
+	if ( marc_find_genre( query ) != -1 ) return 1;
+	else return 0;
+}
+
+int
 is_marc_resource( const char *query )
 {
-	if ( marc_findresource( query ) != -1 ) return 1;
+	if ( marc_find_resource( query ) != -1 ) return 1;
 	else return 0;
 }

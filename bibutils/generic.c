@@ -1,6 +1,6 @@
 /* generic.c
  *
- * Copyright (c) Chris Putnam 2016-2019
+ * Copyright (c) Chris Putnam 2016-2020
  *
  * Source code released under GPL version 2
  *
@@ -70,7 +70,7 @@ generic_simple( fields *bibin, int n, str *intag, str *invalue, int level, param
 int
 generic_skip( fields *bibin, int n, str *intag, str *invalue, int level, param *pm, char *outtag, fields *bibout )
 {
-	fields_setused( bibin, n );
+	fields_set_used( bibin, n );
 	return BIBL_OK;
 }
 

@@ -9,7 +9,7 @@
  * is_doi()
  * Check for DOI buried in another field.
  *
- * Copyright (c) Chris Putnam 2008-2019
+ * Copyright (c) Chris Putnam 2008-2020
  *
  * Source code released under the GPL version 2
  *
@@ -202,12 +202,14 @@ static url_t extraprefixes[] = {
 static int nextraprefixes = sizeof( extraprefixes ) / sizeof( extraprefixes[0] );
 
 static int
-find_prefix( char *s, url_t *p, int np )
+find_prefix( const char *s, url_t *p, int np )
 {
 	int i;
 
-	for ( i=0; i<np; ++i )
-		if ( !strncmp( p[i].prefix, s, p[i].offset ) ) return i;
+	if ( s ) {
+		for ( i=0; i<np; ++i )
+			if ( !strncmp( p[i].prefix, s, p[i].offset ) ) return i;
+	}
 
 	return -1;
 }

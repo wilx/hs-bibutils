@@ -1,8 +1,8 @@
 /*
  * bltypes.c
  *
- * Copyright (c) Chris Putnam 2008-2019
- * Copyright (c) Johannes Wilm 2010-2019
+ * Copyright (c) Chris Putnam 2008-2020
+ * Copyright (c) Johannes Wilm 2010-2020
  *
  * Program and source code released under the GPL version 2
  *

@@ -1,7 +1,7 @@
 /*
  * bibtypes.c
  *
- * Copyright (c) Chris Putnam 2003-2019
+ * Copyright (c) Chris Putnam 2003-2020
  *
  * Program and source code released under the GPL version 2
  *
@@ -17,7 +17,11 @@
  */
 static lookups article[] = {
 	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
 	{ "title",        "",               TITLE,        LEVEL_MAIN },
 	{ "year",         "PARTDATE:YEAR",  SIMPLE,       LEVEL_MAIN },
 	{ "month",        "PARTDATE:MONTH", SIMPLE,       LEVEL_MAIN },
@@ -65,7 +69,11 @@ static lookups article[] = {
 
 static lookups book[] = {
 	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
 	{ "title",        "",               TITLE,        LEVEL_MAIN },
 	{ "booktitle",    "",               TITLE,        LEVEL_MAIN },
 	{ "series",       "",               TITLE,        LEVEL_HOST },
@@ -73,6 +81,8 @@ static lookups book[] = {
 	{ "organization", "ORGANIZER:CORP", BT_ORG,       LEVEL_MAIN },
 	{ "address",      "ADDRESS",        SIMPLE,       LEVEL_MAIN },
 	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "year",         "DATE:YEAR",      SIMPLE,       LEVEL_MAIN },
 	{ "month",        "DATE:MONTH",     SIMPLE,       LEVEL_MAIN },
 	{ "day",          "DATE:DAY",       SIMPLE,       LEVEL_MAIN },
@@ -110,12 +120,18 @@ static lookups book[] = {
 /* Technical reports */
 
 static lookups report[] = {
-	{ "author",       "AUTHOR",     PERSON,       LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR", PERSON,       LEVEL_MAIN },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
 	{ "title",        "",           TITLE,        LEVEL_MAIN },
 	{ "booktitle",    "",           TITLE,        LEVEL_MAIN },
 	{ "series",       "",           TITLE,        LEVEL_HOST },
-	{ "editor",       "EDITOR",     PERSON,       LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "publisher",    "PUBLISHER",  SIMPLE,       LEVEL_MAIN },
 	{ "institution",  "PUBLISHER",  SIMPLE,       LEVEL_MAIN },
 	{ "address",      "ADDRESS",    SIMPLE,       LEVEL_MAIN },
@@ -150,11 +166,17 @@ static lookups report[] = {
 };
 
 static lookups manual[] = {
-	{ "author",    "AUTHOR",    PERSON, LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR",PERSON, LEVEL_MAIN },
-	{ "title",     "",     TITLE,  LEVEL_MAIN },
-	{ "booktitle", "",     TITLE,  LEVEL_MAIN },
-	{ "editor",    "EDITOR",    PERSON, LEVEL_MAIN },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
+	{ "title",         "",              TITLE,        LEVEL_MAIN },
+	{ "booktitle",     "",              TITLE,        LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "publisher", "PUBLISHER", SIMPLE, LEVEL_MAIN },
 	{ "organization", "ORGANIZER:CORP", BT_ORG, LEVEL_MAIN },
 	{ "address",   "ADDRESS",   SIMPLE, LEVEL_MAIN },
@@ -189,9 +211,15 @@ static lookups manual[] = {
 /* Part of a book (e.g. chapter or section) */
 
 static lookups inbook[] = {
-	{ "author",       "AUTHOR",    PERSON, LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR",PERSON, LEVEL_MAIN },
-	{ "editor",       "EDITOR",    PERSON, LEVEL_HOST },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_HOST },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_HOST },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_HOST },
 	{ "chapter",      "CHAPTER",   SIMPLE, LEVEL_MAIN },   /* chapter number */
 	{ "title",        "",          TITLE,  LEVEL_MAIN },   /* chapter name */
 	{ "booktitle",    "",          TITLE,  LEVEL_HOST },
@@ -235,9 +263,15 @@ static lookups inbook[] = {
 /* References of papers in conference proceedings */
 
 static lookups inproceedings[] = {
-	{ "author",     "AUTHOR",     PERSON, LEVEL_MAIN },
-	{ "translator", "TRANSLATOR", PERSON, LEVEL_MAIN },
-	{ "editor",     "EDITOR",     PERSON, LEVEL_HOST },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_HOST },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_HOST },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_HOST },
 	{ "chapter",    "CHAPTER",    SIMPLE, LEVEL_MAIN },   /* chapter number */
 	{ "title",      "",           TITLE,  LEVEL_MAIN },   /* chapter name */
 	{ "booktitle",  "",           TITLE,  LEVEL_HOST },
@@ -280,9 +314,15 @@ static lookups inproceedings[] = {
 /* Used for a section of a book with its own title */
 
 static lookups incollection[] = {
-	{ "author",     "AUTHOR",     PERSON, LEVEL_MAIN },
-	{ "translator", "TRANSLATOR", PERSON, LEVEL_MAIN },
-	{ "editor",     "EDITOR",     PERSON, LEVEL_HOST },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_HOST },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_HOST },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_HOST },
 	{ "chapter",    "CHAPTER",    SIMPLE, LEVEL_MAIN },   /* chapter number */
 	{ "title",      "",           TITLE,  LEVEL_MAIN },   /* chapter name */
 	{ "booktitle",  "",           TITLE,  LEVEL_HOST },
@@ -325,9 +365,15 @@ static lookups incollection[] = {
 /* Proceedings */
 
 static lookups proceedings[] = {
-	{ "author",    "AUTHOR",    PERSON, LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR",PERSON, LEVEL_MAIN },
-	{ "editor",    "EDITOR",    PERSON, LEVEL_MAIN },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "title",     "",     TITLE,  LEVEL_MAIN },
 	{ "booktitle", "",     TITLE,  LEVEL_MAIN },
 	{ "series",    "",     TITLE,  LEVEL_HOST },
@@ -365,8 +411,12 @@ static lookups proceedings[] = {
 };
 
 static lookups phds[] = {
-	{ "author",    "AUTHOR",    PERSON, LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR",PERSON, LEVEL_MAIN },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
 	{ "title",     "",     TITLE,  LEVEL_MAIN },
 	{ "year",      "DATE:YEAR",      SIMPLE, LEVEL_MAIN },
 	{ "month",     "DATE:MONTH",     SIMPLE, LEVEL_MAIN },
@@ -398,8 +448,12 @@ static lookups phds[] = {
 };
 
 static lookups masters[] = {
-	{ "author",    "AUTHOR",    PERSON, LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR",PERSON, LEVEL_MAIN },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
 	{ "title",     "",     TITLE,  LEVEL_MAIN },
 	{ "year",      "DATE:YEAR",      SIMPLE, LEVEL_MAIN },
 	{ "month",     "DATE:MONTH",     SIMPLE, LEVEL_MAIN },
@@ -433,13 +487,19 @@ static lookups masters[] = {
 /* Unpublished */
 
 static lookups unpublished[] = {
-	{ "author",    "AUTHOR",    PERSON, LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR",PERSON, LEVEL_MAIN },
-	{ "title",     "",     TITLE,  LEVEL_MAIN },
-	{ "booktitle", "",     TITLE,  LEVEL_MAIN },
-	{ "publisher", "PUBLISHER", SIMPLE, LEVEL_MAIN },
-	{ "address",   "ADDRESS",   SIMPLE, LEVEL_MAIN },
-	{ "editor",    "EDITOR",    PERSON, LEVEL_MAIN },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
+	{ "title",        "",               TITLE,        LEVEL_MAIN },
+	{ "booktitle",    "",               TITLE,        LEVEL_MAIN },
+	{ "publisher",    "PUBLISHER",      SIMPLE,       LEVEL_MAIN },
+	{ "address",      "ADDRESS",        SIMPLE,       LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "year",      "DATE:YEAR",      SIMPLE, LEVEL_MAIN },
 	{ "month",     "DATE:MONTH",     SIMPLE, LEVEL_MAIN },
 	{ "day",       "DATE:DAY",       SIMPLE, LEVEL_MAIN },
@@ -469,15 +529,21 @@ static lookups unpublished[] = {
  * For Published Standards
  */
 static lookups standard[] = {
-	{ "author",    "AUTHOR",    PERSON, LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR",PERSON, LEVEL_MAIN },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
 	{ "organization", "ORGANIZER:CORP", BT_ORG, LEVEL_MAIN },
 	{ "institution", "AUTHOR:CORP", SIMPLE, LEVEL_MAIN },
 	{ "title",     "",           TITLE,    LEVEL_MAIN },
 	{ "booktitle", "",           TITLE,    LEVEL_MAIN },
 	{ "publisher", "PUBLISHER",  SIMPLE,   LEVEL_MAIN },
 	{ "address",   "ADDRESS",    SIMPLE,   LEVEL_MAIN },
-	{ "editor",    "EDITOR",     PERSON,   LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "year",      "DATE:YEAR",  SIMPLE,   LEVEL_MAIN },
 	{ "month",     "DATE:MONTH", SIMPLE,   LEVEL_MAIN },
 	{ "day",       "DATE:DAY",   SIMPLE,   LEVEL_MAIN },
@@ -516,7 +582,9 @@ static lookups periodical[] = {
 	{ "series",       "",            TITLE,  LEVEL_HOST },
 	{ "publisher",    "PUBLISHER",   SIMPLE, LEVEL_MAIN },
 	{ "address",      "ADDRESS",     SIMPLE, LEVEL_MAIN },
-	{ "editor",       "EDITOR",      PERSON, LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "year",         "DATE:YEAR",   SIMPLE, LEVEL_MAIN },
 	{ "month",        "DATE:MONTH",  SIMPLE, LEVEL_MAIN },
 	{ "day",          "DATE:DAY",    SIMPLE, LEVEL_MAIN },
@@ -548,13 +616,19 @@ static lookups periodical[] = {
  * For Patent
  */
 static lookups patent[] = {
-	{ "author",       "AUTHOR",      PERSON,       LEVEL_MAIN },
-	{ "translator",   "TRANSLATOR",  PERSON,       LEVEL_MAIN },
-	{ "assignee",     "ASSIGNEE",    PERSON,       LEVEL_MAIN },
-	{ "title",        "",            TITLE,        LEVEL_MAIN },
-	{ "publisher",    "PUBLISHER",   SIMPLE,       LEVEL_MAIN },
-	{ "address",      "ADDRESS",     SIMPLE,       LEVEL_MAIN },
-	{ "editor",       "EDITOR",      PERSON,       LEVEL_MAIN },
+	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
+	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
+	{ "assignee",     "ASSIGNEE",       PERSON,       LEVEL_MAIN },
+	{ "title",        "",               TITLE,        LEVEL_MAIN },
+	{ "publisher",    "PUBLISHER",      SIMPLE,       LEVEL_MAIN },
+	{ "address",      "ADDRESS",        SIMPLE,       LEVEL_MAIN },
+	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "year",         "DATE:YEAR",   SIMPLE,       LEVEL_MAIN }, /* date granted */
 	{ "month",        "DATE:MONTH",  SIMPLE,       LEVEL_MAIN },
 	{ "day",          "DATE:DAY",    SIMPLE,       LEVEL_MAIN },
@@ -590,13 +664,19 @@ static lookups patent[] = {
  */
 static lookups electronic[] = {
 	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
 	{ "organization", "ORGANIZER:CORP", BT_ORG,       LEVEL_MAIN },
 	{ "title",        "",               TITLE,        LEVEL_MAIN },
 	{ "booktitle",    "",               TITLE,        LEVEL_MAIN },
 	{ "publisher",    "PUBLISHER",      SIMPLE,       LEVEL_MAIN },
 	{ "address",      "ADDRESS",        SIMPLE,       LEVEL_MAIN },
 	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "year",         "DATE:YEAR",      SIMPLE,       LEVEL_MAIN },
 	{ "month",        "DATE:MONTH",     SIMPLE,       LEVEL_MAIN },
 	{ "day",          "DATE:DAY",       SIMPLE,       LEVEL_MAIN },
@@ -625,7 +705,11 @@ static lookups electronic[] = {
 
 static lookups misc[] = {
 	{ "author",       "AUTHOR",         PERSON,       LEVEL_MAIN },
+	{ "author:ASIS",  "AUTHOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "author:CORP",  "AUTHOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "translator",   "TRANSLATOR",     PERSON,       LEVEL_MAIN },
+	{ "translator:ASIS","TRANSLATOR:ASIS",PERSON,     LEVEL_MAIN },
+	{ "translator:CORP","TRANSLATOR:CORP",PERSON,     LEVEL_MAIN },
 	{ "title",        "",               TITLE,        LEVEL_MAIN },
 	{ "booktitle",    "",               TITLE,        LEVEL_MAIN },
 	{ "publisher",    "PUBLISHER",      SIMPLE,       LEVEL_MAIN },
@@ -633,6 +717,8 @@ static lookups misc[] = {
 	{ "pages",        "PAGES",          PAGES,        LEVEL_MAIN },
 	{ "address",      "ADDRESS",        SIMPLE,       LEVEL_MAIN },
 	{ "editor",       "EDITOR",         PERSON,       LEVEL_MAIN },
+	{ "editor:ASIS",  "EDITOR:ASIS",    PERSON,       LEVEL_MAIN },
+	{ "editor:CORP",  "EDITOR:CORP",    PERSON,       LEVEL_MAIN },
 	{ "year",         "DATE:YEAR",      SIMPLE,       LEVEL_MAIN },
 	{ "month",        "DATE:MONTH",     SIMPLE,       LEVEL_MAIN },
 	{ "day",          "DATE:DAY",       SIMPLE,       LEVEL_MAIN },

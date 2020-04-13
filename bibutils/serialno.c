@@ -1,7 +1,7 @@
 /*
  * serialno.c
  *
- * Copyright (c) Chris Putnam 2005-2019
+ * Copyright (c) Chris Putnam 2005-2020
  *
  * Source code released under the GPL version 2
  *

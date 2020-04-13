@@ -1,7 +1,7 @@
 /*
  * bibl.h
  *
- * Copyright (c) Chris Putnam 2005-2019
+ * Copyright (c) Chris Putnam 2005-2020
  *
  * Source code released under the GPL version 2
  *
@@ -15,15 +15,16 @@
 #include "reftypes.h"
 
 typedef struct {
-	long nrefs;
-	long maxrefs;
+	long n;
+	long max;
 	fields **ref;
 } bibl;
 
-extern void bibl_init( bibl *b );
-extern int  bibl_addref( bibl *b, fields *ref );
-extern void bibl_free( bibl *b );
-extern int  bibl_copy( bibl *bout, bibl *bin );
+void bibl_init( bibl *b );
+int  bibl_addref( bibl *b, fields *ref );
+void bibl_free( bibl *b );
+int  bibl_copy( bibl *bout, bibl *bin );
+long bibl_findref( bibl *bin, const char *citekey );
 
 #endif
 

@@ -1,7 +1,7 @@
 /*
  * copacin.c
  *
- * Copyright (c) Chris Putnam 2004-2019
+ * Copyright (c) Chris Putnam 2004-2020
  *
  * Program and source code released under the GPL version 2
  *
@@ -135,21 +135,31 @@ copacin_readf( FILE *fp, char *buf, int bufsize, int *bufpos, str *line, str *re
 *****************************************************/
 
 static const char*
-copacin_addtag2( const char *p, str *tag, str *data )
+copacin_addfield( const char *p, str *tag, str *value )
 {
-	int  i;
-	i =0;
+	int i;
+
+	str_empty( tag );
+	str_empty( value );
+
+	i = 0;
 	while ( i<3 && *p ) {
-		str_addchar( tag, *p++ );
+		str_addchar( tag, *p );
+		p++;
 		i++;
 	}
+
 	while ( *p==' ' || *p=='\t' ) p++;
+
 	while ( *p && *p!='\r' && *p!='\n' ) {
-		str_addchar( data, *p );
+		str_addchar( value, *p );
 		p++;
 	}
-	str_trimendingws( data );
+
+	str_trimendingws( value );
+
 	while ( *p=='\n' || *p=='\r' ) p++;
+
 	return p;
 }
 
@@ -164,27 +174,38 @@ copacin_nextline( const char *p )
 static int
 copacin_processf( fields *copacin, const char *p, const char *filename, long nref, param *pm )
 {
-	str tag, data;
-	int status;
+	int status, ret = 1;
+	str tag, value;
+
 	str_init( &tag );
-	str_init( &data );
+	str_init( &value );
+
 	while ( *p ) {
+
 		p = skip_ws( p );
+
 		if ( copacin_istag( p ) ) {
-			p = copacin_addtag2( p, &tag, &data );
+			p = copacin_addfield( p, &tag, &value );
 			/* don't add empty strings */
-			if ( str_has_value( &tag ) && str_has_value( &data ) ) {
-				status = fields_add( copacin, tag.data, data.data, 0 );
-				if ( status!=FIELDS_OK ) return 0;
+			if ( str_has_value( &tag ) && str_has_value( &value ) ) {
+				status = fields_add( copacin, str_cstr( &tag ), str_cstr( &value ), LEVEL_MAIN );
+				if ( status!=FIELDS_OK ) {
+					ret = 0;
+					goto out;
+				}
 			}
-			str_empty( &tag );
-			str_empty( &data );
 		}
-		else p = copacin_nextline( p );
+
+		else {
+			p = copacin_nextline( p );
+		}
 	}
+
+out:
 	str_free( &tag );
-	str_free( &data );
-	return 1;
+	str_free( &value );
+
+	return ret;
 }
 
 /*****************************************************
@@ -206,7 +227,7 @@ copacin_person( fields *bibin, int n, str *intag, str *invalue, int level, param
 
 	if ( slist_find( &(pm->asis),  invalue ) !=-1  ||
 	     slist_find( &(pm->corps), invalue ) !=-1 ) {
-		ok = name_add( bibout, outtag, invalue->data, level, &(pm->asis), &(pm->corps) );
+		ok = name_add( bibout, outtag, str_cstr( invalue ), level, &(pm->asis), &(pm->corps) );
 		if ( ok ) return BIBL_OK;
 		else return BIBL_ERR_MEMERR;
 	}
@@ -279,8 +300,8 @@ copacin_convertf( fields *bibin, fields *bibout, int reftype, param *p )
 
 		intag = fields_tag( bibin, i, FIELDS_STRP );
 
-		if ( !translate_oldtag( intag->data, reftype, p->all, p->nall, &process, &level, &outtag ) ) {
-			copacin_report_notag( p, intag->data );
+		if ( !translate_oldtag( str_cstr( intag ), reftype, p->all, p->nall, &process, &level, &outtag ) ) {
+			copacin_report_notag( p, str_cstr( intag ) );
 			continue;
 		}
 

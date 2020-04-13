@@ -1,7 +1,7 @@
 /*
  * bibutils.h
  *
- * Copyright (c) Chris Putnam 2005-2019
+ * Copyright (c) Chris Putnam 2005-2020
  *
  * Source code released under GPL version 2
  *
@@ -14,15 +14,11 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include <stdio.h>
+#include "bibdefs.h"
 #include "bibl.h"
 #include "slist.h"
 #include "charsets.h"
 #include "str_conv.h"
-
-#define BIBL_OK           (0)
-#define BIBL_ERR_BADINPUT (-1)
-#define BIBL_ERR_MEMERR   (-2)
-#define BIBL_ERR_CANTOPEN (-3)
 
 #define BIBL_FIRSTIN      (100)
 #define BIBL_MODSIN       (BIBL_FIRSTIN)
@@ -48,7 +44,8 @@ extern "C" {
 #define BIBL_WORD2007OUT  (BIBL_FIRSTOUT+5)
 #define BIBL_ADSABSOUT    (BIBL_FIRSTOUT+6)
 #define BIBL_NBIBOUT      (BIBL_FIRSTOUT+7)
-#define BIBL_LASTOUT      (BIBL_FIRSTOUT+7)
+#define BIBL_BIBLATEXOUT  (BIBL_FIRSTOUT+8)
+#define BIBL_LASTOUT      (BIBL_FIRSTOUT+8)
 
 #define BIBL_FORMAT_VERBOSE             (1)
 #define BIBL_FORMAT_BIBOUT_FINALCOMMA   (2)

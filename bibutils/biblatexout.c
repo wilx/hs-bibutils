@@ -1,5 +1,5 @@
 /*
- * bibtexout.c
+ * biblatexout.c
  *
  * Copyright (c) Chris Putnam 2003-2020
  *
@@ -23,16 +23,16 @@
 #include "bibformats.h"
 
 /*****************************************************
- PUBLIC: int bibtexout_initparams()
+ PUBLIC: int biblatexout_initparams()
 *****************************************************/
 
-static int  bibtexout_write( fields *in, FILE *fp, param *p, unsigned long refnum );
-static int  bibtexout_assemble( fields *in, fields *out, param *pm, unsigned long refnum );
+static int  biblatexout_write( fields *in, FILE *fp, param *p, unsigned long refnum );
+static int  biblatexout_assemble( fields *in, fields *out, param *pm, unsigned long refnum );
 
 int
-bibtexout_initparams( param *pm, const char *progname )
+biblatexout_initparams( param *pm, const char *progname )
 {
-	pm->writeformat      = BIBL_BIBTEXOUT;
+	pm->writeformat      = BIBL_BIBLATEXOUT;
 	pm->format_opts      = 0;
 	pm->charsetout       = BIBL_CHARSET_DEFAULT;
 	pm->charsetout_src   = BIBL_SRC_DEFAULT;
@@ -47,8 +47,8 @@ bibtexout_initparams( param *pm, const char *progname )
 
 	pm->headerf   = generic_writeheader;
 	pm->footerf   = NULL;
-	pm->assemblef = bibtexout_assemble;
-	pm->writef    = bibtexout_write;
+	pm->assemblef = biblatexout_assemble;
+	pm->writef    = biblatexout_write;
 
 	if ( !pm->progname ) {
 		if ( !progname ) pm->progname = NULL;
@@ -62,31 +62,42 @@ bibtexout_initparams( param *pm, const char *progname )
 }
 
 /*****************************************************
- PUBLIC: int bibtexout_assemble()
+ PUBLIC: int biblatexout_assemble()
 *****************************************************/
 
 enum {
 	TYPE_UNKNOWN = 0,
 	TYPE_ARTICLE,
+	TYPE_SUPPPERIODICAL,
 	TYPE_INBOOK,
 	TYPE_INPROCEEDINGS,
 	TYPE_PROCEEDINGS,
+	TYPE_CONFERENCE,       /* legacy */
 	TYPE_INCOLLECTION,
 	TYPE_COLLECTION,
+	TYPE_SUPPCOLLECTION,
+	TYPE_REFERENCE,
+	TYPE_MVREFERENCE,
 	TYPE_BOOK,
-	TYPE_PHDTHESIS,
-	TYPE_MASTERSTHESIS,
+	TYPE_BOOKLET,
+	TYPE_SUPPBOOK,
+	TYPE_PHDTHESIS,        /* legacy */
+	TYPE_MASTERSTHESIS,    /* legacy */
 	TYPE_DIPLOMATHESIS,
 	TYPE_REPORT,
+	TYPE_TECHREPORT,
 	TYPE_MANUAL,
 	TYPE_UNPUBLISHED,
-	TYPE_ELECTRONIC,
+	TYPE_PATENT,
+	TYPE_ELECTRONIC,       /* legacy */
+	TYPE_ONLINE,
+	TYPE_WWW,              /* jurabib compatibility */
 	TYPE_MISC,
 	NUM_TYPES
 };
 
 static int
-bibtexout_type( fields *in, const char *progname, const char *filename, unsigned long refnum )
+biblatexout_type( fields *in, const char *progname, const char *filename, unsigned long refnum )
 {
 	match_type genre_matches[] = {
 		{ "periodical",             TYPE_ARTICLE,       LEVEL_ANY  },
@@ -96,6 +107,7 @@ bibtexout_type( fields *in, const char *progname, const char *filename, unsigned
 		{ "article",                TYPE_ARTICLE,       LEVEL_ANY  },
 		{ "instruction",            TYPE_MANUAL,        LEVEL_ANY  },
 		{ "book",                   TYPE_BOOK,          LEVEL_MAIN },
+		{ "booklet",                TYPE_BOOKLET,       LEVEL_MAIN },
 		{ "book",                   TYPE_INBOOK,        LEVEL_ANY  },
 		{ "book chapter",           TYPE_INBOOK,        LEVEL_ANY  },
 		{ "unpublished",            TYPE_UNPUBLISHED,   LEVEL_ANY  },
@@ -105,13 +117,14 @@ bibtexout_type( fields *in, const char *progname, const char *filename, unsigned
 		{ "collection",             TYPE_COLLECTION,    LEVEL_MAIN },
 		{ "collection",             TYPE_INCOLLECTION,  LEVEL_ANY  },
 		{ "report",                 TYPE_REPORT,        LEVEL_ANY  },
-		{ "technical report",       TYPE_REPORT,        LEVEL_ANY  },
+		{ "technical report",       TYPE_TECHREPORT,    LEVEL_ANY  },
 		{ "Masters thesis",         TYPE_MASTERSTHESIS, LEVEL_ANY  },
 		{ "Diploma thesis",         TYPE_DIPLOMATHESIS, LEVEL_ANY  },
 		{ "Ph.D. thesis",           TYPE_PHDTHESIS,     LEVEL_ANY  },
 		{ "Licentiate thesis",      TYPE_PHDTHESIS,     LEVEL_ANY  },
 		{ "thesis",                 TYPE_PHDTHESIS,     LEVEL_ANY  },
 		{ "electronic",             TYPE_ELECTRONIC,    LEVEL_ANY  },
+		{ "patent",                 TYPE_PATENT,        LEVEL_ANY  },
 		{ "miscellaneous",          TYPE_MISC,          LEVEL_ANY  },
 	};
 	int ngenre_matches = sizeof( genre_matches ) / sizeof( genre_matches[0] );
@@ -155,21 +168,32 @@ static void
 append_type( int type, fields *out, int *status )
 {
 	char *typenames[ NUM_TYPES ] = {
-		[ TYPE_ARTICLE       ] = "Article",
-		[ TYPE_INBOOK        ] = "Inbook",
-		[ TYPE_PROCEEDINGS   ] = "Proceedings",
-		[ TYPE_INPROCEEDINGS ] = "InProceedings",
-		[ TYPE_BOOK          ] = "Book",
-		[ TYPE_PHDTHESIS     ] = "PhdThesis",
-		[ TYPE_MASTERSTHESIS ] = "MastersThesis",
-		[ TYPE_DIPLOMATHESIS ] = "MastersThesis",
-		[ TYPE_REPORT        ] = "TechReport",
-		[ TYPE_MANUAL        ] = "Manual",
-		[ TYPE_COLLECTION    ] = "Collection",
-		[ TYPE_INCOLLECTION  ] = "InCollection",
-		[ TYPE_UNPUBLISHED   ] = "Unpublished",
-		[ TYPE_ELECTRONIC    ] = "Electronic",
-		[ TYPE_MISC          ] = "Misc",
+		[ TYPE_ARTICLE        ] = "Article",
+		[ TYPE_SUPPPERIODICAL ] = "SuppPeriodical",
+		[ TYPE_INBOOK         ] = "Inbook",
+		[ TYPE_PROCEEDINGS    ] = "Proceedings",
+		[ TYPE_INPROCEEDINGS  ] = "InProceedings",
+		[ TYPE_CONFERENCE     ] = "Conference",
+		[ TYPE_BOOK           ] = "Book",
+		[ TYPE_BOOKLET        ] = "Booklet",
+		[ TYPE_SUPPBOOK       ] = "SuppBook",
+		[ TYPE_PHDTHESIS      ] = "PhdThesis",
+		[ TYPE_MASTERSTHESIS  ] = "MastersThesis",
+		[ TYPE_DIPLOMATHESIS  ] = "MastersThesis",
+		[ TYPE_REPORT         ] = "Report",
+		[ TYPE_TECHREPORT     ] = "TechReport",
+		[ TYPE_REFERENCE      ] = "Reference",
+		[ TYPE_MVREFERENCE    ] = "MvReference",
+		[ TYPE_MANUAL         ] = "Manual",
+		[ TYPE_COLLECTION     ] = "Collection",
+		[ TYPE_SUPPCOLLECTION ] = "SuppCollection",
+		[ TYPE_INCOLLECTION   ] = "InCollection",
+		[ TYPE_UNPUBLISHED    ] = "Unpublished",
+		[ TYPE_ELECTRONIC     ] = "Electronic",
+		[ TYPE_ONLINE         ] = "Online",
+		[ TYPE_WWW            ] = "WWW",
+		[ TYPE_PATENT         ] = "Patent",
+		[ TYPE_MISC           ] = "Misc",
 	};
 	int fstatus;
 	char *s;
@@ -736,39 +760,51 @@ append_howpublished( fields *in, fields *out, int *status )
 }
 
 static int
-bibtexout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
+biblatexout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 {
 	int type, status = BIBL_OK;
 
-	type = bibtexout_type( in, pm->progname, "", refnum );
+	type = biblatexout_type( in, pm->progname, "", refnum );
 
 	append_type        ( type, out, &status );
 	append_citekey     ( in, out, pm->format_opts, &status );
-	append_people      ( in, "AUTHOR",     "AUTHOR:CORP",     "AUTHOR:ASIS",     "author", LEVEL_MAIN, out, pm->format_opts, pm->latexout, &status );
-	append_people      ( in, "EDITOR",     "EDITOR:CORP",     "EDITOR:ASIS",     "editor", LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
-	append_people      ( in, "TRANSLATOR", "TRANSLATOR:CORP", "TRANSLATOR:ASIS", "translator", LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "AUTHOR",     "AUTHOR:CORP",     "AUTHOR:ASIS",     "author",       LEVEL_MAIN, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "AUTHOR",     "AUTHOR:CORP",     "AUTHOR:ASIS",     "bookauthor",   LEVEL_HOST, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "EDITOR",     "EDITOR:CORP",     "EDITOR:ASIS",     "editor",       LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "ANNOTATOR",  "ANNOTATOR:CORP",  "ANNOTATOR:ASIS",  "annotator",    LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "TRANSLATOR", "TRANSLATOR:CORP", "TRANSLATOR:ASIS", "translator",   LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "REDACTOR",   "REDACTOR:CORP",   "REDACTOR:ASIS",   "redactor",     LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "COMMENTATOR","COMMENTATOR:CORP","COMMENTATOR:ASIS","commentator",  LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "INTROAUTHOR","INTROAUTHOR:CORP","INTROAUTHOR:ASIS","introduction", LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
+	append_people      ( in, "AFTERAUTHOR","AFTERAUTHOR:CORP","AFTERAUTHOR:ASIS","afterword",    LEVEL_ANY, out, pm->format_opts, pm->latexout, &status );
 	append_titles      ( in, type, out, pm->format_opts, &status );
+	append_simple      ( in, "SHORTTITLE",         "shorttitle", out, &status );
 	append_date        ( in, out, &status );
 	append_simple      ( in, "EDITION",            "edition",   out, &status );
 	append_simple      ( in, "PUBLISHER",          "publisher", out, &status );
 	append_simple      ( in, "ADDRESS",            "address",   out, &status );
+	append_simple      ( in, "EDITION",            "version",   out, &status );
+	append_simple      ( in, "PART",               "part",      out, &status );
 	append_simple      ( in, "VOLUME",             "volume",    out, &status );
 	append_issue_number( in, out, &status );
 	append_pages       ( in, out, pm->format_opts, &status );
 	append_keywords    ( in, out, &status );
-	append_simple      ( in, "CONTENTS",           "contents",  out, &status );
-	append_simple      ( in, "ABSTRACT",           "abstract",  out, &status );
-	append_simple      ( in, "LOCATION",           "location",  out, &status );
-	append_simple      ( in, "DEGREEGRANTOR",      "school",    out, &status );
-	append_simple      ( in, "DEGREEGRANTOR:ASIS", "school",    out, &status );
-	append_simple      ( in, "DEGREEGRANTOR:CORP", "school",    out, &status );
-	append_simpleall   ( in, "NOTES",              "note",      out, &status );
-	append_simpleall   ( in, "ANNOTE",             "annote",    out, &status );
-	append_simple      ( in, "ISBN",               "isbn",      out, &status );
-	append_simple      ( in, "ISSN",               "issn",      out, &status );
-	append_simple      ( in, "MRNUMBER",           "mrnumber",  out, &status );
-	append_simple      ( in, "CODEN",              "coden",     out, &status );
-	append_simple      ( in, "DOI",                "doi",       out, &status );
+	append_simple      ( in, "LANGCATALOG",        "hyphenation", out, &status );
+	append_simple      ( in, "CONTENTS",           "contents",    out, &status );
+	append_simple      ( in, "ABSTRACT",           "abstract",    out, &status );
+	append_simple      ( in, "LOCATION",           "location",    out, &status );
+	append_simple      ( in, "DEGREEGRANTOR",      "school",      out, &status );
+	append_simple      ( in, "DEGREEGRANTOR:ASIS", "school",      out, &status );
+	append_simple      ( in, "DEGREEGRANTOR:CORP", "school",      out, &status );
+	append_simpleall   ( in, "NOTES",              "note",        out, &status );
+	append_simpleall   ( in, "ANNOTE",             "annote",      out, &status );
+	append_simpleall   ( in, "ANNOTATION",         "annotation",  out, &status );
+	append_simple      ( in, "ISBN",               "isbn",        out, &status );
+	append_simple      ( in, "ISSN",               "issn",        out, &status );
+	append_simple      ( in, "MRNUMBER",           "mrnumber",    out, &status );
+	append_simple      ( in, "CODEN",              "coden",       out, &status );
+	append_simple      ( in, "DOI",                "doi",         out, &status );
+	append_simple      ( in, "EID",                "eid",         out, &status );
 	append_urls        ( in, out, &status );
 	append_fileattach  ( in, out, &status );
 	append_arxiv       ( in, out, &status );
@@ -781,11 +817,11 @@ bibtexout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 }
 
 /*****************************************************
- PUBLIC: int bibtexout_write()
+ PUBLIC: int biblatexout_write()
 *****************************************************/
 
 static int
-bibtexout_write( fields *out, FILE *fp, param *pm, unsigned long refnum )
+biblatexout_write( fields *out, FILE *fp, param *pm, unsigned long refnum )
 {
 	int i, j, len, nquotes, format_opts = pm->format_opts;
 	char *tag, *value, ch;

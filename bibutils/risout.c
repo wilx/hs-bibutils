@@ -1,7 +1,7 @@
 /*
  * risout.c
  *
- * Copyright (c) Chris Putnam 2003-2019
+ * Copyright (c) Chris Putnam 2003-2020
  *
  * Source code released under the GPL version 2
  *
@@ -164,7 +164,7 @@ static void
 verbose_type_assignment( char *tag, char *value, param *p, int type )
 {
 	if ( p->progname ) fprintf( stderr, "%s: ", p->progname );
-	fprintf( stderr, "Type from tag '%s' data '%s': ", tag, value );
+	fprintf( stderr, "Type from tag '%s' value '%s': ", tag, value );
 	write_type( stderr, type );
 	fprintf( stderr, "\n" );
 }
@@ -286,19 +286,13 @@ get_type_issuance( fields *f, param *p )
 {
 	int type = TYPE_UNKNOWN;
 	int i, monographic = 0, monographic_level = 0;
-//	int text = 0;
 	for ( i=0; i<f->n; ++i ) {
 		if ( !strcasecmp( (char *) fields_tag( f, i, FIELDS_CHRP_NOUSE ), "issuance" ) &&
 		     !strcasecmp( (char *) fields_value( f, i, FIELDS_CHRP_NOUSE ), "MONOGRAPHIC" ) ){
 			monographic = 1;
 			monographic_level = f->level[i];
 		}
-//		if ( !strcasecmp( (char *) fields_tag( f, i, FIELDS_CHRP_NOUSE ), "typeOfResource" ) &&
-//		     !strcasecmp( (char *) fields_value( f, i, FIELDS_CHRP_NOUSE ), "text" ) ) {
-//			text = 1;
-//		}
 	}
-//	if ( monographic && text ) {
 	if ( monographic ) {
 		if ( monographic_level==0 ) type=TYPE_BOOK;
 		else if ( monographic_level>0 ) type=TYPE_INBOOK;
@@ -505,22 +499,6 @@ append_pages( fields *in, fields *out, int *status )
 }
 
 static void
-append_keywords( fields *in, fields *out, int *status )
-{
-	vplist_index i;
-	int fstatus;
-	vplist vpl;
-
-	vplist_init( &vpl );
-	fields_findv_each( in, LEVEL_ANY, FIELDS_CHRP, &vpl, "KEYWORD" );
-	for ( i=0; i<vpl.n; ++i ) {
-		fstatus = fields_add( out, "KW", ( char * ) vplist_get( &vpl, i ), LEVEL_MAIN );
-		if ( fstatus!=FIELDS_OK ) *status = BIBL_ERR_MEMERR;
-	}
-	vplist_free( &vpl );
-}
-
-static void
 append_urls( fields *in, fields *out, int *status )
 {
 	int lstatus;
@@ -694,7 +672,7 @@ risout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 	append_easy      ( in, "DEGREEGRANTOR:ASIS", "PB", LEVEL_ANY, out, &status );
 	append_easy      ( in, "DEGREEGRANTOR:CORP", "PB", LEVEL_ANY, out, &status );
 	append_easy      ( in, "ADDRESS",            "CY", LEVEL_ANY, out, &status );
-	append_keywords  ( in, out, &status );
+	append_easyall   ( in, "KEYWORD",            "KW", LEVEL_ANY, out, &status );
 	append_easy      ( in, "ABSTRACT",           "AB", LEVEL_ANY, out, &status );
 	append_easy      ( in, "CALLNUMBER",         "CN", LEVEL_ANY, out, &status );
 	append_easy      ( in, "ISSN",               "SN", LEVEL_ANY, out, &status );

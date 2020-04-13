@@ -1,7 +1,7 @@
 /*
  * isiout.c
  *
- * Copyright (c) Chris Putnam 2008-2019
+ * Copyright (c) Chris Putnam 2008-2020
  *
  * Source code released under the GPL version 2
  *
@@ -304,40 +304,41 @@ isiout_assemble( fields *in, fields *out, param *pm, unsigned long refnum )
 
 	append_title  ( in, "TI", LEVEL_MAIN, out, &status );
 	if ( type==TYPE_ARTICLE ) {
-		append_title( in, "SO", LEVEL_HOST,   out, &status );
-		append_abbrtitle( in, "JI", LEVEL_HOST, out, &status );
-		append_title( in, "SE", LEVEL_SERIES, out, &status );
+		append_title    ( in, "SO", LEVEL_HOST,   out, &status );
+		append_abbrtitle( in, "JI", LEVEL_HOST,   out, &status );
+		append_title    ( in, "SE", LEVEL_SERIES, out, &status );
 	} else if ( type==TYPE_INBOOK ) {
-		append_title( in, "BT", LEVEL_HOST,   out, &status );
-		append_title( in, "SE", LEVEL_SERIES, out, &status );
+		append_title    ( in, "BT", LEVEL_HOST,   out, &status );
+		append_title    ( in, "SE", LEVEL_SERIES, out, &status );
 	} else { /* type==BOOK */
-		append_title( in, "SE", LEVEL_HOST,   out, &status );
+		append_title    ( in, "SE", LEVEL_HOST,   out, &status );
 	}
 
 	append_date( in, out, &status );
 
-	append_easy( in, "PAGES:START",    "BP", LEVEL_ANY, out, &status );
-	append_easy( in, "PAGES:STOP",     "EP", LEVEL_ANY, out, &status );
-	append_easy( in, "ARTICLENUMBER",  "AR", LEVEL_ANY, out, &status );
-	append_easy( in, "PAGES:TOTAL",    "PG", LEVEL_ANY, out, &status );
+	append_easy( in, "PAGES:START",       "BP", LEVEL_ANY, out, &status );
+	append_easy( in, "PAGES:STOP",        "EP", LEVEL_ANY, out, &status );
+	append_easy( in, "ARTICLENUMBER",     "AR", LEVEL_ANY, out, &status );
+	append_easy( in, "PAGES:TOTAL",       "PG", LEVEL_ANY, out, &status );
 
-	append_easy( in, "VOLUME",         "VL", LEVEL_ANY, out, &status );
-	append_easy( in, "ISSUE",          "IS", LEVEL_ANY, out, &status );
-	append_easy( in, "NUMBER",         "IS", LEVEL_ANY, out, &status );
-	append_easy( in, "PUBLISHER",      "PU", LEVEL_ANY, out, &status );
-	append_easy( in, "DOI",            "DI", LEVEL_ANY, out, &status );
-	append_easy( in, "URL",            "WP", LEVEL_ANY, out, &status );
-	append_easy( in, "ISIREFNUM",      "UT", LEVEL_ANY, out, &status );
-	append_easy( in, "LANGUAGE",       "LA", LEVEL_ANY, out, &status );
-	append_easy( in, "ISIDELIVERNUM",  "GA", LEVEL_ANY, out, &status );
+	append_easy( in, "VOLUME",            "VL", LEVEL_ANY, out, &status );
+	append_easy( in, "ISSUE",             "IS", LEVEL_ANY, out, &status );
+	append_easy( in, "NUMBER",            "IS", LEVEL_ANY, out, &status );
+	append_easy( in, "PUBLISHER",         "PU", LEVEL_ANY, out, &status );
+	append_easy( in, "ADDRESS:PUBLISHER", "PA", LEVEL_ANY, out, &status );
+	append_easy( in, "DOI",               "DI", LEVEL_ANY, out, &status );
+	append_easy( in, "URL",               "WP", LEVEL_ANY, out, &status );
+	append_easy( in, "ISIREFNUM",         "UT", LEVEL_ANY, out, &status );
+	append_easy( in, "LANGUAGE",          "LA", LEVEL_ANY, out, &status );
+	append_easy( in, "ISIDELIVERNUM",     "GA", LEVEL_ANY, out, &status );
 	append_keywords( in, out, &status );
-	append_easy( in, "ISBN",           "SN", LEVEL_ANY, out, &status );
-	append_easy( in, "ISSN",           "SN", LEVEL_ANY, out, &status );
-	append_easy( in, "ABSTRACT",       "AB", LEVEL_ANY, out, &status );
-	append_easy( in, "TIMESCITED",     "TC", LEVEL_ANY, out, &status );
-	append_easy( in, "NUMBERREFS",     "NR", LEVEL_ANY, out, &status );
-	append_easy( in, "CITEDREFS",      "CR", LEVEL_ANY, out, &status );
-	append_easy( in, "ADDRESS",        "PI", LEVEL_ANY, out, &status );
+	append_easy( in, "ISBN",              "SN", LEVEL_ANY, out, &status );
+	append_easy( in, "ISSN",              "SN", LEVEL_ANY, out, &status );
+	append_easy( in, "ABSTRACT",          "AB", LEVEL_ANY, out, &status );
+	append_easy( in, "TIMESCITED",        "TC", LEVEL_ANY, out, &status );
+	append_easy( in, "NUMBERREFS",        "NR", LEVEL_ANY, out, &status );
+	append_easy( in, "CITEDREFS",         "CR", LEVEL_ANY, out, &status );
+	append_easy( in, "ADDRESS",           "PI", LEVEL_ANY, out, &status );
 
 	return status;
 }
