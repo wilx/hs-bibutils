@@ -24,7 +24,7 @@ license:            GPL
 license-file:       LICENSE
 author:             Andrea Rossato
 maintainer:         Václav Haisman <vhaisman@gmail.com>
-cabal-version:      >= 1.16
+cabal-version:      1.16
 build-type:         Simple
 extra-source-files:
         bibutils/adsout.c bibutils/adsout_journals.c bibutils/bibcore.c
